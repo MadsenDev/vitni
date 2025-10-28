@@ -1,0 +1,17 @@
+{
+  "id": "whois.lookup",
+  "name": "WHOIS Lookup",
+  "input": [{ "entityType": "domain" }],
+  "network": {
+    "kind": "http",
+    "host": "rdap.org",
+    "path": "/domain/${domain}",
+    "method": "GET",
+    "sends": ["domain"],
+    "receives": ["registrar", "contacts", "dates"]
+  },
+  "outputs": [
+    { "type": "entity", "entityType": "org", "from": "registrar.name" },
+    { "type": "edge", "edgeType": "registered_by", "from": "contacts.registrant" }
+  ]
+}
