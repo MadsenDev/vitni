@@ -15,15 +15,19 @@ A local-first Electron application for secure private investigations. The tool k
 
 ```bash
 npm install
+export PI_DB_KEY="your-strong-passphrase"
 npm run dev
 ```
 
 The dev script compiles the main/preload processes, launches Vite for the renderer, and starts Electron once builds are ready. For production builds run:
 
 ```bash
+export PI_DB_KEY="your-strong-passphrase"
 npm run build
 npm start
 ```
+
+`PI_DB_KEY` is required so the embedded SQLCipher-compatible database can be opened. Choose a strong passphrase; without it the application will refuse to launch, keeping investigation data protected at rest.
 
 ## Project Structure
 

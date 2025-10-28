@@ -3,6 +3,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+const DB_KEY_ENV_VAR = 'PI_DB_KEY';
+
+function resolveEncryptionKey(): string {
+  const key = process.env[DB_KEY_ENV_VAR];
+  if (!key || key.trim().length === 0) {
+    throw new Error(
+      `Missing SQLCipher key. Set the ${DB_KEY_ENV_VAR} environment variable before launching the application.`
+    );
+  }
+
+  return key;
+}
+
 const DB_FILE_NAME = 'investigation.db';
 
 export class DatabaseProvider {
@@ -18,6 +31,9 @@ export class DatabaseProvider {
       verbose: process.env.DEBUG_SQL === '1' ? console.log : undefined
     });
 
+    const encryptionKey = resolveEncryptionKey();
+
+    this.db.pragma(`key = ${JSON.stringify(encryptionKey)}`);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.db.pragma("cipher_default_kdf_iter = 256000");
