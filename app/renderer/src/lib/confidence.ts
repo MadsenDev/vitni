@@ -1,4 +1,4 @@
-import type { Confidence } from '../../../shared/types';
+import type { Confidence } from '@shared/types';
 
 export function confidenceToBadgeColor(confidence: Confidence): string {
   switch (confidence) {

@@ -4,6 +4,7 @@ import type {
   AuditRecord,
   EntityRecord,
   EdgeRecord,
+  TransformRegistry,
   TransformRunRecord
 } from '../../shared/types';
 
@@ -31,7 +32,7 @@ function createBridge() {
     }) => ipcRenderer.invoke('db:assertion:create', payload),
     recordAudit: (payload: Omit<AuditRecord, 'created_at' | 'id'>) =>
       ipcRenderer.invoke('db:audit:record', payload),
-    listTransforms: () => ipcRenderer.invoke('transforms:list'),
+    listTransforms: (): Promise<TransformRegistry> => ipcRenderer.invoke('transforms:list'),
     createTransformRun: (payload: Omit<TransformRunRecord, 'id' | 'started_at'>) =>
       ipcRenderer.invoke('transform:runs:create', payload),
     updateTransformRun: (payload: Pick<TransformRunRecord, 'id'> & Partial<TransformRunRecord>) =>
