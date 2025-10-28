@@ -4,6 +4,7 @@ import type {
   EntityRecord,
   EdgeRecord,
   SourceRecord,
+  TransformRegistry,
   TransformRunRecord
 } from '@shared/types';
 
@@ -26,10 +27,7 @@ interface PiBridge {
     confidence: AssertionRecord['confidence'];
   }) => Promise<string>;
   recordAudit: (payload: Omit<AuditRecord, 'created_at' | 'id'>) => Promise<string>;
-  listTransforms: () => Promise<{
-    local: unknown[];
-    remote: unknown[];
-  }>;
+  listTransforms: () => Promise<TransformRegistry>;
   createTransformRun: (payload: Omit<TransformRunRecord, 'id' | 'started_at'>) => Promise<string>;
   updateTransformRun: (
     payload: Pick<TransformRunRecord, 'id'> & Partial<TransformRunRecord>

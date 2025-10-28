@@ -7,6 +7,7 @@ import { ConsentModal } from './components/ConsentModal';
 import { SourcesList } from './components/SourcesList';
 import { TransformList } from './components/TransformList';
 import { AddEntityForm } from './components/forms/AddEntityForm';
+import { AddAssertionForm } from './components/forms/AddAssertionForm';
 
 cytoscape.warnings(false);
 
@@ -123,7 +124,7 @@ export default function App() {
               }}
             />
           </section>
-          <aside className="w-96 border-l border-slate-800 bg-slate-950/70 p-6">
+          <aside className="w-96 overflow-y-auto border-l border-slate-800 bg-slate-950/70 p-6">
             {selectedNode ? (
               <div>
                 <h3 className="text-lg font-semibold">{selectedNode.label ?? 'Untitled Entity'}</h3>
@@ -156,6 +157,13 @@ export default function App() {
                   <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
                   <SourcesList sources={sources} />
                 </section>
+                <AddAssertionForm
+                  entity={selectedNode}
+                  onAssertionCreated={() => {
+                    void fetchAssertions(selectedNode.id).then(setAssertions);
+                    void fetchSources(selectedNode.id).then(setSources);
+                  }}
+                />
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center text-center text-slate-500">
