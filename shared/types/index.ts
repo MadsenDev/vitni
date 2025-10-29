@@ -67,6 +67,12 @@ export interface AuditRecord {
   created_at: number;
 }
 
+export interface ProjectSettingRecord {
+  key: string;
+  value_json: string;
+  updated_at: number;
+}
+
 export interface GraphNode {
   id: string;
   type: EntityType;

@@ -2,30 +2,19 @@ import type {
   AssertionRecord,
   AuditRecord,
   EntityRecord,
-  EdgeRecord,
   SourceRecord,
   TransformRegistry,
   TransformRunRecord
 } from '@shared/types';
-
-// Parsed types for frontend consumption
-interface ParsedEntityRecord extends Omit<EntityRecord, 'properties_json'> {
-  properties: Record<string, unknown>;
-  pos_x?: number | null;
-  pos_y?: number | null;
-}
-
-interface ParsedEdgeRecord extends Omit<EdgeRecord, 'properties_json'> {
-  properties: Record<string, unknown>;
-}
+import type { GraphNodeSnapshot, GraphEdgeSnapshot, GraphSnapshot } from './types/graph';
 
 interface ParsedAssertionRecord extends Omit<AssertionRecord, 'value_json'> {
   value: Record<string, unknown>;
 }
 
 interface PiBridge {
-  listEntities: () => Promise<ParsedEntityRecord[]>;
-  loadGraph: () => Promise<{ nodes: ParsedEntityRecord[]; edges: ParsedEdgeRecord[] }>;
+  listEntities: () => Promise<GraphNodeSnapshot[]>;
+  loadGraph: () => Promise<GraphSnapshot>;
   createEntity: (payload: {
     type: EntityRecord['type'];
     label: string;
@@ -56,6 +45,8 @@ interface PiBridge {
   projectNew: () => Promise<boolean>;
   projectOpen: () => Promise<boolean>;
   projectSaveAs: () => Promise<boolean>;
+  getProjectSetting: <T = unknown>(key: string) => Promise<T | null>;
+  setProjectSetting: (key: string, value: unknown) => Promise<boolean>;
 }
 
 declare global {

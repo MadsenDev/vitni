@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape, { type ElementDefinition } from 'cytoscape';
 import type { AssertionRecord, EdgeRecord, EntityRecord, SourceRecord } from '@shared/types';
@@ -18,27 +18,10 @@ import { RelationshipDeletionModal } from './components/RelationshipDeletionModa
 import { TopToolbar } from './components/TopToolbar';
 import { nodeTypes, type NodeType } from './lib/nodeTypes/index';
 import { GraphCanvas } from './components/GraphCanvas';
+import { LocalAIStatus } from './components/LocalAIStatus';
+import { LocalAIInsights } from './components/LocalAIInsights';
 import { InspectorPanel } from './components/InspectorPanel';
-
-// Import parsed types for frontend consumption
-type ParsedEntityRecord = {
-  id: string;
-  type: string;
-  label: string | null;
-  properties: Record<string, unknown>;
-  created_at: number;
-  updated_at: number;
-};
-
-type ParsedEdgeRecord = {
-  id: string;
-  src_id: string;
-  dst_id: string;
-  type: string;
-  properties: Record<string, unknown>;
-  created_at: number;
-  updated_at: number;
-};
+import type { GraphSnapshot } from './types/graph';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -65,14 +48,11 @@ const nodeTypeIcons: Record<string, string> = {
 
 cytoscape.warnings(false);
 
-interface GraphData {
-  nodes: ParsedEntityRecord[];
-  edges: ParsedEdgeRecord[];
-}
+const LOCAL_AI_SETTING_KEY = 'local_ai_enabled';
 
 type AssertionView = ParsedAssertionRecord;
 
-function mapGraphElements(data: GraphData): ElementDefinition[] {
+function mapGraphElements(data: GraphSnapshot): ElementDefinition[] {
   return [
     ...data.nodes.map((node) => ({
       data: {
@@ -96,7 +76,7 @@ function mapGraphElements(data: GraphData): ElementDefinition[] {
 
 export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [graph, setGraph] = useState<GraphData>({ nodes: [], edges: [] });
+  const [graph, setGraph] = useState<GraphSnapshot>({ nodes: [], edges: [] });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [assertions, setAssertions] = useState<AssertionView[]>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
@@ -140,17 +120,49 @@ export default function App() {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [edgeDeletionModal, setEdgeDeletionModal] = useState<{
     isOpen: boolean;
-    relationship: { 
-      id: string; 
-      type: string; 
-      sourceLabel: string; 
+    relationship: {
+      id: string;
+      type: string;
+      sourceLabel: string;
       targetLabel: string;
     } | null;
   }>({
     isOpen: false,
     relationship: null
   });
+  const [localAIEnabled, setLocalAIEnabled] = useState(false);
+  const [isLocalAILoading, setIsLocalAILoading] = useState(true);
   // Real-time editing state - no separate editing mode needed
+
+  const loadLocalAISetting = useCallback(async () => {
+    setIsLocalAILoading(true);
+    try {
+      const value = await window.piBridge.getProjectSetting(LOCAL_AI_SETTING_KEY);
+      setLocalAIEnabled(Boolean(value));
+    } catch (error) {
+      console.error('[App] Failed to load local AI preference', error);
+      setLocalAIEnabled(false);
+    } finally {
+      setIsLocalAILoading(false);
+    }
+  }, []);
+
+  const handleLocalAIToggle = useCallback(async () => {
+    const next = !localAIEnabled;
+    try {
+      setIsLocalAILoading(true);
+      await window.piBridge.setProjectSetting(LOCAL_AI_SETTING_KEY, next);
+      setLocalAIEnabled(next);
+    } catch (error) {
+      console.error('[App] Failed to persist local AI preference', error);
+    } finally {
+      setIsLocalAILoading(false);
+    }
+  }, [localAIEnabled]);
+
+  useEffect(() => {
+    void loadLocalAISetting();
+  }, [loadLocalAISetting]);
 
   useEffect(() => {
     void window.piBridge.loadGraph().then((data) => {
@@ -224,10 +236,12 @@ export default function App() {
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
         setShowWelcome(false);
+        void loadLocalAISetting();
       }
     } catch (e) {
       console.error('project:new failed', e);
       setShowWelcome(false);
+      void loadLocalAISetting();
     }
   };
 
@@ -238,6 +252,7 @@ export default function App() {
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
         setShowWelcome(false);
+        void loadLocalAISetting();
       }
     } catch (e) {
       console.error('project:open failed', e);
@@ -521,7 +536,15 @@ export default function App() {
       
       <div className="flex flex-1 overflow-hidden">
       <aside className="w-80 border-r border-slate-800 bg-slate-950/70 p-6">
+        <div className="flex h-full flex-col space-y-6 overflow-y-auto pr-1">
           <NodePalette onNodeDragStart={handleNodeDragStart} />
+          <LocalAIStatus
+            enabled={localAIEnabled}
+            loading={isLocalAILoading}
+            onToggle={handleLocalAIToggle}
+          />
+          <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
+        </div>
       </aside>
         
       <main className="flex flex-1 flex-col">
