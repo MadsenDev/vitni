@@ -55,3 +55,15 @@ shared/        # Shared TypeScript types
 - Expand assertion/source queries with pagination and filtering.
 - Wire up local AI helpers in `ai/` for dedupe + summarisation without hallucinations.
 - Add unit tests and automated linting via CI.
+
+## Sample Investigation Save
+
+To explore the graph canvas and inspector panels without starting from scratch, import the bundled
+`samples/operation-glass-harbor.piinv` project file via **File → Open Project**. The scenario captures
+a full investigation with:
+
+- Six richly annotated entities spanning people, organizations, infrastructure, and documents.
+- Five relationship edges that demonstrate subtypes, investigator involvement, and communication trails.
+- Source-backed assertions with mixed confidence levels to showcase verification workflows.
+- Project-level settings (viewport, default confidence, and feature toggles) so the layout loads exactly
+  as curated.
