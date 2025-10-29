@@ -1,4 +1,4 @@
-import { FaLink } from 'react-icons/fa';
+import { FaLink, FaVectorSquare, FaThLarge, FaBullseye, FaProjectDiagram, FaAlignLeft, FaAlignJustify, FaRetweet } from 'react-icons/fa';
 
 interface TopToolbarProps {
   relationshipTool: {
@@ -9,12 +9,26 @@ interface TopToolbarProps {
   };
   onRelationshipToolActivate: () => void;
   onRelationshipToolDeactivate: () => void;
+  onToggleBoxSelect: () => void;
+  onLayoutGrid: () => void;
+  onLayoutConcentric: () => void;
+  onLayoutCose: () => void;
+  onAlignLeft: () => void;
+  onAlignTop: () => void;
+  onInvertSelection: () => void;
 }
 
 export function TopToolbar({
   relationshipTool,
   onRelationshipToolActivate,
-  onRelationshipToolDeactivate
+  onRelationshipToolDeactivate,
+  onToggleBoxSelect,
+  onLayoutGrid,
+  onLayoutConcentric,
+  onLayoutCose,
+  onAlignLeft,
+  onAlignTop,
+  onInvertSelection
 }: TopToolbarProps) {
   const toggleRelationshipMode = () => {
     if (relationshipTool.isActive) onRelationshipToolDeactivate();
@@ -34,6 +48,58 @@ export function TopToolbar({
             title="Relationship tool (drag from one node to another)"
           >
             <FaLink className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onToggleBoxSelect}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Toggle box selection"
+          >
+            <FaVectorSquare className="w-4 h-4" />
+          </button>
+          <div className="h-5 w-px bg-slate-700 mx-1"></div>
+          <button
+            onClick={onLayoutGrid}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Grid layout"
+          >
+            <FaThLarge className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onLayoutConcentric}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Concentric layout"
+          >
+            <FaBullseye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onLayoutCose}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="COSE layout"
+          >
+            <FaProjectDiagram className="w-4 h-4" />
+          </button>
+          <div className="h-5 w-px bg-slate-700 mx-1"></div>
+          <button
+            onClick={onAlignLeft}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Align left (selected)"
+          >
+            <FaAlignLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onAlignTop}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Align top (selected)"
+          >
+            <FaAlignJustify className="w-4 h-4 transform rotate-90" />
+          </button>
+          <div className="h-5 w-px bg-slate-700 mx-1"></div>
+          <button
+            onClick={onInvertSelection}
+            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            title="Invert selection"
+          >
+            <FaRetweet className="w-4 h-4" />
           </button>
         </div>
       </div>

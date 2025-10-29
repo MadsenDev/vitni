@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { URL } from 'node:url';
 import { DatabaseProvider } from './persistence/database';
 import { registerIpcHandlers } from './ipc';
@@ -9,6 +10,7 @@ import { createTransformRegistry } from './transforms/registry';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
 
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -75,15 +77,14 @@ function buildMenu() {
 }
 
 async function createWindow() {
-  const dbProvider = new DatabaseProvider();
-  await ensureMigrations(dbProvider);
+  console.log('[Main] createWindow start');
 
-  const transformRegistry = createTransformRegistry();
-
+  // Create and load the window ASAP so the UI appears even if background init is slow
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     backgroundColor: '#0f172a',
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, '../../../preload/app/preload/preload.js'),
       contextIsolation: true,
@@ -91,18 +92,58 @@ async function createWindow() {
       sandbox: true
     }
   });
-
-  registerIpcHandlers(ipcMain, dbProvider, transformRegistry);
   buildMenu();
 
   if (isDevelopment) {
     const rendererUrl = new URL('http://localhost:5173');
     await mainWindow.loadURL(rendererUrl.toString());
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     const indexHtml = path.join(__dirname, '../renderer/index.html');
     await mainWindow.loadFile(indexHtml);
   }
+
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow?.isVisible()) {
+      mainWindow?.show();
+    }
+    if (isDevelopment) {
+      mainWindow?.webContents.openDevTools({ mode: 'detach' });
+    }
+  });
+
+  // Also handle when the page has finished loading in case ready-to-show is missed
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!mainWindow?.isVisible()) {
+      mainWindow?.show();
+    }
+  });
+
+  // Surface load failures and avoid being stuck behind the splash
+  mainWindow.webContents.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
+    dialog.showErrorBox('Renderer failed to load', `${desc} (code ${code})`);
+    if (!mainWindow?.isVisible()) {
+      mainWindow?.show();
+    }
+  });
+
+  // Kick off background initialization after the window has begun loading
+  ;(async () => {
+    try {
+      console.log('[Main] init: creating db provider');
+      const dbProvider = new DatabaseProvider();
+      console.log('[Main] init: ensuring migrations');
+      await ensureMigrations(dbProvider);
+      console.log('[Main] init: building transform registry');
+      const transformRegistry = createTransformRegistry();
+      console.log('[Main] init: registering IPC handlers');
+      registerIpcHandlers(ipcMain, dbProvider, transformRegistry);
+      console.log('[Main] init: complete');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[Main] init error:', message);
+      dialog.showErrorBox('Initialization error', message);
+    }
+  })().catch(() => {});
 
   mainWindow.on('closed', () => {
     mainWindow = null;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape, { type ElementDefinition } from 'cytoscape';
 import type { AssertionRecord, EdgeRecord, EntityRecord, SourceRecord } from '@shared/types';
@@ -22,6 +22,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { LocalAIInsights } from './components/LocalAIInsights';
 import { InspectorPanel } from './components/InspectorPanel';
 import type { GraphSnapshot } from './types/graph';
+import { SplashOverlay } from './components/SplashOverlay';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -87,6 +88,7 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefi
 export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [graph, setGraph] = useState<GraphSnapshot>({ nodes: [], edges: [] });
+  const [graphLoaded, setGraphLoaded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [assertions, setAssertions] = useState<AssertionView[]>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
@@ -146,6 +148,12 @@ export default function App() {
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
+  const graphApiRef = useRef<{
+    runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
+    toggleBoxSelect: () => void;
+    alignSelected: (kind: 'left' | 'top') => void;
+    invertSelection: () => void;
+  } | null>(null);
   // Real-time editing state - no separate editing mode needed
 
   const loadSettings = useCallback(async () => {
@@ -215,6 +223,7 @@ export default function App() {
   useEffect(() => {
     void window.piBridge.loadGraph().then((data) => {
       setGraph({ nodes: data.nodes, edges: data.edges });
+      setGraphLoaded(true);
     });
   }, []);
 
@@ -587,16 +596,38 @@ export default function App() {
     }
   };
 
+  const isBooting = isLocalAILoading || !graphLoaded;
+
+  if (isBooting) {
+    return (
+      <div className="relative h-full">
+        <SplashOverlay showing={true} />
+      </div>
+    );
+  }
+
   if (showWelcome) {
-    return <WelcomeScreen onProjectCreate={handleProjectCreate} onProjectLoad={handleProjectLoad} />;
+    return (
+      <div className="relative h-full">
+        <SplashOverlay showing={false} />
+        <WelcomeScreen onProjectCreate={handleProjectCreate} onProjectLoad={handleProjectLoad} />
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <TopToolbar
         relationshipTool={relationshipTool}
         onRelationshipToolActivate={handleRelationshipToolActivate}
         onRelationshipToolDeactivate={handleRelationshipToolDeactivate}
+        onToggleBoxSelect={() => graphApiRef.current?.toggleBoxSelect()}
+        onLayoutGrid={() => graphApiRef.current?.runLayout('grid')}
+        onLayoutConcentric={() => graphApiRef.current?.runLayout('concentric')}
+        onLayoutCose={() => graphApiRef.current?.runLayout('cose')}
+        onAlignLeft={() => graphApiRef.current?.alignSelected('left')}
+        onAlignTop={() => graphApiRef.current?.alignSelected('top')}
+        onInvertSelection={() => graphApiRef.current?.invertSelection()}
       />
       
       <div className="flex flex-1 overflow-hidden">
@@ -616,6 +647,7 @@ export default function App() {
             >
               <GraphCanvas
                 elements={elements}
+                apiRef={graphApiRef}
                 onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
                 onUnselectNode={() => setSelectedNodeId(null)}
                 onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}

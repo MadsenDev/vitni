@@ -14,6 +14,12 @@ interface GraphCanvasProps {
   isRelationshipMode?: boolean;
   onRequestCreateEdge?: (sourceId: string, targetId: string) => void;
   onNodeDragFree?: (id: string, x: number, y: number) => void;
+  apiRef?: React.MutableRefObject<{
+    runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
+    toggleBoxSelect: () => void;
+    alignSelected: (kind: 'left' | 'top') => void;
+    invertSelection: () => void;
+  } | null>;
 }
 
 const PREVIEW_NODE_ID = '__pi_preview_node__';
@@ -28,7 +34,8 @@ export function GraphCanvas({
   onTapNode,
   isRelationshipMode = false,
   onRequestCreateEdge,
-  onNodeDragFree
+  onNodeDragFree,
+  apiRef
 }: GraphCanvasProps) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const relationSourceRef = useRef<string | null>(null);
@@ -131,6 +138,43 @@ export function GraphCanvas({
       }
     };
   }, [isRelationshipMode, onRequestCreateEdge]);
+
+  // Expose imperative API
+  useEffect(() => {
+    if (!apiRef) return;
+    const cy = cyRef.current;
+    apiRef.current = cy
+      ? {
+          runLayout: (name) => {
+            cy.layout({ name }).run();
+          },
+          toggleBoxSelect: () => {
+            cy.boxSelectionEnabled(!cy.boxSelectionEnabled());
+          },
+          alignSelected: (kind) => {
+            const sel = cy.nodes(':selected');
+            if (sel.nonempty()) {
+              if (kind === 'left') {
+                const minX = Math.min(...sel.map(n => n.position('x')));
+                sel.positions((_, n) => ({ x: minX, y: n.position('y') }));
+              } else if (kind === 'top') {
+                const minY = Math.min(...sel.map(n => n.position('y')));
+                sel.positions((_, n) => ({ x: n.position('x'), y: minY }));
+              }
+            }
+          },
+          invertSelection: () => {
+            const nodes = cy.nodes();
+            const toSelect = nodes.filter(n => !n.selected());
+            nodes.unselect();
+            toSelect.select();
+          }
+        }
+      : null;
+    return () => {
+      if (apiRef) apiRef.current = null;
+    };
+  }, [apiRef]);
 
   return (
     <CytoscapeComponent
