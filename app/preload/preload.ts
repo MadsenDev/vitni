@@ -3,16 +3,15 @@ import type {
   AssertionRecord,
   AuditRecord,
   EntityRecord,
-  EdgeRecord,
   TransformRegistry,
   TransformRunRecord
 } from '../../shared/types';
+import type { GraphSnapshot, GraphNodeSnapshot } from '../renderer/src/types/graph';
 
 function createBridge() {
   return {
-    listEntities: (): Promise<EntityRecord[]> => ipcRenderer.invoke('db:entities:list'),
-    loadGraph: (): Promise<{ nodes: EntityRecord[]; edges: EdgeRecord[] }> =>
-      ipcRenderer.invoke('db:graph:load'),
+    listEntities: (): Promise<GraphNodeSnapshot[]> => ipcRenderer.invoke('db:entities:list'),
+    loadGraph: (): Promise<GraphSnapshot> => ipcRenderer.invoke('db:graph:load'),
     createEntity: (payload: {
       type: EntityRecord['type'];
       label: string;
@@ -48,7 +47,9 @@ function createBridge() {
     listSourcesByEntity: (entityId: string) => ipcRenderer.invoke('db:sources:by-entity', entityId),
     projectNew: () => ipcRenderer.invoke('project:new'),
     projectOpen: () => ipcRenderer.invoke('project:open'),
-    projectSaveAs: () => ipcRenderer.invoke('project:saveAs')
+    projectSaveAs: () => ipcRenderer.invoke('project:saveAs'),
+    getProjectSetting: (key: string) => ipcRenderer.invoke('project-setting:get', key),
+    setProjectSetting: (key: string, value: unknown) => ipcRenderer.invoke('project-setting:set', key, value)
   };
 }
 

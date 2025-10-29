@@ -10,7 +10,8 @@ import type {
   EntityRecord,
   EdgeRecord,
   SourceRecord,
-  TransformRunRecord
+  TransformRunRecord,
+  ProjectSettingRecord
 } from '../../../shared/types';
 
 // Parsed types for frontend consumption
@@ -233,13 +234,43 @@ export function registerIpcHandlers(
     return payload.id;
   });
 
-  ipcMain.handle('project:new', () => {
+  ipcMain.handle('project-setting:get', (_event, key: string) => {
+    const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ?').get(key) as
+      | { value_json: string }
+      | undefined;
+    if (!row) {
+      return null;
+    }
+    try {
+      return JSON.parse(row.value_json);
+    } catch (error) {
+      console.warn(`[ipc] Failed to parse project setting ${key}`, error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('project-setting:set', (_event, key: string, value: unknown) => {
     const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      key,
+      value_json: JSON.stringify(value ?? null),
+      updated_at: now
+    } satisfies ProjectSettingRecord;
+    db.prepare(
+      `INSERT INTO project_setting (key, value_json, updated_at)
+       VALUES (@key, @value_json, @updated_at)
+       ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`
+    ).run(payload);
+    return true;
+  });
+
+  ipcMain.handle('project:new', () => {
     db.transaction(() => {
       db.prepare('DELETE FROM assertion').run();
       db.prepare('DELETE FROM edge').run();
       db.prepare('DELETE FROM source').run();
       db.prepare('DELETE FROM entity').run();
+      db.prepare('DELETE FROM project_setting').run();
     })();
     return true;
   });
@@ -262,7 +293,8 @@ export function registerIpcHandlers(
       entities: db.prepare('SELECT * FROM entity').all(),
       edges: db.prepare('SELECT * FROM edge').all(),
       sources: db.prepare('SELECT * FROM source').all(),
-      assertions: db.prepare('SELECT * FROM assertion').all()
+      assertions: db.prepare('SELECT * FROM assertion').all(),
+      project_settings: db.prepare('SELECT * FROM project_setting').all()
     };
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
@@ -284,6 +316,7 @@ export function registerIpcHandlers(
       db.prepare('DELETE FROM edge').run();
       db.prepare('DELETE FROM source').run();
       db.prepare('DELETE FROM entity').run();
+      db.prepare('DELETE FROM project_setting').run();
 
       const insertEntity = db.prepare(
         `INSERT INTO entity (id, type, label, properties_json, created_at, updated_at, pos_x, pos_y)
@@ -308,6 +341,22 @@ export function registerIpcHandlers(
          VALUES (@id, @subject_kind, @subject_id, @path, @value_json, @source_id, @confidence, @created_at)`
       );
       for (const a of parsed.assertions || []) insertAssertion.run(a);
+
+      const insertSetting = db.prepare(
+        `INSERT INTO project_setting (key, value_json, updated_at)
+         VALUES (@key, @value_json, @updated_at)`
+      );
+      const now = Math.floor(Date.now() / 1000);
+      for (const setting of parsed.project_settings || []) {
+        insertSetting.run({
+          key: setting.key,
+          value_json:
+            typeof setting.value_json === 'string'
+              ? setting.value_json
+              : JSON.stringify(setting.value_json ?? null),
+          updated_at: typeof setting.updated_at === 'number' ? setting.updated_at : now
+        });
+      }
     })();
 
     return true;
