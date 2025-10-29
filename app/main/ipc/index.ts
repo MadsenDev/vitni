@@ -405,4 +405,31 @@ export function registerIpcHandlers(
     const result = db.prepare('DELETE FROM edge WHERE id = ?').run(edgeId);
     return result.changes > 0;
   });
+
+  ipcMain.handle('db:edge:update', (_event, edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) => {
+    const updatesList: string[] = [];
+    const params: Record<string, unknown> = { id: edgeId };
+
+    if (updates.type !== undefined) {
+      updatesList.push('type = @type');
+      params.type = updates.type;
+    }
+
+    if (updates.properties !== undefined) {
+      updatesList.push('properties_json = @properties');
+      params.properties = JSON.stringify(updates.properties);
+    }
+
+    if (updatesList.length === 0) {
+      return false;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    updatesList.push('updated_at = @updated_at');
+    params.updated_at = now;
+
+    const query = `UPDATE edge SET ${updatesList.join(', ')} WHERE id = @id`;
+    const result = db.prepare(query).run(params);
+    return result.changes > 0;
+  });
 }

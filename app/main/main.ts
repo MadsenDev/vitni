@@ -58,6 +58,16 @@ function buildMenu() {
         { type: 'separator' },
         { role: 'togglefullscreen' }
       ]
+    },
+    {
+      label: 'Settings',
+      submenu: [
+        {
+          label: 'Preferences…',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => mainWindow?.webContents.send('menu:settings:open')
+        }
+      ]
     }
   ];
   const menu = Menu.buildFromTemplate(template);

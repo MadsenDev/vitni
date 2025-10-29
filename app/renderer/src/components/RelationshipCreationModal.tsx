@@ -6,6 +6,7 @@ interface RelationshipCreationModalProps {
   relationshipType: RelationshipType | null;
   sourceNode: { id: string; label: string } | null;
   targetNode: { id: string; label: string } | null;
+  defaultConfidence?: 'unverified' | 'asserted' | 'verified';
   onClose: () => void;
   onCreate: (data: { 
     relationshipType: string; 
@@ -20,27 +21,33 @@ export function RelationshipCreationModal({
   relationshipType,
   sourceNode,
   targetNode,
+  defaultConfidence = 'unverified',
   onClose,
   onCreate
 }: RelationshipCreationModalProps) {
   const [selectedTypeId, setSelectedTypeId] = useState<string>('');
+  const [selectedSubtypeId, setSelectedSubtypeId] = useState<string>('');
   const [notes, setNotes] = useState('');
-  const [confidence, setConfidence] = useState<'verified' | 'asserted' | 'unverified'>('unverified');
+  const [confidence, setConfidence] = useState<'verified' | 'asserted' | 'unverified'>(defaultConfidence);
   const [strength, setStrength] = useState<'weak' | 'moderate' | 'strong'>('moderate');
 
   const selectedType = useMemo(() => {
     return relationshipTypes.find(t => t.id === selectedTypeId) || null;
   }, [selectedTypeId]);
 
+  const availableSubtypes = useMemo(() => selectedType?.subtypes ?? [], [selectedType]);
+
   useEffect(() => {
     if (isOpen) {
       setNotes('');
-      setConfidence('unverified');
+      setConfidence(defaultConfidence);
       setStrength('moderate');
       // Initialize selection from prop or default to first
       setSelectedTypeId(relationshipType?.id ?? relationshipTypes[0]?.id ?? '');
+      const initialType = relationshipTypes.find(t => t.id === (relationshipType?.id ?? relationshipTypes[0]?.id));
+      setSelectedSubtypeId(initialType?.subtypes?.[0]?.id ?? '');
     }
-  }, [isOpen, relationshipType]);
+  }, [isOpen, relationshipType, defaultConfidence]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +61,7 @@ export function RelationshipCreationModal({
         notes: notes.trim() || undefined,
         confidence,
         strength,
+        subtype: selectedSubtypeId || undefined,
         created_at: new Date().toISOString()
       }
     });
@@ -84,6 +92,20 @@ export function RelationshipCreationModal({
                 ))}
               </select>
             </div>
+            {availableSubtypes.length > 0 && (
+              <div className="mt-3">
+                <label className="block text-sm text-slate-300 mb-1">Subtype</label>
+                <select
+                  value={selectedSubtypeId}
+                  onChange={(e) => setSelectedSubtypeId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {availableSubtypes.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 

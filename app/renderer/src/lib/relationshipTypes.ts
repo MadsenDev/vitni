@@ -24,6 +24,7 @@ export interface RelationshipType {
   color: string;
   description: string;
   bidirectional: boolean;
+  subtypes?: Array<{ id: string; label: string; description?: string }>;
 }
 
 export const relationshipTypes: RelationshipType[] = [
@@ -33,7 +34,14 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaLink,
     color: 'text-slate-400',
     description: 'General relationship between entities',
-    bidirectional: true
+    bidirectional: true,
+    subtypes: [
+      { id: 'parent_of', label: 'Parent Of' },
+      { id: 'child_of', label: 'Child Of' },
+      { id: 'sibling_of', label: 'Sibling Of' },
+      { id: 'spouse_of', label: 'Spouse Of' },
+      { id: 'associate_of', label: 'Associate Of' }
+    ]
   },
   {
     id: 'works_for',
@@ -41,7 +49,14 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaBriefcase,
     color: 'text-blue-400',
     description: 'Employment or organizational relationship',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'employee_of', label: 'Employee Of' },
+      { id: 'contractor_for', label: 'Contractor For' },
+      { id: 'volunteer_for', label: 'Volunteer For' },
+      { id: 'founder_of', label: 'Founder Of' },
+      { id: 'executive_at', label: 'Executive At' }
+    ]
   },
   {
     id: 'located_at',
@@ -49,7 +64,12 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaMapMarkerAlt,
     color: 'text-red-400',
     description: 'Physical or geographical location',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'resides_at', label: 'Resides At' },
+      { id: 'registered_at', label: 'Registered At' },
+      { id: 'headquartered_at', label: 'Headquartered At' }
+    ]
   },
   {
     id: 'attended',
@@ -57,7 +77,12 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaCalendarAlt,
     color: 'text-purple-400',
     description: 'Event attendance or participation',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'attended', label: 'Attended' },
+      { id: 'organized', label: 'Organized' },
+      { id: 'spoke_at', label: 'Spoke At' }
+    ]
   },
   {
     id: 'mentioned_in',
@@ -65,7 +90,11 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaFileAlt,
     color: 'text-yellow-400',
     description: 'Reference in document or file',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'cited_in', label: 'Cited In' },
+      { id: 'named_in', label: 'Named In' }
+    ]
   },
   {
     id: 'communicated_with',
@@ -73,7 +102,13 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaComments,
     color: 'text-indigo-400',
     description: 'Communication or conversation',
-    bidirectional: true
+    bidirectional: true,
+    subtypes: [
+      { id: 'called', label: 'Called' },
+      { id: 'emailed', label: 'Emailed' },
+      { id: 'messaged', label: 'Messaged' },
+      { id: 'met_with', label: 'Met With' }
+    ]
   },
   {
     id: 'paid',
@@ -81,7 +116,12 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaDollarSign,
     color: 'text-emerald-400',
     description: 'Financial transaction or payment',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'paid', label: 'Paid' },
+      { id: 'received_from', label: 'Received From' },
+      { id: 'donated_to', label: 'Donated To' }
+    ]
   },
   {
     id: 'investigated',
@@ -89,7 +129,11 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaSearch,
     color: 'text-orange-400',
     description: 'Investigation or research relationship',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'researched', label: 'Researched' },
+      { id: 'audited', label: 'Audited' }
+    ]
   },
   {
     id: 'knows',
@@ -97,7 +141,12 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaUser,
     color: 'text-cyan-400',
     description: 'Personal acquaintance or knowledge',
-    bidirectional: true
+    bidirectional: true,
+    subtypes: [
+      { id: 'friend_of', label: 'Friend Of' },
+      { id: 'colleague_of', label: 'Colleague Of' },
+      { id: 'neighbor_of', label: 'Neighbor Of' }
+    ]
   },
   {
     id: 'member_of',
@@ -105,7 +154,11 @@ export const relationshipTypes: RelationshipType[] = [
     icon: FaBuilding,
     color: 'text-green-400',
     description: 'Membership in organization or group',
-    bidirectional: false
+    bidirectional: false,
+    subtypes: [
+      { id: 'member_of', label: 'Member Of' },
+      { id: 'affiliate_of', label: 'Affiliate Of' }
+    ]
   },
   {
     id: 'called',

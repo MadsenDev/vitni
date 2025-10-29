@@ -25,6 +25,8 @@ function createBridge() {
     createEdge: (payload: { src_id: string; dst_id: string; type: string; properties: Record<string, unknown> }) =>
       ipcRenderer.invoke('db:edge:create', payload),
     deleteEdge: (edgeId: string) => ipcRenderer.invoke('db:edge:delete', edgeId),
+    updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) =>
+      ipcRenderer.invoke('db:edge:update', edgeId, updates),
     createSource: (payload: { kind: string; locator: string; title?: string }) =>
       ipcRenderer.invoke('db:source:create', payload),
     createAssertion: (payload: {
@@ -72,6 +74,11 @@ contextBridge.exposeInMainWorld('piMenu', {
     const handler = () => cb();
     ipcRenderer.on('menu:project:saveAs', handler);
     return () => ipcRenderer.removeListener('menu:project:saveAs', handler);
+  },
+  onSettingsOpen: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('menu:settings:open', handler);
+    return () => ipcRenderer.removeListener('menu:settings:open', handler);
   }
 });
 

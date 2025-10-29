@@ -47,6 +47,7 @@ interface PiBridge {
   projectSaveAs: () => Promise<boolean>;
   getProjectSetting: <T = unknown>(key: string) => Promise<T | null>;
   setProjectSetting: (key: string, value: unknown) => Promise<boolean>;
+  updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
 }
 
 declare global {
@@ -56,6 +57,7 @@ declare global {
       onProjectNew: (cb: () => void) => () => void;
       onProjectOpen: (cb: () => void) => () => void;
       onProjectSaveAs: (cb: () => void) => () => void;
+      onSettingsOpen: (cb: () => void) => () => void;
     };
   }
 }

@@ -2,6 +2,7 @@ import { ConfidenceBadge } from './ConfidenceBadge';
 import { SourcesList } from './SourcesList';
 import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
+import { relationshipTypes } from '../lib/relationshipTypes';
 
 interface ParsedNode {
   id: string;
@@ -37,6 +38,7 @@ interface InspectorPanelProps {
   onDeleteEdge: () => void;
   onUpdateLabel: (nodeId: string, label: string) => void;
   onUpdateProperty: (nodeId: string, key: string, value: unknown) => void;
+  onUpdateEdgeProperty?: (edgeId: string, key: string, value: unknown) => void;
 }
 
 export function InspectorPanel({
@@ -51,6 +53,7 @@ export function InspectorPanel({
   onDeleteEdge,
   onUpdateLabel,
   onUpdateProperty
+  , onUpdateEdgeProperty
 }: InspectorPanelProps) {
   const selectedNode = selectedNodeId ? graphNodes.find(n => n.id === selectedNodeId) ?? null : null;
 
@@ -303,10 +306,33 @@ export function InspectorPanel({
                   </div>
                   <div className="text-slate-400 text-xs mt-2">ID: {edge?.id}</div>
                 </div>
-                <div className="text-sm text-slate-400">
-                  <p>Relationship type: <span className="text-slate-300">{edge?.type}</span></p>
-                  <p className="mt-1">Properties: <span className="text-slate-300">{JSON.stringify(edge?.properties || {}, null, 2)}</span></p>
-                </div>
+                {edge && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Subtype</label>
+                      <select
+                        value={String(edge.properties?.subtype || '')}
+                        onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'subtype', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">None</option>
+                        {relationshipTypes.find(rt => rt.id === edge.type)?.subtypes?.map(st => (
+                          <option key={st.id} value={st.id}>{st.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Notes</label>
+                      <textarea
+                        value={String(edge.properties?.notes || '')}
+                        onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

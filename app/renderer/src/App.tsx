@@ -18,7 +18,7 @@ import { RelationshipDeletionModal } from './components/RelationshipDeletionModa
 import { TopToolbar } from './components/TopToolbar';
 import { nodeTypes, type NodeType } from './lib/nodeTypes/index';
 import { GraphCanvas } from './components/GraphCanvas';
-import { LocalAIStatus } from './components/LocalAIStatus';
+import { SettingsModal } from './components/SettingsModal';
 import { LocalAIInsights } from './components/LocalAIInsights';
 import { InspectorPanel } from './components/InspectorPanel';
 import type { GraphSnapshot } from './types/graph';
@@ -49,28 +49,38 @@ const nodeTypeIcons: Record<string, string> = {
 cytoscape.warnings(false);
 
 const LOCAL_AI_SETTING_KEY = 'local_ai_enabled';
+const SHOW_NODE_LABELS_SETTING_KEY = 'show_node_labels';
+const AUTO_LAYOUT_ON_CREATE_SETTING_KEY = 'auto_layout_on_create';
+const DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY = 'default_relationship_confidence';
 
 type AssertionView = ParsedAssertionRecord;
 
-function mapGraphElements(data: GraphSnapshot): ElementDefinition[] {
+function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefinition[] {
+  const relById = new Map(relationshipTypes.map(rt => [rt.id, rt]));
   return [
     ...data.nodes.map((node) => ({
       data: {
         id: node.id,
-        label: `${nodeTypeIcons[node.type] || '●'} ${node.label ?? node.id}`,
+        label: showLabels ? `${nodeTypeIcons[node.type] || '●'} ${node.label ?? node.id}` : '',
         type: node.type,
         icon: nodeTypeIcons[node.type] || '●'
       },
       position: node.pos_x != null && node.pos_y != null ? { x: Number(node.pos_x), y: Number(node.pos_y) } : undefined
     })),
-    ...data.edges.map((edge) => ({
-      data: {
-        id: edge.id,
-        source: edge.src_id,
-        target: edge.dst_id,
-        label: edge.type
-      }
-    }))
+    ...data.edges.map((edge) => {
+      const rel = relById.get(edge.type);
+      const subtypeId = (edge.properties?.subtype as string | undefined) || '';
+      const subtypeLabel = rel?.subtypes?.find(s => s.id === subtypeId)?.label;
+      const edgeLabel = subtypeLabel ?? rel?.label ?? edge.type;
+      return {
+        data: {
+          id: edge.id,
+          source: edge.src_id,
+          target: edge.dst_id,
+          label: edgeLabel
+        }
+      } as ElementDefinition;
+    })
   ];
 }
 
@@ -132,16 +142,27 @@ export default function App() {
   });
   const [localAIEnabled, setLocalAIEnabled] = useState(false);
   const [isLocalAILoading, setIsLocalAILoading] = useState(true);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [showNodeLabels, setShowNodeLabels] = useState(true);
+  const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
+  const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
   // Real-time editing state - no separate editing mode needed
 
-  const loadLocalAISetting = useCallback(async () => {
+  const loadSettings = useCallback(async () => {
     setIsLocalAILoading(true);
     try {
-      const value = await window.piBridge.getProjectSetting(LOCAL_AI_SETTING_KEY);
-      setLocalAIEnabled(Boolean(value));
+      const [localAI, showLabels, autoLayout, defaultConfidence] = await Promise.all([
+        window.piBridge.getProjectSetting(LOCAL_AI_SETTING_KEY),
+        window.piBridge.getProjectSetting(SHOW_NODE_LABELS_SETTING_KEY),
+        window.piBridge.getProjectSetting(AUTO_LAYOUT_ON_CREATE_SETTING_KEY),
+        window.piBridge.getProjectSetting(DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY)
+      ]);
+      setLocalAIEnabled(Boolean(localAI));
+      setShowNodeLabels(showLabels === null ? true : Boolean(showLabels));
+      setAutoLayoutOnCreate(Boolean(autoLayout));
+      setDefaultRelationshipConfidence((defaultConfidence as typeof defaultRelationshipConfidence) || 'unverified');
     } catch (error) {
-      console.error('[App] Failed to load local AI preference', error);
-      setLocalAIEnabled(false);
+      console.error('[App] Failed to load settings', error);
     } finally {
       setIsLocalAILoading(false);
     }
@@ -160,9 +181,36 @@ export default function App() {
     }
   }, [localAIEnabled]);
 
+  const handleShowNodeLabelsChange = useCallback(async (value: boolean) => {
+    try {
+      await window.piBridge.setProjectSetting(SHOW_NODE_LABELS_SETTING_KEY, value);
+      setShowNodeLabels(value);
+    } catch (error) {
+      console.error('[App] Failed to persist show node labels setting', error);
+    }
+  }, []);
+
+  const handleAutoLayoutOnCreateChange = useCallback(async (value: boolean) => {
+    try {
+      await window.piBridge.setProjectSetting(AUTO_LAYOUT_ON_CREATE_SETTING_KEY, value);
+      setAutoLayoutOnCreate(value);
+    } catch (error) {
+      console.error('[App] Failed to persist auto layout setting', error);
+    }
+  }, []);
+
+  const handleDefaultRelationshipConfidenceChange = useCallback(async (value: 'unverified' | 'asserted' | 'verified') => {
+    try {
+      await window.piBridge.setProjectSetting(DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY, value);
+      setDefaultRelationshipConfidence(value);
+    } catch (error) {
+      console.error('[App] Failed to persist default relationship confidence', error);
+    }
+  }, []);
+
   useEffect(() => {
-    void loadLocalAISetting();
-  }, [loadLocalAISetting]);
+    void loadSettings();
+  }, [loadSettings]);
 
   useEffect(() => {
     void window.piBridge.loadGraph().then((data) => {
@@ -182,10 +230,14 @@ export default function App() {
         console.error('project:saveAs failed', e);
       }
     });
+    const offSettings = window.piMenu.onSettingsOpen(() => {
+      setSettingsModalOpen(true);
+    });
     return () => {
       offNew?.();
       offOpen?.();
       offSaveAs?.();
+      offSettings?.();
     };
   }, []);
 
@@ -222,7 +274,7 @@ export default function App() {
     void fetchSources(selectedNodeId).then(setSources);
   }, [selectedNodeId]);
 
-  const elements = useMemo(() => mapGraphElements(graph), [graph]);
+  const elements = useMemo(() => mapGraphElements(graph, showNodeLabels), [graph, showNodeLabels]);
 
   const selectedNode = useMemo(
     () => graph.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -236,12 +288,12 @@ export default function App() {
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
         setShowWelcome(false);
-        void loadLocalAISetting();
+        void loadSettings();
       }
     } catch (e) {
       console.error('project:new failed', e);
       setShowWelcome(false);
-      void loadLocalAISetting();
+      void loadSettings();
     }
   };
 
@@ -252,7 +304,7 @@ export default function App() {
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
         setShowWelcome(false);
-        void loadLocalAISetting();
+        void loadSettings();
       }
     } catch (e) {
       console.error('project:open failed', e);
@@ -389,6 +441,19 @@ export default function App() {
       });
     } catch (error) {
       console.error('Error creating relationship:', error);
+    }
+  };
+
+  const handleUpdateEdgeProperty = async (edgeId: string, key: string, value: unknown) => {
+    const edge = graph.edges.find(e => e.id === edgeId);
+    if (!edge) return;
+    const nextProps = { ...(edge.properties || {}), [key]: value } as Record<string, unknown>;
+    try {
+      await window.piBridge.updateEdge(edgeId, { properties: nextProps });
+      const updatedGraph = await window.piBridge.loadGraph();
+      setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+    } catch (error) {
+      console.error('Failed to update edge property', error);
     }
   };
 
@@ -538,11 +603,6 @@ export default function App() {
       <aside className="w-80 border-r border-slate-800 bg-slate-950/70 p-6">
         <div className="flex h-full flex-col space-y-6 overflow-y-auto pr-1">
           <NodePalette onNodeDragStart={handleNodeDragStart} />
-          <LocalAIStatus
-            enabled={localAIEnabled}
-            loading={isLocalAILoading}
-            onToggle={handleLocalAIToggle}
-          />
           <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
         </div>
       </aside>
@@ -587,6 +647,7 @@ export default function App() {
               onDeleteEdge={handleDeleteEdge}
               onUpdateLabel={handleLabelUpdate}
               onUpdateProperty={handlePropertyUpdate}
+              onUpdateEdgeProperty={handleUpdateEdgeProperty}
                 />
               </div>
         </main>
@@ -626,8 +687,22 @@ export default function App() {
         relationshipType={relationshipTool.selectedType}
         sourceNode={relationshipTool.sourceNode}
         targetNode={relationshipTool.targetNode}
+        defaultConfidence={defaultRelationshipConfidence}
         onClose={() => setRelationshipModal({ isOpen: false })}
         onCreate={handleRelationshipCreate}
+      />
+      
+      <SettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        localAIEnabled={localAIEnabled}
+        onLocalAIToggle={handleLocalAIToggle}
+        showNodeLabels={showNodeLabels}
+        onShowNodeLabelsChange={handleShowNodeLabelsChange}
+        autoLayoutOnCreate={autoLayoutOnCreate}
+        onAutoLayoutOnCreateChange={handleAutoLayoutOnCreateChange}
+        defaultRelationshipConfidence={defaultRelationshipConfidence}
+        onDefaultRelationshipConfidenceChange={handleDefaultRelationshipConfidenceChange}
       />
       
       <NodeDeletionModal
