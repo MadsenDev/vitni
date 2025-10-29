@@ -3,13 +3,13 @@ import type { Confidence, EntityRecord } from '@shared/types';
 import { formatConfidenceLabel } from '../../lib/confidence';
 
 interface Props {
-  entity: EntityRecord;
+  entityId: EntityRecord['id'];
   onAssertionCreated: () => void;
 }
 
 const CONFIDENCE_LEVELS: Confidence[] = ['verified', 'asserted', 'unverified'];
 
-export function AddAssertionForm({ entity, onAssertionCreated }: Props) {
+export function AddAssertionForm({ entityId, onAssertionCreated }: Props) {
   const [path, setPath] = useState('');
   const [valueInput, setValueInput] = useState('{}');
   const [confidence, setConfidence] = useState<Confidence>('asserted');
@@ -51,7 +51,7 @@ export function AddAssertionForm({ entity, onAssertionCreated }: Props) {
 
       await window.piBridge.createAssertion({
         subject_kind: 'entity',
-        subject_id: entity.id,
+        subject_id: entityId,
         path,
         value: parsedValue,
         source_id: sourceId,
@@ -61,7 +61,7 @@ export function AddAssertionForm({ entity, onAssertionCreated }: Props) {
       await window.piBridge.recordAudit({
         action: 'create_assertion',
         subject_kind: 'entity',
-        subject_id: entity.id,
+        subject_id: entityId,
         actor: 'user',
         reason: `Assertion added on ${path}`,
         transform_run_id: null
