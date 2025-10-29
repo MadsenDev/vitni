@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape, { type ElementDefinition } from 'cytoscape';
-import type { AssertionRecord, EdgeRecord, EntityRecord, SourceRecord } from '@shared/types';
-import { ConfidenceBadge } from './components/ConfidenceBadge';
+import type { EntityRecord, SourceRecord } from '@shared/types';
 import { ConsentModal } from './components/ConsentModal';
-import { SourcesList } from './components/SourcesList';
-import { TransformList } from './components/TransformList';
-import { AddEntityForm } from './components/forms/AddEntityForm';
-import { AddAssertionForm } from './components/forms/AddAssertionForm';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { NodePalette } from './components/NodePalette';
 import { NodeCreationModal } from './components/NodeCreationModal';
@@ -23,6 +17,8 @@ import { LocalAIInsights } from './components/LocalAIInsights';
 import { InspectorPanel } from './components/InspectorPanel';
 import type { GraphSnapshot } from './types/graph';
 import { SplashOverlay } from './components/SplashOverlay';
+import { AssertionCreationModal } from './components/AssertionCreationModal';
+import { SourceCreationModal } from './components/SourceCreationModal';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -148,6 +144,8 @@ export default function App() {
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
+  const [assertionModalOpen, setAssertionModalOpen] = useState(false);
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const graphApiRef = useRef<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
@@ -273,14 +271,8 @@ export default function App() {
   }, [selectedNodeId, selectedEdgeId, nodeCreationModal.isOpen, relationshipModal.isOpen, deletionModal.isOpen, edgeDeletionModal.isOpen]);
 
   useEffect(() => {
-    if (!selectedNodeId) {
-      setAssertions([]);
-      setSources([]);
-      return;
-    }
-
-    void fetchAssertions(selectedNodeId).then(setAssertions);
-    void fetchSources(selectedNodeId).then(setSources);
+    setAssertionModalOpen(false);
+    setSourceModalOpen(false);
   }, [selectedNodeId]);
 
   const elements = useMemo(() => mapGraphElements(graph, showNodeLabels), [graph, showNodeLabels]);
@@ -289,6 +281,25 @@ export default function App() {
     () => graph.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [graph.nodes, selectedNodeId]
   );
+
+  const refreshEntityDetails = useCallback(async (entityId: string) => {
+    const [entityAssertions, entitySources] = await Promise.all([
+      fetchAssertions(entityId),
+      fetchSources(entityId)
+    ]);
+    setAssertions(entityAssertions);
+    setSources(entitySources);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedNodeId) {
+      setAssertions([]);
+      setSources([]);
+      return;
+    }
+
+    void refreshEntityDetails(selectedNodeId);
+  }, [selectedNodeId, refreshEntityDetails]);
 
   const handleProjectCreate = async () => {
     try {
@@ -675,6 +686,8 @@ export default function App() {
               selectedEdgeId={selectedEdgeId}
               assertions={assertions}
               sources={sources}
+              onAddAssertion={() => setAssertionModalOpen(true)}
+              onAddSource={() => setSourceModalOpen(true)}
               onDeleteNode={handleDeleteNode}
               onDeleteEdge={handleDeleteEdge}
               onUpdateLabel={handleLabelUpdate}
@@ -749,6 +762,28 @@ export default function App() {
         relationship={edgeDeletionModal.relationship}
         onClose={() => setEdgeDeletionModal({ isOpen: false, relationship: null })}
         onConfirm={handleConfirmEdgeDelete}
+      />
+
+      <AssertionCreationModal
+        isOpen={assertionModalOpen}
+        entity={selectedNode}
+        onClose={() => setAssertionModalOpen(false)}
+        onAssertionCreated={() => {
+          if (selectedNodeId) {
+            void refreshEntityDetails(selectedNodeId);
+          }
+        }}
+      />
+
+      <SourceCreationModal
+        isOpen={sourceModalOpen}
+        entity={selectedNode}
+        onClose={() => setSourceModalOpen(false)}
+        onSourceCreated={() => {
+          if (selectedNodeId) {
+            void refreshEntityDetails(selectedNodeId);
+          }
+        }}
       />
     </div>
   );

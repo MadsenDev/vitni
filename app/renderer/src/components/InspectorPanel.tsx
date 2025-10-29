@@ -34,6 +34,8 @@ interface InspectorPanelProps {
   selectedEdgeId: string | null;
   assertions: AssertionView[];
   sources: SourceRecord[];
+  onAddAssertion: () => void;
+  onAddSource: () => void;
   onDeleteNode: () => void;
   onDeleteEdge: () => void;
   onUpdateLabel: (nodeId: string, label: string) => void;
@@ -49,6 +51,8 @@ export function InspectorPanel({
   selectedEdgeId,
   assertions,
   sources,
+  onAddAssertion,
+  onAddSource,
   onDeleteNode,
   onDeleteEdge,
   onUpdateLabel,
@@ -230,7 +234,7 @@ export function InspectorPanel({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Assertions</h4>
               <button
-                onClick={() => console.log('Add assertion')}
+                onClick={onAddAssertion}
                 className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
                 title="Add assertion"
               >
@@ -264,7 +268,7 @@ export function InspectorPanel({
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
               <button
-                onClick={() => console.log('Add source')}
+                onClick={onAddSource}
                 className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
                 title="Add source"
               >
