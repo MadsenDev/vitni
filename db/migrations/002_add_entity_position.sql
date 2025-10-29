@@ -1,0 +1,2 @@
+ALTER TABLE entity ADD COLUMN pos_x REAL;
+ALTER TABLE entity ADD COLUMN pos_y REAL;

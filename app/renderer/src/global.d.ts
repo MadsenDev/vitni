@@ -8,9 +8,24 @@ import type {
   TransformRunRecord
 } from '@shared/types';
 
+// Parsed types for frontend consumption
+interface ParsedEntityRecord extends Omit<EntityRecord, 'properties_json'> {
+  properties: Record<string, unknown>;
+  pos_x?: number | null;
+  pos_y?: number | null;
+}
+
+interface ParsedEdgeRecord extends Omit<EdgeRecord, 'properties_json'> {
+  properties: Record<string, unknown>;
+}
+
+interface ParsedAssertionRecord extends Omit<AssertionRecord, 'value_json'> {
+  value: Record<string, unknown>;
+}
+
 interface PiBridge {
-  listEntities: () => Promise<EntityRecord[]>;
-  loadGraph: () => Promise<{ nodes: EntityRecord[]; edges: EdgeRecord[] }>;
+  listEntities: () => Promise<ParsedEntityRecord[]>;
+  loadGraph: () => Promise<{ nodes: ParsedEntityRecord[]; edges: ParsedEdgeRecord[] }>;
   createEntity: (payload: {
     type: EntityRecord['type'];
     label: string;
@@ -32,13 +47,25 @@ interface PiBridge {
   updateTransformRun: (
     payload: Pick<TransformRunRecord, 'id'> & Partial<TransformRunRecord>
   ) => Promise<string>;
-  listAssertionsByEntity: (entityId: string) => Promise<AssertionRecord[]>;
+  listAssertionsByEntity: (entityId: string) => Promise<ParsedAssertionRecord[]>;
   listSourcesByEntity: (entityId: string) => Promise<SourceRecord[]>;
+  deleteEntity: (entityId: string) => Promise<boolean>;
+  deleteEdge: (edgeId: string) => Promise<boolean>;
+  updateEntity: (entityId: string, updates: { label?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
+  updateEntityPosition: (entityId: string, pos: { x: number; y: number }) => Promise<boolean>;
+  projectNew: () => Promise<boolean>;
+  projectOpen: () => Promise<boolean>;
+  projectSaveAs: () => Promise<boolean>;
 }
 
 declare global {
   interface Window {
     piBridge: PiBridge;
+    piMenu: {
+      onProjectNew: (cb: () => void) => () => void;
+      onProjectOpen: (cb: () => void) => () => void;
+      onProjectSaveAs: (cb: () => void) => () => void;
+    };
   }
 }
 

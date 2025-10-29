@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron';
 import path from 'node:path';
 import { URL } from 'node:url';
 import { DatabaseProvider } from './persistence/database';
@@ -9,6 +9,60 @@ import { createTransformRegistry } from './transforms/registry';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 let mainWindow: BrowserWindow | null = null;
+
+function buildMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Project',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => mainWindow?.webContents.send('menu:project:new')
+        },
+        {
+          label: 'Open Project…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => mainWindow?.webContents.send('menu:project:open')
+        },
+        {
+          label: 'Save Project As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => mainWindow?.webContents.send('menu:project:saveAs')
+        },
+        { type: 'separator' },
+        isDevelopment ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 async function createWindow() {
   const dbProvider = new DatabaseProvider();
@@ -21,7 +75,7 @@ async function createWindow() {
     height: 900,
     backgroundColor: '#0f172a',
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, '../../../preload/app/preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -29,6 +83,7 @@ async function createWindow() {
   });
 
   registerIpcHandlers(ipcMain, dbProvider, transformRegistry);
+  buildMenu();
 
   if (isDevelopment) {
     const rendererUrl = new URL('http://localhost:5173');

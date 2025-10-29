@@ -8,7 +8,7 @@ interface Migration {
   sql: string;
 }
 
-const MIGRATIONS_DIR = path.join(__dirname, '../../../db/migrations');
+const MIGRATIONS_DIR = path.join(__dirname, '../../../../../db/migrations');
 
 function readMigrations(): Migration[] {
   const files = fs
