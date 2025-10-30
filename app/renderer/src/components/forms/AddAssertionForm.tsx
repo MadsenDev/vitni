@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react';
+import { InfoTip } from '../InfoTip';
 import type { Confidence, EntityRecord, SourceRecord } from '@shared/types';
 import { formatConfidenceLabel } from '../../lib/confidence';
 
@@ -13,6 +14,10 @@ const CONFIDENCE_LEVELS: Confidence[] = ['verified', 'asserted', 'unverified'];
 export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibrary }: Props) {
   const [path, setPath] = useState('');
   const [valueInput, setValueInput] = useState('{}');
+  const [simpleMode, setSimpleMode] = useState(true);
+  const [kvRows, setKvRows] = useState<Array<{ key: string; type: 'string' | 'number' | 'boolean' | 'date'; value: string }>>([
+    { key: '', type: 'string', value: '' }
+  ]);
   const [confidence, setConfidence] = useState<Confidence>('asserted');
   const [sourceKind, setSourceKind] = useState('document');
   const [sourceLocator, setSourceLocator] = useState('');
@@ -22,10 +27,11 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const simpleHasContent = kvRows.some(r => r.key.trim().length > 0);
   const canSubmit =
     path.trim().length > 0 &&
     sourceLocator.trim().length > 0 &&
-    valueInput.trim().length > 0 &&
+    ((simpleMode && simpleHasContent) || (!simpleMode && valueInput.trim().length > 0)) &&
     !isSubmitting;
 
   const resetSourceFields = () => {
@@ -58,16 +64,32 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
 
     setError(null);
 
-    let parsedValue: Record<string, unknown>;
-    try {
-      const candidate = JSON.parse(valueInput);
-      if (typeof candidate !== 'object' || candidate === null) {
-        throw new Error('Value must be a JSON object');
+    let parsedValue: Record<string, unknown> = {};
+    if (simpleMode) {
+      for (const row of kvRows) {
+        const k = row.key.trim();
+        if (!k) continue;
+        let v: unknown = row.value;
+        if (row.type === 'number') v = Number(row.value);
+        if (row.type === 'boolean') v = row.value === 'true';
+        if (row.type === 'date') v = row.value; // store as ISO date string
+        (parsedValue as any)[k] = v;
       }
-      parsedValue = candidate as Record<string, unknown>;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Value must be valid JSON');
-      return;
+      if (Object.keys(parsedValue).length === 0) {
+        setError('Please add at least one key/value');
+        return;
+      }
+    } else {
+      try {
+        const candidate = JSON.parse(valueInput);
+        if (typeof candidate !== 'object' || candidate === null) {
+          throw new Error('Value must be a JSON object');
+        }
+        parsedValue = candidate as Record<string, unknown>;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Value must be valid JSON');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -103,6 +125,7 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
 
       setPath('');
       setValueInput('{}');
+      setKvRows([{ key: '', type: 'string', value: '' }]);
       resetSourceFields();
       setConfidence('asserted');
 
@@ -122,10 +145,11 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
     >
       <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Add Assertion</h4>
       <p className="text-xs text-slate-500">
-        Every assertion must reference a source. Values should be JSON so they can be inspected in the audit trail.
+        Every assertion must reference a source. Use the Simple editor or switch to JSON for advanced input.
       </p>
       <div>
         <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Path</label>
+        <InfoTip text={'Where this assertion lives on the entity.\nExamples:\n- profile.note\n- contact.email\n- risk.flags'} />
         <input
           className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
           value={path}
@@ -134,19 +158,88 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
           required
         />
       </div>
-      <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Value (JSON)</label>
-        <textarea
-          className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
-          rows={4}
-          value={valueInput}
-          onChange={(event) => setValueInput(event.target.value)}
-          placeholder='{ "note": "Flagged as important" }'
-          required
-        />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Value</label>
+          <InfoTip text={'Provide the assertion data.\nUse Simple for key/value input or JSON for full objects.'} />
+          <button
+            type="button"
+            className="text-xs rounded border border-slate-700 px-2 py-1 text-slate-300 hover:border-slate-500"
+            onClick={() => setSimpleMode(m => !m)}
+            aria-pressed={simpleMode}
+          >
+            {simpleMode ? 'Switch to JSON' : 'Switch to Simple'}
+          </button>
+        </div>
+        {simpleMode ? (
+          <div className="space-y-2">
+            {kvRows.map((row, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  className="w-1/3 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                  placeholder="key"
+                  value={row.key}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setKvRows(prev => prev.map((r, i) => i === idx ? { ...r, key: v } : r));
+                  }}
+                />
+                <select
+                  className="w-28 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                  value={row.type}
+                  onChange={e => {
+                    const v = e.target.value as typeof row.type;
+                    setKvRows(prev => prev.map((r, i) => i === idx ? { ...r, type: v } : r));
+                  }}
+                >
+                  <option value="string">string</option>
+                  <option value="number">number</option>
+                  <option value="boolean">boolean</option>
+                  <option value="date">date</option>
+                </select>
+                <input
+                  className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                  placeholder={row.type === 'date' ? 'YYYY-MM-DD' : 'value'}
+                  value={row.value}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setKvRows(prev => prev.map((r, i) => i === idx ? { ...r, value: v } : r));
+                  }}
+                />
+                <button
+                  type="button"
+                  className="rounded border border-slate-700 px-2 py-2 text-xs text-red-300 hover:border-red-400"
+                  onClick={() => setKvRows(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
+                  title="Remove"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div>
+              <button
+                type="button"
+                className="rounded border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500"
+                onClick={() => setKvRows(prev => [...prev, { key: '', type: 'string', value: '' }])}
+              >
+                Add field
+              </button>
+            </div>
+          </div>
+        ) : (
+          <textarea
+            className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+            rows={6}
+            value={valueInput}
+            onChange={(event) => setValueInput(event.target.value)}
+            placeholder='{ "note": "Flagged as important" }'
+            required={!simpleMode}
+          />
+        )}
       </div>
       <div>
         <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Confidence</label>
+        <InfoTip text={'How certain is this assertion?\nVerified: strong evidence\nAsserted: stated but not verified\nUnverified: low certainty'} />
         <div className="mt-2 flex flex-wrap gap-2">
           {CONFIDENCE_LEVELS.map((level) => (
             <button
@@ -166,6 +259,7 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
       </div>
       <div>
         <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Source</h5>
+        <InfoTip text={'Every assertion must cite a source.\nPick existing media or enter a kind+locator (URL/path).'} />
         <div className="mt-3 space-y-2">
           <div>
             <label className="text-[11px] uppercase tracking-wide text-slate-500">Media</label>

@@ -22,6 +22,7 @@ import { AssertionCreationModal } from './components/AssertionCreationModal';
 import { SourceCreationModal } from './components/SourceCreationModal';
 import { MediaLibraryModal } from './components/MediaLibraryModal';
 import { TimelineWorkspace } from './components/TimelineWorkspace';
+import { TerminologyModal } from './components/TerminologyModal';
 import { FilterPanel } from './components/FilterPanel';
 
 type ParsedAssertionRecord = {
@@ -58,11 +59,33 @@ type AssertionView = ParsedAssertionRecord;
 
 function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefinition[] {
   const relById = new Map(relationshipTypes.map(rt => [rt.id, rt]));
+  const buildPersonName = (props: Record<string, unknown> | undefined, fallback: string) => {
+    const first = (props?.first_name as string) || (props?.firstname as string) || '';
+    const middle = (props?.middle_name as string) || '';
+    const last = (props?.last_name as string) || (props?.lastname as string) || '';
+    const parts = [first, middle, last].map(p => (p || '').trim()).filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : fallback;
+  };
+  const displayNameForNode = (node: GraphSnapshot['nodes'][number]): string => {
+    const props = node.properties || {} as Record<string, unknown>;
+    if (node.type === 'person') {
+      return buildPersonName(props, node.label ?? '');
+    }
+    const nameLike = (props.name as string)
+      || (props.title as string)
+      || (props.institution_name as string)
+      || (props.organization_name as string)
+      || (props.company as string)
+      || '';
+    const base = (node.label ?? '').trim();
+    const pick = (nameLike || base).trim();
+    return pick || node.id;
+  };
   return [
     ...data.nodes.map((node) => ({
       data: {
         id: node.id,
-        label: showLabels ? `${nodeTypeIcons[node.type] || '●'} ${node.label ?? node.id}` : '',
+        label: showLabels ? `${nodeTypeIcons[node.type] || '●'} ${displayNameForNode(node)}` : '',
         type: node.type,
         icon: nodeTypeIcons[node.type] || '●'
       },
@@ -154,6 +177,7 @@ export default function App() {
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [boxSelectEnabled, setBoxSelectEnabled] = useState(false);
   const [activeTypeIds, setActiveTypeIds] = useState<Set<string>>(new Set(nodeTypes.map(nt => nt.id)));
   const [hasSourcesOnly, setHasSourcesOnly] = useState(false);
   const [nodeIdsWithSources, setNodeIdsWithSources] = useState<Set<string>>(new Set());
@@ -162,6 +186,7 @@ export default function App() {
   const filterRef = useRef<HTMLDivElement | null>(null);
   const [assertionModalOpen, setAssertionModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [terminologyOpen, setTerminologyOpen] = useState(false);
   const [mediaLibraryState, setMediaLibraryState] = useState<{
     isOpen: boolean;
     mode: 'manage' | 'select';
@@ -341,6 +366,7 @@ export default function App() {
     const offSettings = window.piMenu.onSettingsOpen(() => {
       setSettingsModalOpen(true);
     });
+    const offTerminology = window.piMenu.onTerminologyOpen?.(() => setTerminologyOpen(true));
     const offMediaGallery = window.piMenu.onMediaGalleryOpen(() => {
       setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null });
     });
@@ -350,6 +376,7 @@ export default function App() {
       offSaveAs?.();
       offSettings?.();
       offMediaGallery?.();
+      offTerminology?.();
     };
   }, []);
 
@@ -786,7 +813,8 @@ export default function App() {
         relationshipTool={relationshipTool}
         onRelationshipToolActivate={handleRelationshipToolActivate}
         onRelationshipToolDeactivate={handleRelationshipToolDeactivate}
-        onToggleBoxSelect={() => graphApiRef.current?.toggleBoxSelect()}
+        onToggleBoxSelect={() => { graphApiRef.current?.toggleBoxSelect(); setBoxSelectEnabled(v => !v); }}
+        boxSelectEnabled={boxSelectEnabled}
         onLayoutGrid={() => graphApiRef.current?.runLayout('grid')}
         onLayoutConcentric={() => graphApiRef.current?.runLayout('concentric')}
         onLayoutCose={() => graphApiRef.current?.runLayout('cose')}
@@ -1005,6 +1033,8 @@ export default function App() {
         onClose={closeMediaLibrary}
         onSelect={mediaLibraryState.onSelect ?? undefined}
       />
+
+      <TerminologyModal isOpen={terminologyOpen} onClose={() => setTerminologyOpen(false)} />
     </div>
   );
 }

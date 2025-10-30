@@ -97,6 +97,11 @@ contextBridge.exposeInMainWorld('piMenu', {
     const handler = () => cb();
     ipcRenderer.on('menu:media:openGallery', handler);
     return () => ipcRenderer.removeListener('menu:media:openGallery', handler);
+  },
+  onTerminologyOpen: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('menu:settings:terminology', handler);
+    return () => ipcRenderer.removeListener('menu:settings:terminology', handler);
   }
 });
 
@@ -109,6 +114,7 @@ declare global {
       onProjectSaveAs: (cb: () => void) => () => void;
       onSettingsOpen: (cb: () => void) => () => void;
       onMediaGalleryOpen: (cb: () => void) => () => void;
+      onTerminologyOpen: (cb: () => void) => () => void;
     };
   }
 }

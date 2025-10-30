@@ -45,6 +45,26 @@ export function GraphCanvas({
   const cyRef = useRef<cytoscape.Core | null>(null);
   const relationSourceRef = useRef<string | null>(null);
   const completedRef = useRef<boolean>(false);
+  const boxSelectRef = useRef<boolean>(false);
+
+  const applyBoxSelectState = (cy: cytoscape.Core, enabled: boolean) => {
+    boxSelectRef.current = enabled;
+    cy.boxSelectionEnabled(enabled);
+    cy.autounselectify(false);
+    cy.selectionType(enabled ? 'additive' : 'single');
+    if (enabled) {
+      cy.userPanningEnabled(false);
+      cy.panningEnabled(false);
+    } else {
+      cy.userPanningEnabled(true);
+      cy.panningEnabled(true);
+    }
+    const container = (cy as any).container?.() as HTMLElement | undefined;
+    if (container) {
+      if (enabled) container.classList.add('pi-box-select');
+      else container.classList.remove('pi-box-select');
+    }
+  };
 
   const cleanupPreview = (cy: cytoscape.Core) => {
     const toRemove = cy.elements(`#${PREVIEW_EDGE_ID}, #${PREVIEW_NODE_ID}`);
@@ -154,17 +174,19 @@ export function GraphCanvas({
             cy.layout({ name }).run();
           },
           toggleBoxSelect: () => {
-            cy.boxSelectionEnabled(!cy.boxSelectionEnabled());
+            applyBoxSelectState(cy, !boxSelectRef.current);
           },
           alignSelected: (kind) => {
             const sel = cy.nodes(':selected');
             if (sel.nonempty()) {
               if (kind === 'left') {
-                const minX = Math.min(...sel.map(n => n.position('x')));
-                sel.positions((_, n) => ({ x: minX, y: n.position('y') }));
+                const xs = sel.map((n: any) => n.position('x') as number) as unknown as number[];
+                const minX = Math.min(...xs);
+                sel.positions((_, n: any) => ({ x: minX, y: n.position('y') }));
               } else if (kind === 'top') {
-                const minY = Math.min(...sel.map(n => n.position('y')));
-                sel.positions((_, n) => ({ x: n.position('x'), y: minY }));
+                const ys = sel.map((n: any) => n.position('y') as number) as unknown as number[];
+                const minY = Math.min(...ys);
+                sel.positions((_, n: any) => ({ x: n.position('x'), y: minY }));
               }
             }
           },
@@ -252,9 +274,15 @@ export function GraphCanvas({
           selector: 'node:selected',
           style: {
             'border-color': '#22d3ee',
-            'border-width': 2,
-            'shadow-color': 'rgba(34,211,238,0.35)',
-            'shadow-blur': 24
+            'border-width': 4,
+            'background-color': '#0f3a4f',
+            'shadow-color': 'rgba(34,211,238,0.75)',
+            'shadow-blur': 40,
+            'outline-width': 10,
+            'outline-color': 'rgba(34,211,238,0.22)',
+            'color': '#ffffff',
+            'text-outline-width': 2,
+            'text-outline-color': '#081018'
           }
         },
         {

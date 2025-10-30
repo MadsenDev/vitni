@@ -18,6 +18,7 @@ interface TopToolbarProps {
   onAlignLeft: () => void;
   onAlignTop: () => void;
   onInvertSelection: () => void;
+  boxSelectEnabled?: boolean;
   onZoomSelection: () => void;
   onFitScreen: () => void;
   onCenterSelection: () => void;
@@ -31,6 +32,7 @@ export function TopToolbar({
   onRelationshipToolActivate,
   onRelationshipToolDeactivate,
   onToggleBoxSelect,
+  boxSelectEnabled,
   onLayoutGrid,
   onLayoutConcentric,
   onLayoutCose,
@@ -80,7 +82,7 @@ export function TopToolbar({
           </button>
           <button
             onClick={onToggleBoxSelect}
-            className="p-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+            className={`p-2 rounded-md transition-all ${boxSelectEnabled ? 'bg-sky-600 text-white shadow-lg' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'}`}
             title="Toggle box selection"
           >
             <FaVectorSquare className="w-4 h-4" />

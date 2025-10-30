@@ -82,6 +82,11 @@ function buildMenu() {
           label: 'Preferences…',
           accelerator: 'CmdOrCtrl+,',
           click: () => mainWindow?.webContents.send('menu:settings:open')
+        },
+        {
+          label: 'Terminology…',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => mainWindow?.webContents.send('menu:settings:terminology')
         }
       ]
     },

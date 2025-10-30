@@ -83,6 +83,7 @@ declare global {
       onProjectSaveAs: (cb: () => void) => () => void;
       onSettingsOpen: (cb: () => void) => () => void;
       onMediaGalleryOpen: (cb: () => void) => () => void;
+      onTerminologyOpen?: (cb: () => void) => () => void;
       onViewZoomSelection?: (cb: () => void) => () => void;
       onViewFit?: (cb: () => void) => () => void;
       onViewCenterSelection?: (cb: () => void) => () => void;

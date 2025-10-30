@@ -12,6 +12,11 @@ body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* Cursor for box selection mode */
+.pi-box-select {
+  cursor: crosshair !important;
+}
+
 /* Scrollbar styling: matches dark neon aesthetic */
 /* Firefox */
 * {
