@@ -92,6 +92,14 @@ async function createWindow() {
   });
   buildMenu();
 
+  // Register IPC handlers immediately so renderer calls won't fail during init
+  console.log('[Main] init: creating project manager');
+  projectManager = new ProjectManager(path.join(app.getPath('userData'), 'projects'));
+  console.log('[Main] init: building transform registry');
+  const transformRegistry = createTransformRegistry();
+  console.log('[Main] init: registering IPC handlers');
+  registerIpcHandlers(ipcMain, projectManager, transformRegistry);
+
   if (isDevelopment) {
     const rendererUrl = new URL('http://localhost:5173');
     await mainWindow.loadURL(rendererUrl.toString());
@@ -124,16 +132,10 @@ async function createWindow() {
     }
   });
 
-  // Kick off background initialization after the window has begun loading
+  // Kick off background initialization after handlers are registered
   ;(async () => {
     try {
-      console.log('[Main] init: creating project manager');
-      projectManager = new ProjectManager(path.join(app.getPath('userData'), 'projects'));
       await projectManager.initialize();
-      console.log('[Main] init: building transform registry');
-      const transformRegistry = createTransformRegistry();
-      console.log('[Main] init: registering IPC handlers');
-      registerIpcHandlers(ipcMain, projectManager, transformRegistry);
       console.log('[Main] init: complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
