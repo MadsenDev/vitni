@@ -58,12 +58,24 @@ shared/        # Shared TypeScript types
 
 ## Sample Investigation Save
 
-To explore the graph canvas and inspector panels without starting from scratch, import the bundled
-`samples/operation-glass-harbor.piinv` project file via **File → Open Project**. The scenario captures
-a full investigation with:
+To explore the graph canvas and inspector panels without starting from scratch, open the
+`samples/operation-glass-harbor.vitni` project directory via **File → Open Project**. Because the
+repository cannot ship binary assets, generate them locally first:
+
+```bash
+cd samples/operation-glass-harbor.vitni
+sqlite3 db/case.sqlite < db/case.sqlite.sql
+printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=' \
+  | base64 -d > attachments/52/8d/528d4f1e1e4be74f18d29cea6837e8559215577e913dcca6d8b1e38a80e27c1d.png
+```
+
+Return to the repository root, export `PI_DB_KEY=glass-harbor-demo`, launch the app, and pick the
+directory. The scenario captures a full investigation with:
 
 - Six richly annotated entities spanning people, organizations, infrastructure, and documents.
 - Five relationship edges that demonstrate subtypes, investigator involvement, and communication trails.
 - Source-backed assertions with mixed confidence levels to showcase verification workflows.
-- Project-level settings (viewport, default confidence, and feature toggles) so the layout loads exactly
-  as curated.
+- Media library examples including a hashed invoice attachment and a dockside surveillance still to
+  highlight the new attachments workflow.
+- A project-level settings bundle (viewport, default confidence, and feature toggles) so the layout
+  loads exactly as curated.

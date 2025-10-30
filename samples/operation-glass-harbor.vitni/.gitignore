@@ -1,0 +1,8 @@
+db/case.sqlite
+db/*.wal
+db/*.shm
+attachments/**/*.png
+cache/
+tmp/
+thumbnails/
+sources/*.txt
