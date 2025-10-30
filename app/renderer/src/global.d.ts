@@ -61,6 +61,17 @@ interface PiBridge {
   getProjectSetting: <T = unknown>(key: string) => Promise<T | null>;
   setProjectSetting: (key: string, value: unknown) => Promise<boolean>;
   updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
+  // Optional APIs (feature-detected in renderer)
+  updateAssertion?: (
+    assertionId: string,
+    updates: { value?: Record<string, unknown>; confidence?: AssertionRecord['confidence'] }
+  ) => Promise<boolean>;
+  deleteAssertion?: (assertionId: string) => Promise<boolean>;
+  updateSource?: (
+    sourceId: string,
+    updates: { title?: string | null; locator?: string; kind?: string; mime?: string | null }
+  ) => Promise<boolean>;
+  deleteSource?: (sourceId: string) => Promise<boolean>;
 }
 
 declare global {
@@ -72,6 +83,9 @@ declare global {
       onProjectSaveAs: (cb: () => void) => () => void;
       onSettingsOpen: (cb: () => void) => () => void;
       onMediaGalleryOpen: (cb: () => void) => () => void;
+      onViewZoomSelection?: (cb: () => void) => () => void;
+      onViewFit?: (cb: () => void) => () => void;
+      onViewCenterSelection?: (cb: () => void) => () => void;
     };
   }
 }

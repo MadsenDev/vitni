@@ -11,3 +11,31 @@ body,
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+/* Scrollbar styling: matches dark neon aesthetic */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #0f172a; /* thumb, track */
+}
+
+/* WebKit-based (Chromium/Electron, Safari) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.7); /* slate-900 */
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.35), rgba(16, 185, 129, 0.35)); /* sky->emerald */
+  border-radius: 8px;
+  border: 1px solid rgba(51, 65, 85, 0.6); /* slate-700 */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.5), rgba(16, 185, 129, 0.5));
+  border-color: rgba(71, 85, 105, 0.8); /* slate-600 */
+}

@@ -30,6 +30,7 @@ export function RelationshipCreationModal({
   const [notes, setNotes] = useState('');
   const [confidence, setConfidence] = useState<'verified' | 'asserted' | 'unverified'>(defaultConfidence);
   const [strength, setStrength] = useState<'weak' | 'moderate' | 'strong'>('moderate');
+  const [dateStr, setDateStr] = useState<string>('');
 
   const selectedType = useMemo(() => {
     return relationshipTypes.find(t => t.id === selectedTypeId) || null;
@@ -42,6 +43,7 @@ export function RelationshipCreationModal({
       setNotes('');
       setConfidence(defaultConfidence);
       setStrength('moderate');
+      setDateStr('');
       // Initialize selection from prop or default to first
       setSelectedTypeId(relationshipType?.id ?? relationshipTypes[0]?.id ?? '');
       const initialType = relationshipTypes.find(t => t.id === (relationshipType?.id ?? relationshipTypes[0]?.id));
@@ -62,7 +64,8 @@ export function RelationshipCreationModal({
         confidence,
         strength,
         subtype: selectedSubtypeId || undefined,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        date: dateStr || undefined
       }
     });
     
@@ -155,6 +158,19 @@ export function RelationshipCreationModal({
               <option value="moderate">Moderate</option>
               <option value="strong">Strong</option>
             </select>
+          </div>
+
+          <div>
+            <label htmlFor="date" className="block text-sm font-medium text-slate-300 mb-2">
+              Date (optional)
+            </label>
+            <input
+              id="date"
+              type="date"
+              value={dateStr}
+              onChange={(e) => setDateStr(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
 
           <div>

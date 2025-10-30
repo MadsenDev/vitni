@@ -56,7 +56,23 @@ function buildMenu() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Zoom to Selection',
+          accelerator: 'CmdOrCtrl+Shift+Z',
+          click: () => mainWindow?.webContents.send('menu:view:zoomSelection')
+        },
+        {
+          label: 'Fit to Screen',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => mainWindow?.webContents.send('menu:view:fit')
+        },
+        {
+          label: 'Center Selection',
+          accelerator: 'CmdOrCtrl+Shift+C',
+          click: () => mainWindow?.webContents.send('menu:view:centerSelection')
+        }
       ]
     },
     {

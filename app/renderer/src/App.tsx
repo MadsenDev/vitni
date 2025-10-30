@@ -17,9 +17,12 @@ import { LocalAIInsights } from './components/LocalAIInsights';
 import { InspectorPanel } from './components/InspectorPanel';
 import type { GraphSnapshot } from './types/graph';
 import { SplashOverlay } from './components/SplashOverlay';
+import { SearchPalette } from './components/SearchPalette';
 import { AssertionCreationModal } from './components/AssertionCreationModal';
 import { SourceCreationModal } from './components/SourceCreationModal';
 import { MediaLibraryModal } from './components/MediaLibraryModal';
+import { TimelineWorkspace } from './components/TimelineWorkspace';
+import { FilterPanel } from './components/FilterPanel';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -69,7 +72,12 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefi
       const rel = relById.get(edge.type);
       const subtypeId = (edge.properties?.subtype as string | undefined) || '';
       const subtypeLabel = rel?.subtypes?.find(s => s.id === subtypeId)?.label;
-      const edgeLabel = subtypeLabel ?? rel?.label ?? edge.type;
+      let edgeLabel = subtypeLabel ?? rel?.label ?? edge.type;
+      const dateStr = (edge.properties?.date as string | undefined) || '';
+      if (dateStr) {
+        const year = dateStr.slice(0, 4);
+        if (/^\d{4}$/.test(year)) edgeLabel = `${edgeLabel} (${year})`;
+      }
       return {
         data: {
           id: edge.id,
@@ -145,6 +153,13 @@ export default function App() {
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeTypeIds, setActiveTypeIds] = useState<Set<string>>(new Set(nodeTypes.map(nt => nt.id)));
+  const [hasSourcesOnly, setHasSourcesOnly] = useState(false);
+  const [nodeIdsWithSources, setNodeIdsWithSources] = useState<Set<string>>(new Set());
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterAnchor, setFilterAnchor] = useState<DOMRect | null>(null);
+  const filterRef = useRef<HTMLDivElement | null>(null);
   const [assertionModalOpen, setAssertionModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [mediaLibraryState, setMediaLibraryState] = useState<{
@@ -152,6 +167,7 @@ export default function App() {
     mode: 'manage' | 'select';
     onSelect?: ((source: SourceRecord) => void) | null;
   }>({ isOpen: false, mode: 'manage', onSelect: null });
+  const [view, setView] = useState<'graph' | 'timeline'>('graph');
   const graphApiRef = useRef<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
@@ -221,6 +237,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!hasSourcesOnly) return;
+    let cancelled = false;
+    // Compute which nodes have sources; naive parallel fetch for now
+    (async () => {
+      const pairs = await Promise.all(
+        graph.nodes.map(async (n) => {
+          try {
+            const s = await window.piBridge.listSourcesByEntity(n.id);
+            return [n.id, (s?.length ?? 0) > 0] as const;
+          } catch {
+            return [n.id, false] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      const set = new Set<string>();
+      for (const [id, has] of pairs) if (has) set.add(id);
+      setNodeIdsWithSources(set);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasSourcesOnly, graph.nodes]);
+
+  useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
 
@@ -230,6 +271,60 @@ export default function App() {
       setGraphLoaded(true);
     });
   }, []);
+
+  // Refresh assertions/sources when requested
+  useEffect(() => {
+    const handler = () => {
+      if (!selectedNodeId) return;
+      void fetchAssertions(selectedNodeId).then(setAssertions);
+      void fetchSources(selectedNodeId).then(setSources);
+    };
+    window.addEventListener('pi:refresh', handler);
+    // Hook menu events if available
+    const offZoom = window.piMenu?.onViewZoomSelection?.(() => graphApiRef.current?.zoomToSelection());
+    const offFit = window.piMenu?.onViewFit?.(() => graphApiRef.current?.fitToScreen());
+    const offCenter = window.piMenu?.onViewCenterSelection?.(() => graphApiRef.current?.centerSelection());
+    const keyHandler = (e: KeyboardEvent) => {
+      // Ctrl+F opens search
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      // Ctrl+Shift+Z: Zoom to Selection
+      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
+        e.preventDefault();
+        graphApiRef.current?.zoomToSelection();
+      }
+      // Ctrl+Shift+F: Fit to Screen
+      if (e.ctrlKey && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault();
+        graphApiRef.current?.fitToScreen();
+      }
+      // Ctrl+Shift+C: Center Selection
+      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        graphApiRef.current?.centerSelection();
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+    const clickOutside = (ev: MouseEvent) => {
+      if (!filtersOpen) return;
+      const t = ev.target as Node;
+      if (filterRef.current && !filterRef.current.contains(t)) {
+        setFiltersOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', clickOutside);
+    return () => {
+      window.removeEventListener('pi:refresh', handler);
+      window.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('mousedown', clickOutside);
+      offZoom && offZoom();
+      offFit && offFit();
+      offCenter && offCenter();
+    };
+  }, [selectedNodeId, filtersOpen]);
 
   useEffect(() => {
     if (!window.piMenu) return;
@@ -286,6 +381,23 @@ export default function App() {
   }, [selectedNodeId]);
 
   const elements = useMemo(() => mapGraphElements(graph, showNodeLabels), [graph, showNodeLabels]);
+  const filteredElements = useMemo(() => {
+    // Filter nodes by type and source presence
+    const allowedTypes = activeTypeIds;
+    const visibleNodeIds = new Set(
+      graph.nodes
+        .filter(n => allowedTypes.has(n.type))
+        .filter(n => !hasSourcesOnly || nodeIdsWithSources.has(n.id))
+        .map(n => n.id)
+    );
+    const nodes = elements.filter(el => (el as any).data?.source == null && visibleNodeIds.has((el as any).data?.id));
+    const edges = elements.filter(el => {
+      const d = (el as any).data;
+      if (!d?.source || !d?.target) return false;
+      return visibleNodeIds.has(d.source) && visibleNodeIds.has(d.target);
+    });
+    return [...nodes, ...edges];
+  }, [elements, graph.nodes, activeTypeIds, hasSourcesOnly, nodeIdsWithSources]);
 
   const selectedNode = useMemo(
     () => graph.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -366,10 +478,10 @@ export default function App() {
       const { id } = JSON.parse(nodeTypeData);
       const nodeType = nodeTypes.find(nt => nt.id === id);
       if (!nodeType) return;
-
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      // Convert client coords into graph coords via Cytoscape viewport transform
+      const graphPos = graphApiRef.current?.containerToGraph(event.clientX, event.clientY);
+      const x = graphPos?.x ?? 0;
+      const y = graphPos?.y ?? 0;
 
       setNodeCreationModal({
         isOpen: true,
@@ -461,6 +573,8 @@ export default function App() {
     properties: Record<string, unknown>;
   }) => {
     try {
+      // Preserve current positions to avoid unintended layout shifts on reload
+      const beforePositions = graphApiRef.current?.getNodePositions() || {};
       // Create the edge/relationship
       await window.piBridge.createEdge({
         src_id: data.sourceId,
@@ -471,7 +585,25 @@ export default function App() {
 
       // Refresh the graph to show the new relationship
       const updatedGraph = await window.piBridge.loadGraph();
-      setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+      // Reuse previous positions for nodes that lack persisted coordinates
+      const nodesWithPos = updatedGraph.nodes.map(n => {
+        const hasPos = n.pos_x != null && n.pos_y != null;
+        if (hasPos) return n;
+        const p = beforePositions[n.id];
+        return p ? { ...n, pos_x: p.x, pos_y: p.y } : n;
+      });
+      setGraph({ nodes: nodesWithPos, edges: updatedGraph.edges });
+
+      // Persist any restored positions to the database so they remain stable
+      const toPersist = nodesWithPos.filter(n => {
+        const before = beforePositions[n.id];
+        return before && (n.pos_x == null || n.pos_y == null);
+      });
+      void Promise.allSettled(
+        toPersist.map(n =>
+          window.piBridge.updateEntityPosition(n.id, { x: Number(beforePositions[n.id].x), y: Number(beforePositions[n.id].y) })
+        )
+      );
 
       // Reset relationship tool state
       setRelationshipTool({
@@ -650,6 +782,7 @@ export default function App() {
   return (
     <div className="relative flex h-full flex-col">
       <TopToolbar
+        view={view}
         relationshipTool={relationshipTool}
         onRelationshipToolActivate={handleRelationshipToolActivate}
         onRelationshipToolDeactivate={handleRelationshipToolDeactivate}
@@ -660,62 +793,119 @@ export default function App() {
         onAlignLeft={() => graphApiRef.current?.alignSelected('left')}
         onAlignTop={() => graphApiRef.current?.alignSelected('top')}
         onInvertSelection={() => graphApiRef.current?.invertSelection()}
+        onZoomSelection={() => graphApiRef.current?.zoomToSelection()}
+        onFitScreen={() => graphApiRef.current?.fitToScreen()}
+        onCenterSelection={() => graphApiRef.current?.centerSelection()}
+        onToggleFilters={(anchor) => { setFilterAnchor(anchor); setFiltersOpen(v => !v); }}
+        onSwitchWorkspace={(v) => setView(v)}
       />
+
+      {filtersOpen && (
+        <div
+          ref={filterRef}
+          className="fixed z-40 w-80 rounded-lg border border-slate-800 bg-slate-900/90 p-3 shadow-xl backdrop-blur"
+          style={filterAnchor ? { left: Math.min(filterAnchor.left, window.innerWidth - 340), top: filterAnchor.bottom + 8, position: 'fixed' as const } : { right: 16, top: 64, position: 'fixed' as const }}
+        >
+          <FilterPanel
+            nodeTypes={nodeTypes.map(nt => ({ id: nt.id, label: nt.label }))}
+            activeTypeIds={activeTypeIds}
+            onToggleType={(id) => {
+              setActiveTypeIds(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id); else next.add(id);
+                return next;
+              });
+            }}
+            hasSourcesOnly={hasSourcesOnly}
+            onToggleHasSources={(v) => setHasSourcesOnly(v)}
+          />
+        </div>
+      )}
+      <SearchPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        items={graph.nodes.map(n => ({ id: n.id, label: n.label || '' }))}
+        onSelect={(id) => {
+          setSelectedNodeId(id);
+          // zoom to selection after state updates in next tick
+          setTimeout(() => graphApiRef.current?.zoomToSelection(), 0);
+        }}
+      />
+      {view === 'timeline' ? (
+        <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} />
+      ) : null}
       
       <div className="flex flex-1 overflow-hidden">
+      {view === 'graph' ? (
       <aside className="w-80 border-r border-slate-800 bg-slate-950/70 p-6">
         <div className="flex h-full flex-col space-y-6 overflow-y-auto pr-1">
           <NodePalette onNodeDragStart={handleNodeDragStart} />
           <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
         </div>
       </aside>
-        
+      ) : null}
+
       <main className="flex flex-1 flex-col">
         <div className="flex flex-1 overflow-hidden">
-            <section 
-              className="flex-1"
-              onDrop={handleGraphDrop}
-              onDragOver={handleGraphDragOver}
-            >
-              <GraphCanvas
-                elements={elements}
-                apiRef={graphApiRef}
-                onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
-                onUnselectNode={() => setSelectedNodeId(null)}
-                onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}
-                onUnselectEdge={() => setSelectedEdgeId(null)}
-                onTapNode={() => { /* disabled: drag-only relationship creation */ }}
-                isRelationshipMode={relationshipTool.isActive}
-                onRequestCreateEdge={(sourceId, targetId) => {
-                  const sourceNode = graph.nodes.find(n => n.id === sourceId);
-                  const targetNode = graph.nodes.find(n => n.id === targetId);
-                  if (!sourceNode || !targetNode || sourceId === targetId) return;
-                  setRelationshipTool(prev => ({
-                    ...prev,
-                    sourceNode: { id: sourceId, label: sourceNode.label || 'Untitled Entity' },
-                    targetNode: { id: targetId, label: targetNode.label || 'Untitled Entity' }
-                  }));
-                  setRelationshipModal({ isOpen: true });
-                }}
-              />
-          </section>
-            <InspectorPanel
-              nodeTypes={nodeTypes}
-              graphNodes={graph.nodes}
-              graphEdges={graph.edges}
-              selectedNodeId={selectedNodeId}
-              selectedEdgeId={selectedEdgeId}
-              assertions={assertions}
-              sources={sources}
-              onAddAssertion={() => setAssertionModalOpen(true)}
-              onAddSource={() => setSourceModalOpen(true)}
-              onDeleteNode={handleDeleteNode}
-              onDeleteEdge={handleDeleteEdge}
-              onUpdateLabel={handleLabelUpdate}
-              onUpdateProperty={handlePropertyUpdate}
-              onUpdateEdgeProperty={handleUpdateEdgeProperty}
+            {view === 'graph' ? (
+              <>
+                <section
+                  className="flex-1"
+                  onDrop={handleGraphDrop}
+                  onDragOver={handleGraphDragOver}
+                >
+                  <GraphCanvas
+                    elements={filteredElements}
+                    apiRef={graphApiRef}
+                    onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
+                    onUnselectNode={() => setSelectedNodeId(null)}
+                    onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}
+                    onUnselectEdge={() => setSelectedEdgeId(null)}
+                    onTapNode={() => { /* disabled: drag-only relationship creation */ }}
+                    isRelationshipMode={relationshipTool.isActive}
+                    onNodeDragFree={(id, x, y) => {
+                      void window.piBridge.updateEntityPosition(id, { x, y });
+                      setGraph(prev => ({
+                        ...prev,
+                        nodes: prev.nodes.map(n => (n.id === id ? { ...n, pos_x: x, pos_y: y } : n))
+                      }));
+                    }}
+                    onRequestCreateEdge={(sourceId, targetId) => {
+                      const sourceNode = graph.nodes.find(n => n.id === sourceId);
+                      const targetNode = graph.nodes.find(n => n.id === targetId);
+                      if (!sourceNode || !targetNode || sourceId === targetId) return;
+                      setRelationshipTool(prev => ({
+                        ...prev,
+                        sourceNode: { id: sourceId, label: sourceNode.label || 'Untitled Entity' },
+                        targetNode: { id: targetId, label: targetNode.label || 'Untitled Entity' }
+                      }));
+                      setRelationshipModal({ isOpen: true });
+                    }}
+                  />
+                </section>
+                <InspectorPanel
+                  nodeTypes={nodeTypes}
+                  graphNodes={graph.nodes}
+                  graphEdges={graph.edges}
+                  selectedNodeId={selectedNodeId}
+                  selectedEdgeId={selectedEdgeId}
+                  assertions={assertions}
+                  sources={sources}
+                  onAddAssertion={() => setAssertionModalOpen(true)}
+                  onAddSource={() => setSourceModalOpen(true)}
+                  onDeleteNode={handleDeleteNode}
+                  onDeleteEdge={handleDeleteEdge}
+                  onUpdateLabel={handleLabelUpdate}
+                  onUpdateProperty={handlePropertyUpdate}
+                  onUpdateEdgeProperty={handleUpdateEdgeProperty}
                 />
+              </>
+            ) : (
+              <div className="flex-1">
+                <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} />
               </div>
+            )}
+          </div>
         </main>
         </div>
       {consentData && (

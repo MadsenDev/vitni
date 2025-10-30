@@ -1,6 +1,5 @@
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { SourcesList } from './SourcesList';
-import { MediaGallery } from './MediaGallery';
 import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
 import { relationshipTypes } from '../lib/relationshipTypes';
@@ -256,7 +255,56 @@ export function InspectorPanel({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-100">{assertion.path}</span>
-                  <ConfidenceBadge confidence={assertion.confidence} />
+                  <div className="flex items-center gap-2">
+                    <ConfidenceBadge confidence={assertion.confidence} />
+                    <button
+                      className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300 hover:bg-slate-700"
+                      title="Edit assertion"
+                      onClick={async () => {
+                        try {
+                          const nextConfidence = window.prompt('Confidence (asserted|unverified|verified):', assertion.confidence);
+                          const nextJson = window.prompt('Assertion JSON value:', JSON.stringify(assertion.value, null, 2));
+                          if (nextConfidence == null && nextJson == null) return;
+                          const updates: { value?: Record<string, unknown>; confidence?: 'asserted' | 'unverified' | 'verified' } = {};
+                          if (nextConfidence && (nextConfidence === 'asserted' || nextConfidence === 'unverified' || nextConfidence === 'verified')) {
+                            updates.confidence = nextConfidence;
+                          }
+                          if (nextJson) {
+                            try { updates.value = JSON.parse(nextJson); } catch { alert('Invalid JSON'); return; }
+                          }
+                          if (window.piBridge.updateAssertion) {
+                            const ok = await window.piBridge.updateAssertion(assertion.id, updates);
+                            if (ok) window.dispatchEvent(new CustomEvent('pi:refresh'));
+                          } else {
+                            console.warn('updateAssertion API not available');
+                          }
+                        } catch (e) {
+                          console.error('Edit assertion failed', e);
+                        }
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="rounded bg-red-900/30 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-900/50"
+                      title="Delete assertion"
+                      onClick={async () => {
+                        if (!confirm('Delete this assertion?')) return;
+                        try {
+                          if (window.piBridge.deleteAssertion) {
+                            const ok = await window.piBridge.deleteAssertion(assertion.id);
+                            if (ok) window.dispatchEvent(new CustomEvent('pi:refresh'));
+                          } else {
+                            console.warn('deleteAssertion API not available');
+                          }
+                        } catch (e) {
+                          console.error('Delete assertion failed', e);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-300">
                   {JSON.stringify(assertion.value, null, 2)}
@@ -277,7 +325,6 @@ export function InspectorPanel({
               </button>
             </div>
             <SourcesList sources={sources} />
-            <MediaGallery sources={sources} />
           </section>
         </div>
       ) : selectedEdgeId ? (
@@ -326,6 +373,16 @@ export function InspectorPanel({
                           <option key={st.id} value={st.id}>{st.label}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={String(edge.properties?.date || '')}
+                        onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'date', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
 
                     <div>

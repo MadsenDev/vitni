@@ -19,6 +19,11 @@ interface GraphCanvasProps {
     toggleBoxSelect: () => void;
     alignSelected: (kind: 'left' | 'top') => void;
     invertSelection: () => void;
+    zoomToSelection: () => void;
+    fitToScreen: () => void;
+    centerSelection: () => void;
+    containerToGraph: (clientX: number, clientY: number) => { x: number; y: number } | null;
+    getNodePositions: () => Record<string, { x: number; y: number }>;
   } | null>;
 }
 
@@ -168,6 +173,39 @@ export function GraphCanvas({
             const toSelect = nodes.filter(n => !n.selected());
             nodes.unselect();
             toSelect.select();
+          },
+          zoomToSelection: () => {
+            const sel = cy.elements(':selected');
+            if (sel.nonempty()) {
+              cy.animate({ fit: { eles: sel, padding: 60 } }, { duration: 250, easing: 'ease' });
+            }
+          },
+          fitToScreen: () => {
+            cy.animate({ fit: { eles: cy.elements(), padding: 60 } }, { duration: 250, easing: 'ease' });
+          },
+          centerSelection: () => {
+            const sel = cy.elements(':selected');
+            if (sel.nonempty()) {
+              cy.center(sel);
+            }
+        },
+        containerToGraph: (clientX: number, clientY: number) => {
+          const container = (cy as any).container() as HTMLElement;
+          if (!container) return null;
+          const rect = container.getBoundingClientRect();
+          const zoom = cy.zoom();
+          const pan = cy.pan();
+          const x = (clientX - rect.left - pan.x) / zoom;
+          const y = (clientY - rect.top - pan.y) / zoom;
+          return { x, y };
+        },
+        getNodePositions: () => {
+          const map: Record<string, { x: number; y: number }> = {};
+          cy.nodes().forEach(n => {
+            const p = n.position();
+            map[n.id()] = { x: p.x, y: p.y };
+          });
+          return map;
           }
         }
       : null;
@@ -186,28 +224,44 @@ export function GraphCanvas({
         {
           selector: 'node',
           style: {
-            'background-color': '#374151',
-            'border-width': 2,
-            'border-color': '#6b7280',
+            'background-color': '#0b1220',
+            'border-width': 1,
+            'border-color': '#1f2a44',
             'label': 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'color': '#ffffff',
-            'font-size': '12px',
-            'font-weight': 'bold',
-            'text-outline-width': 1,
-            'text-outline-color': '#000000',
-            'width': '60px',
-            'height': '60px',
-            'shape': 'round-rectangle'
+            'color': '#e2e8f0',
+            'font-size': '11px',
+            'font-weight': '600',
+            'text-outline-width': 0,
+            'text-wrap': 'wrap',
+            'text-max-width': '120px',
+            'text-background-color': '#111827',
+            'text-background-opacity': 0.0,
+            'width': 'label',
+            'height': 'label',
+            'padding': '10px',
+            'shape': 'round-rectangle',
+            'shadow-blur': 16,
+            'shadow-color': 'rgba(56,189,248,0.12)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 0
           }
         },
         {
           selector: 'node:selected',
           style: {
-            'border-color': '#3b82f6',
-            'border-width': 3,
-            'background-color': '#1e40af'
+            'border-color': '#22d3ee',
+            'border-width': 2,
+            'shadow-color': 'rgba(34,211,238,0.35)',
+            'shadow-blur': 24
+          }
+        },
+        {
+          selector: 'node:hover',
+          style: {
+            'border-color': '#38bdf8',
+            'border-width': 2
           }
         },
         {
@@ -224,15 +278,17 @@ export function GraphCanvas({
           selector: 'edge',
           style: {
             'width': 2,
-            'line-color': '#6b7280',
-            'target-arrow-color': '#6b7280',
+            'line-color': '#334155',
+            'target-arrow-color': '#334155',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': 'data(label)',
             'font-size': '10px',
-            'color': '#ffffff',
-            'text-outline-width': 1,
-            'text-outline-color': '#000000'
+            'color': '#cbd5e1',
+            'text-outline-width': 0,
+            'text-background-color': '#0f172a',
+            'text-background-opacity': 0.6,
+            'text-background-padding': 2
           }
         },
         {
