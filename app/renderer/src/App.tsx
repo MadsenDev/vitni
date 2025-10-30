@@ -19,6 +19,7 @@ import type { GraphSnapshot } from './types/graph';
 import { SplashOverlay } from './components/SplashOverlay';
 import { AssertionCreationModal } from './components/AssertionCreationModal';
 import { SourceCreationModal } from './components/SourceCreationModal';
+import { MediaLibraryModal } from './components/MediaLibraryModal';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -146,6 +147,11 @@ export default function App() {
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
   const [assertionModalOpen, setAssertionModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [mediaLibraryState, setMediaLibraryState] = useState<{
+    isOpen: boolean;
+    mode: 'manage' | 'select';
+    onSelect?: ((source: SourceRecord) => void) | null;
+  }>({ isOpen: false, mode: 'manage', onSelect: null });
   const graphApiRef = useRef<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
@@ -240,11 +246,15 @@ export default function App() {
     const offSettings = window.piMenu.onSettingsOpen(() => {
       setSettingsModalOpen(true);
     });
+    const offMediaGallery = window.piMenu.onMediaGalleryOpen(() => {
+      setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null });
+    });
     return () => {
       offNew?.();
       offOpen?.();
       offSaveAs?.();
       offSettings?.();
+      offMediaGallery?.();
     };
   }, []);
 
@@ -289,6 +299,17 @@ export default function App() {
     ]);
     setAssertions(entityAssertions);
     setSources(entitySources);
+  }, []);
+
+  const openMediaLibraryForSelection = useCallback(
+    (onSelect: (source: SourceRecord) => void) => {
+      setMediaLibraryState({ isOpen: true, mode: 'select', onSelect });
+    },
+    []
+  );
+
+  const closeMediaLibrary = useCallback(() => {
+    setMediaLibraryState((current) => ({ ...current, isOpen: false, onSelect: null }));
   }, []);
 
   useEffect(() => {
@@ -773,6 +794,7 @@ export default function App() {
             void refreshEntityDetails(selectedNodeId);
           }
         }}
+        onOpenMediaLibrary={openMediaLibraryForSelection}
       />
 
       <SourceCreationModal
@@ -784,6 +806,14 @@ export default function App() {
             void refreshEntityDetails(selectedNodeId);
           }
         }}
+        onOpenMediaLibrary={openMediaLibraryForSelection}
+      />
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryState.isOpen}
+        mode={mediaLibraryState.mode}
+        onClose={closeMediaLibrary}
+        onSelect={mediaLibraryState.onSelect ?? undefined}
       />
     </div>
   );

@@ -1,70 +1,50 @@
-import { type ChangeEvent, type FormEvent, useState } from 'react';
-import type { AttachmentResult, Confidence, EntityRecord } from '@shared/types';
+import { type FormEvent, useState } from 'react';
+import type { Confidence, EntityRecord, SourceRecord } from '@shared/types';
 import { formatConfidenceLabel } from '../../lib/confidence';
-import { inferSourceKind, readFileAsArrayBuffer } from '../../lib/files';
 
 interface Props {
   entityId: EntityRecord['id'];
   onSourceCreated: () => void;
+  onOpenMediaLibrary: (onSelect: (source: SourceRecord) => void) => void;
 }
 
 const CONFIDENCE_LEVELS: Confidence[] = ['verified', 'asserted', 'unverified'];
 
-export function AddSourceForm({ entityId, onSourceCreated }: Props) {
+export function AddSourceForm({ entityId, onSourceCreated, onOpenMediaLibrary }: Props) {
   const [kind, setKind] = useState('document');
   const [locator, setLocator] = useState('');
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [confidence, setConfidence] = useState<Confidence>('asserted');
   const [sourceMime, setSourceMime] = useState<string | null>(null);
-  const [uploadedAttachment, setUploadedAttachment] = useState<
-    (AttachmentResult & { originalName: string }) | null
-  >(null);
+  const [selectedSource, setSelectedSource] = useState<SourceRecord | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    kind.trim().length > 0 &&
-    locator.trim().length > 0 &&
-    !isSubmitting &&
-    !isUploading;
+  const canSubmit = kind.trim().length > 0 && locator.trim().length > 0 && !isSubmitting;
 
   const resetAttachment = () => {
-    setUploadedAttachment(null);
     setLocator('');
     setTitle('');
     setSourceMime(null);
     setKind('document');
+    setSelectedSource(null);
+    setError(null);
   };
 
-  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleSelectFromLibrary = () => {
+    onOpenMediaLibrary((source) => {
+      setSelectedSource(source);
+      setKind(source.kind || 'document');
+      setLocator(source.locator);
+      setTitle(source.title ?? '');
+      setSourceMime(source.mime ?? null);
+      setError(null);
+    });
+  };
 
-    setError(null);
-    setIsUploading(true);
-
-    try {
-      const data = await readFileAsArrayBuffer(file);
-      const attachment = await window.piBridge.attachFile({
-        data,
-        name: file.name,
-        mime: file.type || 'application/octet-stream'
-      });
-
-      setUploadedAttachment({ ...attachment, originalName: file.name });
-      setLocator(attachment.relativePath);
-      setTitle((current) => current || file.name);
-      setKind(inferSourceKind(file.type || attachment.mimeType));
-      setSourceMime(attachment.mimeType || file.type || 'application/octet-stream');
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload attachment');
-      resetAttachment();
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
-    }
+  const handleClearSelection = () => {
+    resetAttachment();
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -75,13 +55,15 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
     setIsSubmitting(true);
 
     try {
-      const sourceId = await window.piBridge.createSource({
-        kind,
-        locator,
-        title: title.trim() ? title.trim() : undefined,
-        hash: uploadedAttachment?.hash ?? null,
-        mime: sourceMime ?? uploadedAttachment?.mimeType ?? null
-      });
+      const sourceId = selectedSource
+        ? selectedSource.id
+        : await window.piBridge.createSource({
+            kind,
+            locator,
+            title: title.trim() ? title.trim() : undefined,
+            hash: null,
+            mime: sourceMime
+          });
 
       await window.piBridge.createAssertion({
         subject_kind: 'entity',
@@ -117,32 +99,39 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4" aria-label="Add source">
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Attachment</label>
+        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Media</label>
         <div className="mt-2 space-y-2 rounded border border-slate-800 bg-slate-900/60 p-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-              className="text-xs text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-slate-800 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-slate-200 hover:file:bg-slate-700"
-            />
-            {uploadedAttachment && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectFromLibrary}
+              className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-slate-500"
+            >
+              Browse media gallery
+            </button>
+            {selectedSource && (
               <button
                 type="button"
-                onClick={resetAttachment}
-                className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+                onClick={handleClearSelection}
+                className="rounded border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
               >
-                Remove file
+                Clear selection
               </button>
             )}
           </div>
-          {isUploading && <p className="text-xs text-slate-500">Uploading…</p>}
-          {uploadedAttachment && (
+          {selectedSource ? (
             <div className="rounded border border-slate-800 bg-slate-950/40 p-2 text-xs text-slate-400">
-              <p className="font-medium text-slate-200">{uploadedAttachment.originalName}</p>
-              <p className="truncate">Stored as: {uploadedAttachment.relativePath}</p>
-              <p className="capitalize">Detected kind: {kind}</p>
+              <p className="font-medium text-slate-200">
+                Using existing media: {selectedSource.title ?? selectedSource.locator}
+              </p>
+              <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-500">
+                {selectedSource.kind} • {selectedSource.mime ?? 'Unknown mime'}
+              </p>
             </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Select an attachment from the gallery or provide locator details manually below.
+            </p>
           )}
         </div>
       </div>
@@ -153,6 +142,7 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
           className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
           value={kind}
           onChange={(event) => setKind(event.target.value)}
+          readOnly={Boolean(selectedSource)}
           placeholder="document"
           required
         />
@@ -165,11 +155,11 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
           value={locator}
           onChange={(event) => setLocator(event.target.value)}
           placeholder="/path/to/file.pdf"
-          readOnly={Boolean(uploadedAttachment)}
+          readOnly={Boolean(selectedSource)}
           required
         />
-        {uploadedAttachment && (
-          <p className="mt-1 text-xs text-slate-500">Locator locked to stored attachment path.</p>
+        {selectedSource && (
+          <p className="mt-1 text-xs text-slate-500">Locator locked to existing media path.</p>
         )}
       </div>
 
@@ -180,6 +170,7 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Leaked memo"
+          readOnly={Boolean(selectedSource)}
         />
       </div>
 

@@ -1,4 +1,5 @@
 import { AddSourceForm } from './forms/AddSourceForm';
+import type { SourceRecord } from '@shared/types';
 import type { GraphNodeSnapshot } from '../types/graph';
 
 interface SourceCreationModalProps {
@@ -6,13 +7,15 @@ interface SourceCreationModalProps {
   entity: GraphNodeSnapshot | null;
   onClose: () => void;
   onSourceCreated: () => void;
+  onOpenMediaLibrary: (onSelect: (source: SourceRecord) => void) => void;
 }
 
 export function SourceCreationModal({
   isOpen,
   entity,
   onClose,
-  onSourceCreated
+  onSourceCreated,
+  onOpenMediaLibrary
 }: SourceCreationModalProps) {
   if (!isOpen || !entity) return null;
 
@@ -41,6 +44,7 @@ export function SourceCreationModal({
             onSourceCreated();
             onClose();
           }}
+          onOpenMediaLibrary={onOpenMediaLibrary}
         />
       </div>
     </div>

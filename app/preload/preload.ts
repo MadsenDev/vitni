@@ -48,6 +48,7 @@ function createBridge() {
     listAssertionsByEntity: (entityId: string) =>
       ipcRenderer.invoke('db:assertions:by-entity', entityId),
     listSourcesByEntity: (entityId: string) => ipcRenderer.invoke('db:sources:by-entity', entityId),
+    listAllSourcesWithUsage: () => ipcRenderer.invoke('db:sources:list-with-usage'),
     projectNew: () => ipcRenderer.invoke('project:new'),
     projectOpen: () => ipcRenderer.invoke('project:open'),
     projectSaveAs: () => ipcRenderer.invoke('project:saveAs'),
@@ -91,6 +92,11 @@ contextBridge.exposeInMainWorld('piMenu', {
     const handler = () => cb();
     ipcRenderer.on('menu:settings:open', handler);
     return () => ipcRenderer.removeListener('menu:settings:open', handler);
+  },
+  onMediaGalleryOpen: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('menu:media:openGallery', handler);
+    return () => ipcRenderer.removeListener('menu:media:openGallery', handler);
   }
 });
 
@@ -101,6 +107,8 @@ declare global {
       onProjectNew: (cb: () => void) => () => void;
       onProjectOpen: (cb: () => void) => () => void;
       onProjectSaveAs: (cb: () => void) => () => void;
+      onSettingsOpen: (cb: () => void) => () => void;
+      onMediaGalleryOpen: (cb: () => void) => () => void;
     };
   }
 }

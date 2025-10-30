@@ -4,6 +4,7 @@ import type {
   AttachmentResult,
   EntityRecord,
   SourceRecord,
+  SourceWithUsage,
   TransformRegistry,
   TransformRunRecord
 } from '@shared/types';
@@ -45,6 +46,7 @@ interface PiBridge {
   ) => Promise<string>;
   listAssertionsByEntity: (entityId: string) => Promise<ParsedAssertionRecord[]>;
   listSourcesByEntity: (entityId: string) => Promise<SourceRecord[]>;
+  listAllSourcesWithUsage: () => Promise<SourceWithUsage[]>;
   deleteEntity: (entityId: string) => Promise<boolean>;
   deleteEdge: (edgeId: string) => Promise<boolean>;
   updateEntity: (entityId: string, updates: { label?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
@@ -69,6 +71,7 @@ declare global {
       onProjectOpen: (cb: () => void) => () => void;
       onProjectSaveAs: (cb: () => void) => () => void;
       onSettingsOpen: (cb: () => void) => () => void;
+      onMediaGalleryOpen: (cb: () => void) => () => void;
     };
   }
 }

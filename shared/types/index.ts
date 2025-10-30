@@ -37,6 +37,17 @@ export interface SourceRecord {
   mime: string | null;
 }
 
+export interface SourceUsageRecord {
+  assertion_id: string;
+  entity_id: string;
+  entity_label: string | null;
+  assertion_path: string;
+}
+
+export interface SourceWithUsage extends SourceRecord {
+  usage: SourceUsageRecord[];
+}
+
 export interface AssertionRecord {
   id: string;
   subject_kind: string;
