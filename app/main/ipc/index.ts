@@ -9,6 +9,8 @@ import type {
   EntityRecord,
   EdgeRecord,
   SourceRecord,
+  SourceUsageRecord,
+  SourceWithUsage,
   TransformRunRecord,
   ProjectSettingRecord
 } from '../../../shared/types';
@@ -134,6 +136,70 @@ export function registerIpcHandlers(
          ORDER BY s.added_at DESC`
       );
       return stmt.all(entityId) as SourceRecord[];
+    })
+  );
+
+  ipcMain.handle(
+    'db:sources:list-with-usage',
+    withDb(projectManager, (db) => {
+      const rows = db
+        .prepare(
+          `SELECT
+             s.id,
+             s.kind,
+             s.locator,
+             s.title,
+             s.added_at,
+             s.hash,
+             s.mime,
+             a.id AS assertion_id,
+             a.subject_id AS assertion_subject_id,
+             a.path AS assertion_path,
+             e.label AS entity_label
+           FROM source s
+           LEFT JOIN assertion a ON a.source_id = s.id
+           LEFT JOIN entity e ON e.id = a.subject_id
+           ORDER BY s.added_at DESC, a.created_at DESC`
+        )
+        .all() as Array<
+        SourceRecord & {
+          assertion_id: string | null;
+          assertion_subject_id: string | null;
+          assertion_path: string | null;
+          entity_label: string | null;
+        }
+      >;
+
+      const grouped = new Map<string, SourceWithUsage>();
+
+      for (const row of rows) {
+        let entry = grouped.get(row.id);
+        if (!entry) {
+          entry = {
+            id: row.id,
+            kind: row.kind,
+            locator: row.locator,
+            title: row.title,
+            added_at: row.added_at,
+            hash: row.hash,
+            mime: row.mime,
+            usage: []
+          } satisfies SourceWithUsage;
+          grouped.set(row.id, entry);
+        }
+
+        if (row.assertion_id && row.assertion_subject_id && row.assertion_path) {
+          const usageEntry: SourceUsageRecord = {
+            assertion_id: row.assertion_id,
+            entity_id: row.assertion_subject_id,
+            entity_label: row.entity_label ?? null,
+            assertion_path: row.assertion_path
+          };
+          entry.usage.push(usageEntry);
+        }
+      }
+
+      return Array.from(grouped.values());
     })
   );
 

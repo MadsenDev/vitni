@@ -68,6 +68,16 @@ function buildMenu() {
           click: () => mainWindow?.webContents.send('menu:settings:open')
         }
       ]
+    },
+    {
+      label: 'Media',
+      submenu: [
+        {
+          label: 'Open Media Gallery…',
+          accelerator: 'CmdOrCtrl+Shift+M',
+          click: () => mainWindow?.webContents.send('menu:media:openGallery')
+        }
+      ]
     }
   ];
   const menu = Menu.buildFromTemplate(template);

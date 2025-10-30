@@ -1,4 +1,5 @@
 import { AddAssertionForm } from './forms/AddAssertionForm';
+import type { SourceRecord } from '@shared/types';
 import type { GraphNodeSnapshot } from '../types/graph';
 
 interface AssertionCreationModalProps {
@@ -6,13 +7,15 @@ interface AssertionCreationModalProps {
   entity: GraphNodeSnapshot | null;
   onClose: () => void;
   onAssertionCreated: () => void;
+  onOpenMediaLibrary: (onSelect: (source: SourceRecord) => void) => void;
 }
 
 export function AssertionCreationModal({
   isOpen,
   entity,
   onClose,
-  onAssertionCreated
+  onAssertionCreated,
+  onOpenMediaLibrary
 }: AssertionCreationModalProps) {
   if (!isOpen || !entity) return null;
 
@@ -41,6 +44,7 @@ export function AssertionCreationModal({
             onAssertionCreated();
             onClose();
           }}
+          onOpenMediaLibrary={onOpenMediaLibrary}
         />
       </div>
     </div>
