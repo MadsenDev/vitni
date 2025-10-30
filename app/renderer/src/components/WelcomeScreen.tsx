@@ -36,6 +36,29 @@ export function WelcomeScreen({ onProjectCreate, onProjectLoad }: WelcomeScreenP
         }}
       />
 
+      {/* Subtle grid background */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, #94a3b81a 1px, transparent 1px), linear-gradient(to bottom, #94a3b81a 1px, transparent 1px) ',
+          backgroundSize: '24px 24px'
+        }}
+      />
+
+      {/* Code rain columns */}
+      <CodeRain />
+
+      {/* Scanline overlay */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(180deg, rgba(255,255,255,.08) 0, rgba(255,255,255,.08) 1px, transparent 2px, transparent 4px)'
+        }}
+      />
+
       {/* Particle-like floating dots */}
       <div className="pointer-events-none absolute inset-0">
         {particles.map((p) => (
@@ -74,7 +97,7 @@ export function WelcomeScreen({ onProjectCreate, onProjectLoad }: WelcomeScreenP
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
           />
-          <FlippingHeadline />
+          <MorphingHeadline />
           <motion.p
             className="mb-12 text-lg text-slate-300/90"
             initial={{ opacity: 0, y: 8 }}
@@ -88,41 +111,43 @@ export function WelcomeScreen({ onProjectCreate, onProjectLoad }: WelcomeScreenP
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <motion.button
             onClick={onProjectCreate}
-            className="group relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/60 px-8 py-10 text-left shadow-lg backdrop-blur transition-colors hover:border-slate-700 hover:bg-slate-900/80"
+            className="group relative overflow-hidden rounded-xl border border-emerald-500/30 bg-slate-900/60 px-8 py-10 text-left shadow-lg backdrop-blur transition-colors hover:border-emerald-400/50 hover:bg-slate-900/80"
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
           >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-sky-400/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             <div className="mx-auto flex max-w-sm flex-col items-center text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sky-500/15">
-                <svg className="h-8 w-8 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/10 ring-1 ring-emerald-400/40 shadow-[0_0_32px_-12px_rgba(16,185,129,0.5)]">
+                <svg className="h-8 w-8 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-white">Create New Project</h3>
-              <p className="text-sm text-slate-400">
+              <h3 className="mb-2 font-mono text-xl font-semibold text-white tracking-tight">Create New Project</h3>
+              <p className="font-mono text-sm text-emerald-300/80">
                 Start a fresh investigation with a new database and workspace
               </p>
             </div>
+            <div className="pointer-events-none absolute -inset-px rounded-xl ring-1 ring-emerald-400/30" />
           </motion.button>
 
           <motion.button
             onClick={onProjectLoad}
-            className="group relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/60 px-8 py-10 text-left shadow-lg backdrop-blur transition-colors hover:border-slate-700 hover:bg-slate-900/80"
+            className="group relative overflow-hidden rounded-xl border border-sky-500/30 bg-slate-900/60 px-8 py-10 text-left shadow-lg backdrop-blur transition-colors hover:border-sky-400/50 hover:bg-slate-900/80"
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
           >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-400/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-sky-400/10 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             <div className="mx-auto flex max-w-sm flex-col items-center text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-                <svg className="h-8 w-8 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sky-400/10 ring-1 ring-sky-400/40 shadow-[0_0_32px_-12px_rgba(56,189,248,0.5)]">
+                <svg className="h-8 w-8 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-white">Load Project</h3>
-              <p className="text-sm text-slate-400">Continue working on an existing investigation</p>
+              <h3 className="mb-2 font-mono text-xl font-semibold text-white tracking-tight">Load Project</h3>
+              <p className="font-mono text-sm text-sky-300/80">Continue working on an existing investigation</p>
             </div>
+            <div className="pointer-events-none absolute -inset-px rounded-xl ring-1 ring-sky-400/30" />
           </motion.button>
         </div>
 
@@ -144,7 +169,7 @@ export function WelcomeScreen({ onProjectCreate, onProjectLoad }: WelcomeScreenP
         )}
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-slate-500">Your data is encrypted and stored locally on your device</p>
+          <p className="font-mono text-xs text-slate-500">Your data is encrypted and stored locally on your device</p>
         </div>
       </motion.div>
     </div>
@@ -153,7 +178,7 @@ export function WelcomeScreen({ onProjectCreate, onProjectLoad }: WelcomeScreenP
 
 const flipCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789!@#$%^&*()_+-=<>'.split('');
 
-function FlippingHeadline() {
+function MorphingHeadline() {
   const roles = useMemo(
     () => [
       'Investigate. Connect. Conclude.',
@@ -165,86 +190,191 @@ function FlippingHeadline() {
     []
   );
 
-  const [currentRole, setCurrentRole] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const isAnimatingRef = useRef(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fromText, setFromText] = useState(roles[0]);
+  const [toText, setToText] = useState(roles[0]);
+  const [currentLen, setCurrentLen] = useState(roles[0].length);
+  const [revealTailCount, setRevealTailCount] = useState(0); // revealed chars beyond common prefix
+  const [scrambleTick, setScrambleTick] = useState(0);
+  const animatingRef = useRef(false);
+  const reducedMotion = useRef(false);
+
+  useEffect(() => {
+    try {
+      reducedMotion.current = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {}
+  }, []);
+
+  const commonPrefixLength = (a: string, b: string) => {
+    const min = Math.min(a.length, b.length);
+    let i = 0;
+    while (i < min && a[i] === b[i]) i++;
+    return i;
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!isAnimatingRef.current) {
-        isAnimatingRef.current = true;
-        setIsAnimating(true);
-        setTimeout(() => {
-          setCurrentRole((prev) => (prev + 1) % roles.length);
-          isAnimatingRef.current = false;
-          setIsAnimating(false);
-        }, 800);
-      }
+      if (animatingRef.current) return;
+      const nextIndex = (currentIndex + 1) % roles.length;
+      const nextText = roles[nextIndex];
+      // Use the currently displayed text as the source to avoid stale closures
+      startMorph(toText, nextText);
+      setCurrentIndex(nextIndex);
     }, 3000);
     return () => clearInterval(interval);
-  }, [roles.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, roles, toText]);
 
-  const text = roles[currentRole];
+  const startMorph = (from: string, to: string) => {
+    animatingRef.current = true;
+    setFromText(from);
+    setToText(to);
+
+    const fromLen = from.length;
+    const toLen = to.length;
+    const prefixLen = commonPrefixLength(from, to);
+
+    if (reducedMotion.current) {
+      setCurrentLen(toLen);
+      setRevealTailCount(toLen - prefixLen);
+      setFromText(to);
+      animatingRef.current = false;
+      return;
+    }
+
+    // rAF-based timing
+    const perCharMs = 70;
+    const durationMs = Math.max(500, (toLen - prefixLen) * perCharMs);
+    const start = performance.now();
+
+    const scrambleInterval = setInterval(() => setScrambleTick((t) => t + 1), 40);
+
+    const tick = () => {
+      const now = performance.now();
+      const progress = Math.min(1, (now - start) / durationMs);
+      const revealed = Math.floor((toLen - prefixLen) * progress);
+      setRevealTailCount(revealed);
+
+      // Morph overall length smoothly from fromLen to toLen
+      const len = Math.round(fromLen + (toLen - fromLen) * progress);
+      setCurrentLen(len);
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        clearInterval(scrambleInterval);
+        setCurrentLen(toLen);
+        setRevealTailCount(toLen - prefixLen);
+        setFromText(to);
+        animatingRef.current = false;
+      }
+    };
+
+    requestAnimationFrame(tick);
+  };
+
+  // Initialize
+  useEffect(() => {
+    setCurrentLen(fromText.length);
+    const prefixLen = commonPrefixLength(fromText, toText);
+    setRevealTailCount(fromText.length - prefixLen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const renderChar = (i: number) => {
+    const targetChar = toText[i] ?? '';
+    const fromChar = fromText[i] ?? '';
+    const prefixLen = commonPrefixLength(fromText, toText);
+
+    // Static common prefix
+    if (i < prefixLen) {
+      if (targetChar === ' ') {
+        return (
+          <span key={`p-sp-${i}`} className="bg-clip-text text-transparent" style={{ width: '0.6em', whiteSpace: 'pre' }}>
+            {' '}
+          </span>
+        );
+      }
+      return (
+        <span key={`p-${i}`} className="bg-gradient-to-r from-emerald-300 via-sky-300 to-fuchsia-300 bg-clip-text text-transparent">
+          {targetChar}
+        </span>
+      );
+    }
+
+    // Revealed tail after prefix
+    if (i < prefixLen + revealTailCount) {
+      if (targetChar === ' ') {
+        return (
+          <span key={`f-sp-${i}`} className="bg-clip-text text-transparent" style={{ width: '0.6em', whiteSpace: 'pre' }}>
+            {' '}
+          </span>
+        );
+      }
+      return (
+        <span key={`f-${i}`} className="bg-gradient-to-r from-emerald-300 via-sky-300 to-fuchsia-300 bg-clip-text text-transparent">
+          {targetChar}
+        </span>
+      );
+    }
+
+    // Unrevealed: keep spacing if space in either
+    if (targetChar === ' ' || fromChar === ' ') {
+      return (
+        <span key={`u-sp-${i}`} className="bg-clip-text text-transparent" style={{ width: '0.6em', whiteSpace: 'pre' }}>
+          {' '}
+        </span>
+      );
+    }
+
+    // Scramble placeholder for unrevealed tail
+    const ch = flipCharacters[Math.floor(Math.random() * flipCharacters.length)];
+    return (
+      <span key={`s-${i}-${scrambleTick}`} className="bg-gradient-to-r from-emerald-300 via-sky-300 to-fuchsia-300 bg-clip-text text-transparent opacity-70">
+        {ch}
+      </span>
+    );
+  };
+
+  // Caret position at end of revealed section
+  const caretIndex = Math.min(currentLen, commonPrefixLength(fromText, toText) + revealTailCount);
 
   return (
     <div className="relative mb-3 select-none">
-      <div className="flex items-center justify-center">
-        {Array.from(text).map((char, idx) => (
-          <AnimatedChar key={`${idx}-${char}`} char={char} index={idx} isAnimating={isAnimating} />
-        ))}
+      <div className="flex items-center justify-center font-mono text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
+        {Array.from({ length: currentLen }).map((_, i) => renderChar(i))}
+        <span
+          aria-hidden
+          className="ml-0.5 inline-block h-[1.1em] w-[0.5ch] translate-y-[0.08em] bg-emerald-300/80 shadow-[0_0_12px_rgba(16,185,129,0.6)] [animation:blink_1.1s_steps(2,_start)_infinite]"
+          style={{ visibility: caretIndex >= currentLen ? 'visible' : 'visible' }}
+        />
       </div>
     </div>
   );
 }
 
-function AnimatedChar({ char, index, isAnimating }: { char: string; index: number; isAnimating: boolean }) {
-  const [displayChar, setDisplayChar] = useState(char);
-  const [isFlipping, setIsFlipping] = useState(false);
-
-  const shouldAnimate = char !== ' ' && char.trim() !== '';
-
-  useEffect(() => {
-    if (isAnimating && shouldAnimate) {
-      setIsFlipping(true);
-      let flipCount = 0;
-      const maxFlips = 6 + Math.floor(Math.random() * 4);
-      const interval = setInterval(() => {
-        if (flipCount < maxFlips) {
-          setDisplayChar(flipCharacters[Math.floor(Math.random() * flipCharacters.length)]);
-          flipCount++;
-        } else {
-          setDisplayChar(char);
-          setIsFlipping(false);
-          clearInterval(interval);
-        }
-      }, 60 + index * 8);
-      return () => clearInterval(interval);
-    } else if (!isAnimating) {
-      setDisplayChar(char);
-      setIsFlipping(false);
-    }
-  }, [char, index, isAnimating, shouldAnimate]);
-
-  if (!shouldAnimate) {
-    return (
-      <span
-        className="inline-block bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent"
-        style={{ width: char === ' ' ? '0.25em' : 'auto', whiteSpace: 'pre' }}
-      >
-        {char}
-      </span>
-    );
-  }
-
+function CodeRain() {
+  const columns = 18;
+  const chars = '日月金木水火土ABCDEFGHIJKLMNPQRSTUVWXYZ1234567890'.split('');
+  const items = Array.from({ length: columns }).map((_, i) => ({ i, delay: Math.random() * 3, speed: 8 + Math.random() * 6, left: (i / columns) * 100 }));
   return (
-    <motion.span
-      initial={{ rotateX: 0 }}
-      animate={{ rotateX: isFlipping ? [0, 90, 0] : 0, scale: isFlipping ? [1, 1.1, 1] : 1 }}
-      transition={{ duration: isFlipping ? 0.08 : 0.3, ease: 'easeInOut' }}
-      className="inline-block bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent"
-      style={{ transformStyle: 'preserve-3d', transformOrigin: 'center bottom', whiteSpace: 'pre' }}
-    >
-      {displayChar}
-    </motion.span>
+    <div className="pointer-events-none absolute inset-0 opacity-[0.10]">
+      {items.map(({ i, delay, speed, left }) => (
+        <motion.div
+          key={i}
+          className="absolute h-[200%] w-6 text-emerald-300/80"
+          style={{ left: `${left}%` }}
+          initial={{ y: '-100%' }}
+          animate={{ y: ['-100%', '0%'] }}
+          transition={{ repeat: Infinity, ease: 'linear', duration: speed, delay }}
+        >
+          <div className="select-none text-center font-mono text-sm leading-5">
+            {Array.from({ length: 80 }).map((_, j) => (
+              <div key={j}>{chars[Math.floor(Math.random() * chars.length)]}</div>
+            ))}
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }
