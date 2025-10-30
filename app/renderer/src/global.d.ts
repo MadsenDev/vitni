@@ -1,6 +1,7 @@
 import type {
   AssertionRecord,
   AuditRecord,
+  AttachmentResult,
   EntityRecord,
   SourceRecord,
   TransformRegistry,
@@ -45,6 +46,7 @@ interface PiBridge {
   projectNew: () => Promise<boolean>;
   projectOpen: () => Promise<boolean>;
   projectSaveAs: () => Promise<boolean>;
+  attachFile: (payload: { data: ArrayBuffer; name: string; mime: string }) => Promise<AttachmentResult>;
   getProjectSetting: <T = unknown>(key: string) => Promise<T | null>;
   setProjectSetting: (key: string, value: unknown) => Promise<boolean>;
   updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
