@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AssertionRecord,
   AuditRecord,
+  AttachmentResult,
   EntityRecord,
   TransformRegistry,
   TransformRunRecord
@@ -50,6 +51,12 @@ function createBridge() {
     projectNew: () => ipcRenderer.invoke('project:new'),
     projectOpen: () => ipcRenderer.invoke('project:open'),
     projectSaveAs: () => ipcRenderer.invoke('project:saveAs'),
+    attachFile: (payload: { data: ArrayBuffer; name: string; mime: string }): Promise<AttachmentResult> =>
+      ipcRenderer.invoke('project:attachFile', {
+        data: Buffer.from(payload.data),
+        name: payload.name,
+        mime: payload.mime
+      }),
     getProjectSetting: (key: string) => ipcRenderer.invoke('project-setting:get', key),
     setProjectSetting: (key: string, value: unknown) => ipcRenderer.invoke('project-setting:set', key, value)
   };

@@ -1,16 +1,14 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron';
 import path from 'node:path';
-import fs from 'node:fs';
 import { URL } from 'node:url';
-import { DatabaseProvider } from './persistence/database';
 import { registerIpcHandlers } from './ipc';
-import { ensureMigrations } from './persistence/migrations';
 import { createTransformRegistry } from './transforms/registry';
+import { ProjectManager } from './projectManager';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 let mainWindow: BrowserWindow | null = null;
-let splashWindow: BrowserWindow | null = null;
+let projectManager: ProjectManager | null = null;
 
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -119,7 +117,7 @@ async function createWindow() {
   });
 
   // Surface load failures and avoid being stuck behind the splash
-  mainWindow.webContents.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
+  mainWindow.webContents.once('did-fail-load', (_event, code, desc) => {
     dialog.showErrorBox('Renderer failed to load', `${desc} (code ${code})`);
     if (!mainWindow?.isVisible()) {
       mainWindow?.show();
@@ -129,14 +127,13 @@ async function createWindow() {
   // Kick off background initialization after the window has begun loading
   ;(async () => {
     try {
-      console.log('[Main] init: creating db provider');
-      const dbProvider = new DatabaseProvider();
-      console.log('[Main] init: ensuring migrations');
-      await ensureMigrations(dbProvider);
+      console.log('[Main] init: creating project manager');
+      projectManager = new ProjectManager(path.join(app.getPath('userData'), 'projects'));
+      await projectManager.initialize();
       console.log('[Main] init: building transform registry');
       const transformRegistry = createTransformRegistry();
       console.log('[Main] init: registering IPC handlers');
-      registerIpcHandlers(ipcMain, dbProvider, transformRegistry);
+      registerIpcHandlers(ipcMain, projectManager, transformRegistry);
       console.log('[Main] init: complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -147,7 +144,7 @@ async function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    dbProvider.close();
+    void projectManager?.closeProject();
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -160,6 +157,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  void projectManager?.closeProject();
 });
 
 app.on('activate', () => {

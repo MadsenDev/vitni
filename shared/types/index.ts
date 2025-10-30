@@ -33,6 +33,8 @@ export interface SourceRecord {
   locator: string;
   title: string | null;
   added_at: number;
+  hash: string | null;
+  mime: string | null;
 }
 
 export interface AssertionRecord {
@@ -93,6 +95,15 @@ export interface SourceSummary {
   locator: string;
   title?: string | null;
   added_at: number;
+  hash?: string | null;
+  mime?: string | null;
+}
+
+export interface AttachmentResult {
+  hash: string;
+  relativePath: string;
+  absolutePath: string;
+  mimeType: string;
 }
 
 export * from './transforms';
