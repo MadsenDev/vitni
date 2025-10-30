@@ -1,0 +1,24 @@
+{
+  "name": "Operation Glass Harbor",
+  "id": "f6d26d58-66bd-41a1-a3b3-7d0a4b06bf7e",
+  "created_at": 1714003200000,
+  "updated_at": 1714694400000,
+  "schema_version": 1,
+  "app_version": "0.1.0",
+  "encryption": {
+    "driver": "sqlcipher",
+    "kdf": "PBKDF2",
+    "key_source": "env:PI_DB_KEY"
+  },
+  "paths": {
+    "db": "db/case.sqlite",
+    "attachments": "attachments",
+    "sources": "sources",
+    "thumbnails": "thumbnails",
+    "exports": "exports",
+    "snapshots": "snapshots",
+    "logs": "transforms_logs",
+    "cache": "cache",
+    "tmp": "tmp"
+  }
+}
