@@ -1,5 +1,6 @@
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { SourcesList } from './SourcesList';
+import { MediaGallery } from './MediaGallery';
 import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
 import { relationshipTypes } from '../lib/relationshipTypes';
@@ -276,6 +277,7 @@ export function InspectorPanel({
               </button>
             </div>
             <SourcesList sources={sources} />
+            <MediaGallery sources={sources} />
           </section>
         </div>
       ) : selectedEdgeId ? (

@@ -22,7 +22,13 @@ interface PiBridge {
     properties: Record<string, unknown>;
   }) => Promise<string>;
   createEdge: (payload: { src_id: string; dst_id: string; type: string; properties: Record<string, unknown> }) => Promise<string>;
-  createSource: (payload: { kind: string; locator: string; title?: string }) => Promise<string>;
+  createSource: (payload: {
+    kind: string;
+    locator: string;
+    title?: string;
+    hash?: string | null;
+    mime?: string | null;
+  }) => Promise<string>;
   createAssertion: (payload: {
     subject_kind: string;
     subject_id: string;
@@ -47,6 +53,9 @@ interface PiBridge {
   projectOpen: () => Promise<boolean>;
   projectSaveAs: () => Promise<boolean>;
   attachFile: (payload: { data: ArrayBuffer; name: string; mime: string }) => Promise<AttachmentResult>;
+  getAttachmentData: (
+    payload: { locator: string; mime?: string | null }
+  ) => Promise<{ base64: string; mimeType: string; fileName: string }>;
   getProjectSetting: <T = unknown>(key: string) => Promise<T | null>;
   setProjectSetting: (key: string, value: unknown) => Promise<boolean>;
   updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
