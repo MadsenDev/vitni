@@ -1,6 +1,7 @@
-import { type FormEvent, useState } from 'react';
-import type { Confidence, EntityRecord } from '@shared/types';
+import { type ChangeEvent, type FormEvent, useState } from 'react';
+import type { AttachmentResult, Confidence, EntityRecord } from '@shared/types';
 import { formatConfidenceLabel } from '../../lib/confidence';
+import { inferSourceKind, readFileAsArrayBuffer } from '../../lib/files';
 
 interface Props {
   entityId: EntityRecord['id'];
@@ -15,10 +16,56 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [confidence, setConfidence] = useState<Confidence>('asserted');
+  const [sourceMime, setSourceMime] = useState<string | null>(null);
+  const [uploadedAttachment, setUploadedAttachment] = useState<
+    (AttachmentResult & { originalName: string }) | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = kind.trim().length > 0 && locator.trim().length > 0 && !isSubmitting;
+  const canSubmit =
+    kind.trim().length > 0 &&
+    locator.trim().length > 0 &&
+    !isSubmitting &&
+    !isUploading;
+
+  const resetAttachment = () => {
+    setUploadedAttachment(null);
+    setLocator('');
+    setTitle('');
+    setSourceMime(null);
+    setKind('document');
+  };
+
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const data = await readFileAsArrayBuffer(file);
+      const attachment = await window.piBridge.attachFile({
+        data,
+        name: file.name,
+        mime: file.type || 'application/octet-stream'
+      });
+
+      setUploadedAttachment({ ...attachment, originalName: file.name });
+      setLocator(attachment.relativePath);
+      setTitle((current) => current || file.name);
+      setKind(inferSourceKind(file.type || attachment.mimeType));
+      setSourceMime(attachment.mimeType || file.type || 'application/octet-stream');
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload attachment');
+      resetAttachment();
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,7 +78,9 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
       const sourceId = await window.piBridge.createSource({
         kind,
         locator,
-        title: title.trim() ? title.trim() : undefined
+        title: title.trim() ? title.trim() : undefined,
+        hash: uploadedAttachment?.hash ?? null,
+        mime: sourceMime ?? uploadedAttachment?.mimeType ?? null
       });
 
       await window.piBridge.createAssertion({
@@ -53,8 +102,7 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
       });
 
       setKind('document');
-      setLocator('');
-      setTitle('');
+      resetAttachment();
       setNote('');
       setConfidence('asserted');
 
@@ -68,6 +116,37 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" aria-label="Add source">
+      <div>
+        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Attachment</label>
+        <div className="mt-2 space-y-2 rounded border border-slate-800 bg-slate-900/60 p-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="text-xs text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-slate-800 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-slate-200 hover:file:bg-slate-700"
+            />
+            {uploadedAttachment && (
+              <button
+                type="button"
+                onClick={resetAttachment}
+                className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+              >
+                Remove file
+              </button>
+            )}
+          </div>
+          {isUploading && <p className="text-xs text-slate-500">Uploading…</p>}
+          {uploadedAttachment && (
+            <div className="rounded border border-slate-800 bg-slate-950/40 p-2 text-xs text-slate-400">
+              <p className="font-medium text-slate-200">{uploadedAttachment.originalName}</p>
+              <p className="truncate">Stored as: {uploadedAttachment.relativePath}</p>
+              <p className="capitalize">Detected kind: {kind}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div>
         <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kind</label>
         <input
@@ -86,8 +165,12 @@ export function AddSourceForm({ entityId, onSourceCreated }: Props) {
           value={locator}
           onChange={(event) => setLocator(event.target.value)}
           placeholder="/path/to/file.pdf"
+          readOnly={Boolean(uploadedAttachment)}
           required
         />
+        {uploadedAttachment && (
+          <p className="mt-1 text-xs text-slate-500">Locator locked to stored attachment path.</p>
+        )}
       </div>
 
       <div>

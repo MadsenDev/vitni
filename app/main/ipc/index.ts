@@ -41,6 +41,11 @@ interface CreateSourcePayload {
   mime?: string | null;
 }
 
+interface AttachmentRequestPayload {
+  locator: string;
+  mime?: string | null;
+}
+
 interface AssertionPayload {
   subject_kind: string;
   subject_id: string;
@@ -355,6 +360,18 @@ export function registerIpcHandlers(
     ): Promise<AttachmentResult> => {
       const buffer = Buffer.isBuffer(payload.data) ? payload.data : Buffer.from(payload.data);
       return projectManager.attachFile(buffer, payload.name, payload.mime);
+    }
+  );
+
+  ipcMain.handle(
+    'project:getAttachmentData',
+    async (_event, payload: AttachmentRequestPayload) => {
+      const buffer = await projectManager.readAttachment(payload.locator);
+      return {
+        base64: buffer.toString('base64'),
+        mimeType: payload.mime ?? 'application/octet-stream',
+        fileName: path.basename(payload.locator)
+      };
     }
   );
 

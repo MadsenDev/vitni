@@ -255,6 +255,23 @@ export class ProjectManager {
     return path.join(this.current.root, relativePath);
   }
 
+  async readAttachment(relativePath: string): Promise<Buffer> {
+    if (!this.current) {
+      throw new Error('No project is currently open');
+    }
+
+    const manifest = this.current.manifest;
+    const attachmentsRoot = path.resolve(this.current.root, manifest.paths.attachments);
+    const absolutePath = path.resolve(this.current.root, relativePath);
+
+    const relativeToAttachments = path.relative(attachmentsRoot, absolutePath);
+    if (relativeToAttachments.startsWith('..') || path.isAbsolute(relativeToAttachments)) {
+      throw new Error('Attachment path is outside of the project attachments directory');
+    }
+
+    return await fsp.readFile(absolutePath);
+  }
+
   private async ensureRecentProjectsFile() {
     try {
       await fsp.access(this.recentProjectsPath, fs.constants.F_OK);

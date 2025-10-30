@@ -28,7 +28,7 @@ function createBridge() {
     deleteEdge: (edgeId: string) => ipcRenderer.invoke('db:edge:delete', edgeId),
     updateEdge: (edgeId: string, updates: { type?: string; properties?: Record<string, unknown> }) =>
       ipcRenderer.invoke('db:edge:update', edgeId, updates),
-    createSource: (payload: { kind: string; locator: string; title?: string }) =>
+    createSource: (payload: { kind: string; locator: string; title?: string; hash?: string | null; mime?: string | null }) =>
       ipcRenderer.invoke('db:source:create', payload),
     createAssertion: (payload: {
       subject_kind: string;
@@ -57,6 +57,11 @@ function createBridge() {
         name: payload.name,
         mime: payload.mime
       }),
+    getAttachmentData: (payload: { locator: string; mime?: string | null }): Promise<{
+      base64: string;
+      mimeType: string;
+      fileName: string;
+    }> => ipcRenderer.invoke('project:getAttachmentData', payload),
     getProjectSetting: (key: string) => ipcRenderer.invoke('project-setting:get', key),
     setProjectSetting: (key: string, value: unknown) => ipcRenderer.invoke('project-setting:set', key, value)
   };
