@@ -114,6 +114,15 @@ export function TimelineOverlay({ open, onClose, nodes, edges }: TimelineOverlay
             default: return `${A} joined ${B} ${d}.`;
           }
         }
+        case 'ownership': {
+          switch (subtype) {
+            case 'owns': return `${A} owned ${B} ${d}.`;
+            case 'leases': return `${A} leased ${B} ${d}.`;
+            case 'borrowed': return `${A} borrowed ${B} ${d}.`;
+            case 'assigned_to': return `${B} was assigned to ${A} ${d}.`;
+            default: return `${A} had ownership of ${B} ${d}.`;
+          }
+        }
         case 'called':
           return `${A} called ${B} ${d}.`;
         case 'emailed':

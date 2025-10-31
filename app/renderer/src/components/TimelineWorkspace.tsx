@@ -101,6 +101,15 @@ export function TimelineWorkspace({ nodes, edges }: TimelineWorkspaceProps) {
             default: return `${A} joined ${B} ${d}.`;
           }
         }
+        case 'ownership': {
+          switch (subtype) {
+            case 'owns': return `${A} owned ${B} ${d}.`;
+            case 'leases': return `${A} leased ${B} ${d}.`;
+            case 'borrowed': return `${A} borrowed ${B} ${d}.`;
+            case 'assigned_to': return `${B} was assigned to ${A} ${d}.`;
+            default: return `${A} had ownership of ${B} ${d}.`;
+          }
+        }
         case 'called': return `${A} called ${B} ${d}.`;
         case 'emailed': return `${A} emailed ${B} ${d}.`;
         case 'visited': return `${A} visited ${B} ${d}.`;

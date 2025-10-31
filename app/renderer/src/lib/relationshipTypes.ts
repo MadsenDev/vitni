@@ -44,6 +44,20 @@ export const relationshipTypes: RelationshipType[] = [
     ]
   },
   {
+    id: 'ownership',
+    label: 'Ownership',
+    icon: FaShieldAlt,
+    color: 'text-cyan-400',
+    description: 'Ownership or control relationships between a person and an asset/identifier',
+    bidirectional: false,
+    subtypes: [
+      { id: 'owns', label: 'Owns' },
+      { id: 'leases', label: 'Leases' },
+      { id: 'borrowed', label: 'Borrowed' },
+      { id: 'assigned_to', label: 'Assigned To' }
+    ]
+  },
+  {
     id: 'works_for',
     label: 'Works For',
     icon: FaBriefcase,

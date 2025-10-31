@@ -71,12 +71,27 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefi
     if (node.type === 'person') {
       return buildPersonName(props, node.label ?? '');
     }
-    const nameLike = (props.name as string)
-      || (props.title as string)
-      || (props.institution_name as string)
-      || (props.organization_name as string)
-      || (props.company as string)
-      || '';
+    // Heuristics by common asset/identifier kinds
+    const typeLower = (node.type || '').toLowerCase();
+    const getStr = (k: string) => (props[k] as string | undefined) || '';
+    if (typeLower.includes('phone')) {
+      const phone = getStr('phone_number') || getStr('phone') || getStr('e164') || getStr('number');
+      if (phone) return phone;
+    }
+    if (typeLower.includes('email')) {
+      const email = getStr('email') || getStr('email_address') || getStr('address');
+      if (email) return email;
+    }
+    if (typeLower.includes('device')) {
+      const dev = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model');
+      if (dev) return dev;
+    }
+    // Generic fallbacks
+    const nameLike = getStr('name')
+      || getStr('title')
+      || getStr('institution_name')
+      || getStr('organization_name')
+      || getStr('company');
     const base = (node.label ?? '').trim();
     const pick = (nameLike || base).trim();
     return pick || node.id;
@@ -178,6 +193,7 @@ export default function App() {
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
   const [searchOpen, setSearchOpen] = useState(false);
   const [boxSelectEnabled, setBoxSelectEnabled] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'nodes' | 'ai'>('nodes');
   const [activeTypeIds, setActiveTypeIds] = useState<Set<string>>(new Set(nodeTypes.map(nt => nt.id)));
   const [hasSourcesOnly, setHasSourcesOnly] = useState(false);
   const [nodeIdsWithSources, setNodeIdsWithSources] = useState<Set<string>>(new Set());
@@ -294,8 +310,61 @@ export default function App() {
     void window.piBridge.loadGraph().then((data) => {
       setGraph({ nodes: data.nodes, edges: data.edges });
       setGraphLoaded(true);
+      // Normalize labels for identifiers if missing or generic
+      (async () => {
+        try {
+          await Promise.allSettled(
+            data.nodes.map(async (n) => {
+              const typeLower = (n.type || '').toLowerCase();
+              const props = (n.properties || {}) as Record<string, unknown>;
+              const getStr = (k: string) => (props[k] as string | undefined) || '';
+              let candidate: string | undefined;
+              if (typeLower.includes('phone')) {
+                candidate = getStr('phone_number') || getStr('phone') || getStr('e164') || getStr('number') || undefined;
+              } else if (typeLower.includes('email')) {
+                candidate = getStr('email') || getStr('email_address') || getStr('address') || undefined;
+              } else if (typeLower.includes('device')) {
+                candidate = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model') || undefined;
+              } else if (
+                typeLower.includes('organization') ||
+                typeLower.includes('company') ||
+                typeLower.includes('institution') ||
+                typeLower.includes('agency') ||
+                typeLower.includes('university') ||
+                typeLower.includes('school')
+              ) {
+                candidate =
+                  getStr('organization_name') ||
+                  getStr('company_name') ||
+                  getStr('institution_name') ||
+                  getStr('legal_name') ||
+                  getStr('name') ||
+                  getStr('abbr') ||
+                  getStr('alias') ||
+                  undefined;
+              }
+              if (!candidate) return;
+              const currentLabel = (n.label || '').trim().toLowerCase();
+              const typeWord = (n.type || '').replaceAll('_', ' ').trim().toLowerCase();
+              const isGeneric = currentLabel === '' || currentLabel === typeWord;
+              if (isGeneric || currentLabel !== candidate.toLowerCase()) {
+                await window.piBridge.updateEntity(n.id, { label: candidate });
+              }
+            })
+          );
+        } catch {
+          // non-blocking normalization errors ignored
+        }
+      })();
     });
   }, []);
+
+  // Ensure the AI tab is only active when enabled
+  useEffect(() => {
+    if (!localAIEnabled && sidebarTab === 'ai') {
+      setSidebarTab('nodes');
+    }
+  }, [localAIEnabled, sidebarTab]);
 
   // Refresh assertions/sources when requested
   useEffect(() => {
@@ -746,8 +815,40 @@ export default function App() {
         newProperties[propertyKey] = value;
       }
 
-      // Update in database
-      await window.piBridge.updateEntity(nodeId, {
+      // Auto-label: prefer identifier fields for certain types
+      let nextLabel: string | undefined;
+      const typeLower = (node.type || '').toLowerCase();
+      const getStr = (k: string) => (newProperties[k] as string | undefined) || '';
+      if (typeLower.includes('phone')) {
+        nextLabel = getStr('phone_number') || getStr('phone') || getStr('e164') || getStr('number') || undefined;
+      } else if (typeLower.includes('email')) {
+        nextLabel = getStr('email') || getStr('email_address') || getStr('address') || undefined;
+      } else if (typeLower.includes('device')) {
+        nextLabel = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model') || undefined;
+      } else if (
+        typeLower.includes('organization') ||
+        typeLower.includes('company') ||
+        typeLower.includes('institution') ||
+        typeLower.includes('agency') ||
+        typeLower.includes('university') ||
+        typeLower.includes('school')
+      ) {
+        nextLabel =
+          getStr('organization_name') ||
+          getStr('company_name') ||
+          getStr('institution_name') ||
+          getStr('legal_name') ||
+          getStr('name') ||
+          getStr('abbr') ||
+          getStr('alias') ||
+          undefined;
+      }
+
+      // Update in database (include label if we computed one)
+      await window.piBridge.updateEntity(nodeId, nextLabel ? {
+        label: nextLabel,
+        properties: newProperties
+      } : {
         properties: newProperties
       });
 
@@ -756,7 +857,7 @@ export default function App() {
         ...prev,
         nodes: prev.nodes.map(n => 
           n.id === nodeId 
-            ? { ...n, properties: newProperties }
+            ? { ...n, properties: newProperties, label: nextLabel ?? n.label }
             : n
         )
       }));
@@ -865,12 +966,34 @@ export default function App() {
       
       <div className="flex flex-1 overflow-hidden">
       {view === 'graph' ? (
-      <aside className="w-80 border-r border-slate-800 bg-slate-950/70 p-6">
-        <div className="flex h-full flex-col space-y-6 overflow-y-auto pr-1">
-          <NodePalette onNodeDragStart={handleNodeDragStart} />
-          <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
-        </div>
-      </aside>
+        <aside className="w-80 border-r border-slate-800 bg-slate-950/70">
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-slate-800 px-4 pt-4">
+              <button
+                className={`rounded-t px-3 py-2 text-sm ${sidebarTab === 'nodes' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                onClick={() => setSidebarTab('nodes')}
+              >
+                Nodes
+              </button>
+              {localAIEnabled && (
+                <button
+                  className={`rounded-t px-3 py-2 text-sm ${sidebarTab === 'ai' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  onClick={() => setSidebarTab('ai')}
+                >
+                  AI
+                </button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 pr-3">
+              {sidebarTab === 'nodes' && (
+                <NodePalette onNodeDragStart={handleNodeDragStart} />
+              )}
+              {sidebarTab === 'ai' && localAIEnabled && (
+                <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
+              )}
+            </div>
+          </div>
+        </aside>
       ) : null}
 
       <main className="flex flex-1 flex-col">

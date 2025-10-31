@@ -1,4 +1,5 @@
 import { ConfidenceBadge } from './ConfidenceBadge';
+import React from 'react';
 import { SourcesList } from './SourcesList';
 import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
@@ -59,10 +60,26 @@ export function InspectorPanel({
   onUpdateProperty
   , onUpdateEdgeProperty
 }: InspectorPanelProps) {
+  const [tab, setTab] = React.useState<'details' | 'evidence'>('details');
   const selectedNode = selectedNodeId ? graphNodes.find(n => n.id === selectedNodeId) ?? null : null;
 
   return (
-    <aside className="w-96 overflow-y-auto border-l border-slate-800 bg-slate-950/70 p-6">
+    <aside className="w-96 overflow-y-auto border-l border-slate-800 bg-slate-950/70">
+      <div className="flex items-center gap-2 border-b border-slate-800 px-6 pt-4">
+        <button
+          className={`rounded-t px-3 py-2 text-sm ${tab === 'details' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          onClick={() => setTab('details')}
+        >
+          Details
+        </button>
+        <button
+          className={`rounded-t px-3 py-2 text-sm ${tab === 'evidence' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          onClick={() => setTab('evidence')}
+        >
+          Evidence
+        </button>
+      </div>
+      <div className="p-6 pr-4">
       {selectedNode ? (
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -100,6 +117,7 @@ export function InspectorPanel({
             </div>
           </div>
 
+          {tab === 'details' && (
           <div className="space-y-4">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Properties</h4>
             {(() => {
@@ -229,7 +247,9 @@ export function InspectorPanel({
               );
             })()}
           </div>
+          )}
 
+          {tab === 'evidence' && (
           <section className="mt-6 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Assertions</h4>
@@ -311,21 +331,21 @@ export function InspectorPanel({
                 </pre>
               </div>
             ))}
-          </section>
-
-          <section className="mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
-              <button
-                onClick={onAddSource}
-                className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
-                title="Add source"
-              >
-                +
-              </button>
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
+                <button
+                  onClick={onAddSource}
+                  className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
+                  title="Add source"
+                >
+                  +
+                </button>
+              </div>
+              <SourcesList sources={sources} />
             </div>
-            <SourcesList sources={sources} />
           </section>
+          )}
         </div>
       ) : selectedEdgeId ? (
         <div>
@@ -405,6 +425,7 @@ export function InspectorPanel({
           <p>Select a node or relationship to inspect details.</p>
         </div>
       )}
+      </div>
     </aside>
   );
 }
