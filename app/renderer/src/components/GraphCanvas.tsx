@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import type cytoscape from 'cytoscape';
 import type { ElementDefinition } from 'cytoscape';
@@ -15,6 +15,7 @@ interface GraphCanvasProps {
   onRequestCreateEdge?: (sourceId: string, targetId: string) => void;
   onNodeDragFree?: (id: string, x: number, y: number) => void;
   onSelectionChange?: (nodeIds: string[], edgeIds: string[]) => void;
+  showNodeImages?: boolean;
   apiRef?: React.MutableRefObject<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
@@ -45,6 +46,7 @@ export function GraphCanvas({
   onRequestCreateEdge,
   onNodeDragFree,
   onSelectionChange,
+  showNodeImages = false,
   apiRef
 }: GraphCanvasProps) {
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -284,119 +286,128 @@ export function GraphCanvas({
     };
   }, [apiRef]);
 
+  const stylesheet = useMemo<cytoscape.Stylesheet[]>(
+    () => [
+      {
+        selector: 'node',
+        style: {
+          'background-color': '#0b1220',
+          'border-width': 1,
+          'border-color': '#1f2a44',
+          'label': 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'color': '#e2e8f0',
+          'font-size': '11px',
+          'font-weight': '600',
+          'text-outline-width': 0,
+          'text-wrap': 'wrap',
+          'text-max-width': '120px',
+          'text-background-color': '#111827',
+          'text-background-opacity': 0.0,
+          'width': 'label',
+          'height': 'label',
+          'padding': '10px',
+          'shape': 'round-rectangle'
+        }
+      },
+      ...(showNodeImages
+        ? [
+            {
+              selector: 'node[hasImage = "true"][imageUrl]',
+              style: {
+                'background-image': 'data(imageUrl)',
+                'background-fit': 'cover',
+                'background-width': '100%',
+                'background-height': '100px',
+                'background-position-x': 'center',
+                'background-position-y': 'top',
+                'height': 'label',
+                'min-height': '140px',
+                'padding-top': '100px',
+                'text-valign': 'bottom',
+                'text-margin-y': -8
+              }
+            } satisfies cytoscape.Stylesheet
+          ]
+        : []),
+      {
+        selector: 'node:selected',
+        style: {
+          'border-color': '#22d3ee',
+          'border-width': 4,
+          'background-color': '#0f3a4f',
+          'outline-width': 10,
+          'outline-color': 'rgba(34,211,238,0.22)',
+          'color': '#ffffff',
+          'text-outline-width': 2,
+          'text-outline-color': '#081018'
+        }
+      },
+      {
+        selector: 'node:hover',
+        style: {
+          'border-color': '#38bdf8',
+          'border-width': 2
+        }
+      },
+      {
+        selector: 'node.preview',
+        style: {
+          'opacity': 0,
+          'width': 1,
+          'height': 1,
+          'label': '',
+          'events': 'no'
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 2,
+          'line-color': '#334155',
+          'target-arrow-color': '#334155',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'label': 'data(label)',
+          'font-size': '10px',
+          'color': '#cbd5e1',
+          'text-outline-width': 0,
+          'text-background-color': '#0f172a',
+          'text-background-opacity': 0.6,
+          'text-background-padding': 2
+        }
+      },
+      {
+        selector: 'edge.preview',
+        style: {
+          'line-color': '#3b82f6',
+          'target-arrow-color': '#3b82f6',
+          'target-arrow-shape': 'triangle',
+          'width': 2,
+          'line-style': 'dashed',
+          'events': 'no'
+        }
+      },
+      {
+        selector: 'edge:selected',
+        style: {
+          'line-color': '#3b82f6',
+          'target-arrow-color': '#3b82f6',
+          'width': 3
+        }
+      }
+    ],
+    [showNodeImages]
+  );
+
   return (
     <CytoscapeComponent
       className="h-full w-full"
       elements={elements}
       layout={{ name: 'preset' }}
       style={{ background: '#0f172a' }}
-      stylesheet={[
-        {
-          selector: 'node',
-          style: {
-            'background-color': '#0b1220',
-            'border-width': 1,
-            'border-color': '#1f2a44',
-            'label': 'data(label)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'color': '#e2e8f0',
-            'font-size': '11px',
-            'font-weight': '600',
-            'text-outline-width': 0,
-            'text-wrap': 'wrap',
-            'text-max-width': '120px',
-            'text-background-color': '#111827',
-            'text-background-opacity': 0.0,
-            'width': 'label',
-            'height': 'label',
-            'padding': '10px',
-            'shape': 'round-rectangle'
-          }
-        },
-        {
-          selector: 'node[hasImage = "true"][imageUrl]',
-          style: {
-            'background-image': 'data(imageUrl)',
-            'background-fit': 'cover',
-            'background-width': '100%',
-            'background-height': '100px',
-            'background-position-x': 'center',
-            'background-position-y': 'top',
-            'height': 'label',
-            'min-height': '140px',
-            'padding-top': '100px',
-            'text-valign': 'bottom',
-            'text-margin-y': -8
-          }
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'border-color': '#22d3ee',
-            'border-width': 4,
-            'background-color': '#0f3a4f',
-            'outline-width': 10,
-            'outline-color': 'rgba(34,211,238,0.22)',
-            'color': '#ffffff',
-            'text-outline-width': 2,
-            'text-outline-color': '#081018'
-          }
-        },
-        {
-          selector: 'node:hover',
-          style: {
-            'border-color': '#38bdf8',
-            'border-width': 2
-          }
-        },
-        {
-          selector: 'node.preview',
-          style: {
-            'opacity': 0,
-            'width': 1,
-            'height': 1,
-            'label': '',
-            'events': 'no'
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 2,
-            'line-color': '#334155',
-            'target-arrow-color': '#334155',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-            'label': 'data(label)',
-            'font-size': '10px',
-            'color': '#cbd5e1',
-            'text-outline-width': 0,
-            'text-background-color': '#0f172a',
-            'text-background-opacity': 0.6,
-            'text-background-padding': 2
-          }
-        },
-        {
-          selector: 'edge.preview',
-          style: {
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
-            'target-arrow-shape': 'triangle',
-            'width': 2,
-            'line-style': 'dashed',
-            'events': 'no'
-          }
-        },
-        {
-          selector: 'edge:selected',
-          style: {
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
-            'width': 3
-          }
-        }
-      ]}
+      stylesheet={stylesheet}
       cy={(cyInstance: cytoscape.Core) => {
         cyRef.current = cyInstance;
         // Reapply box-select state on mount if previously enabled
