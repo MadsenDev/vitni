@@ -117,4 +117,17 @@ export interface AttachmentResult {
   mimeType: string;
 }
 
+export interface ProjectMetadata {
+  author?: string;
+  description?: string;
+  caseId?: string;
+  agency?: string;
+  contact?: string;
+  jurisdiction?: string;
+  tags?: string[];
+  createdDate?: string; // ISO date
+  modifiedDate?: string; // ISO date
+  notes?: string;
+}
+
 export * from './transforms';

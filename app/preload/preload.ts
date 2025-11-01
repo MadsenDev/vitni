@@ -5,7 +5,8 @@ import type {
   AttachmentResult,
   EntityRecord,
   TransformRegistry,
-  TransformRunRecord
+  TransformRunRecord,
+  ProjectMetadata
 } from '../../shared/types';
 import type { GraphSnapshot, GraphNodeSnapshot } from '../renderer/src/types/graph';
 
@@ -51,6 +52,8 @@ function createBridge() {
     listAllSourcesWithUsage: () => ipcRenderer.invoke('db:sources:list-with-usage'),
     projectNew: () => ipcRenderer.invoke('project:new'),
     projectOpen: () => ipcRenderer.invoke('project:open'),
+    projectOpenPath: (path: string): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('project:open:path', path),
+    projectRecent: (): Promise<Array<{ root: string; name: string; lastOpenedAt: number }>> => ipcRenderer.invoke('project:recent'),
     projectSaveAs: () => ipcRenderer.invoke('project:saveAs'),
     attachFile: (payload: { data: ArrayBuffer; name: string; mime: string }): Promise<AttachmentResult> =>
       ipcRenderer.invoke('project:attachFile', {
@@ -64,7 +67,25 @@ function createBridge() {
       fileName: string;
     }> => ipcRenderer.invoke('project:getAttachmentData', payload),
     getProjectSetting: (key: string) => ipcRenderer.invoke('project-setting:get', key),
-    setProjectSetting: (key: string, value: unknown) => ipcRenderer.invoke('project-setting:set', key, value)
+    setProjectSetting: (key: string, value: unknown) => ipcRenderer.invoke('project-setting:set', key, value),
+    getProjectMetadata: (): Promise<ProjectMetadata | null> => ipcRenderer.invoke('project:metadata:get'),
+    setProjectMetadata: (meta: ProjectMetadata): Promise<boolean> => ipcRenderer.invoke('project:metadata:set', meta),
+    reportGenerate: (opts: { template: 'full'|'selection'|'timeline'|'person'; includeAttachments?: boolean; selectionIds?: string[]; personId?: string; useAI?: boolean }): Promise<{ outputDir: string }> =>
+      ipcRenderer.invoke('report:generate', opts),
+    aiStatus: (): Promise<{ endpoint: string; model: string; serverUp: boolean; modelAvailable: boolean }> => ipcRenderer.invoke('ai:ollama:status'),
+    aiStart: (): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('ai:ollama:start'),
+    aiPullModel: (): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('ai:ollama:pull'),
+    aiInstall: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('ai:ollama:install'),
+    aiInstallStart: (): Promise<{ started: boolean }> => ipcRenderer.invoke('ai:ollama:install:start'),
+    aiInstallCancel: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('ai:ollama:install:cancel'),
+    aiInstallRunning: (): Promise<{ running: boolean }> => ipcRenderer.invoke('ai:ollama:install:running'),
+    aiDownload: (): Promise<{ ok: boolean; path?: string; message?: string }> => ipcRenderer.invoke('ai:ollama:download'),
+    aiStop: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('ai:ollama:stop'),
+    openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+    windowMinimize: () => ipcRenderer.invoke('window:minimize'),
+    windowMaximize: () => ipcRenderer.invoke('window:maximize'),
+    windowClose: () => ipcRenderer.invoke('window:close'),
+    windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized') as Promise<boolean>
   };
 }
 
@@ -102,6 +123,16 @@ contextBridge.exposeInMainWorld('piMenu', {
     const handler = () => cb();
     ipcRenderer.on('menu:settings:terminology', handler);
     return () => ipcRenderer.removeListener('menu:settings:terminology', handler);
+  },
+  onProjectInfoOpen: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('menu:project:info', handler);
+    return () => ipcRenderer.removeListener('menu:project:info', handler);
+  },
+  onExportReportOpen: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('menu:report:export', handler);
+    return () => ipcRenderer.removeListener('menu:report:export', handler);
   }
 });
 
@@ -115,6 +146,8 @@ declare global {
       onSettingsOpen: (cb: () => void) => () => void;
       onMediaGalleryOpen: (cb: () => void) => () => void;
       onTerminologyOpen: (cb: () => void) => () => void;
+      onProjectInfoOpen: (cb: () => void) => () => void;
+      onExportReportOpen: (cb: () => void) => () => void;
     };
   }
 }

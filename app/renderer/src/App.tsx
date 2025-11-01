@@ -3,6 +3,7 @@ import cytoscape, { type ElementDefinition } from 'cytoscape';
 import type { EntityRecord, SourceRecord } from '@shared/types';
 import { ConsentModal } from './components/ConsentModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { TitleBar } from './components/TitleBar';
 import { NodePalette } from './components/NodePalette';
 import { NodeCreationModal } from './components/NodeCreationModal';
 import { relationshipTypes, type RelationshipType } from './lib/relationshipTypes';
@@ -24,6 +25,8 @@ import { MediaLibraryModal } from './components/MediaLibraryModal';
 import { TimelineWorkspace } from './components/TimelineWorkspace';
 import { TerminologyModal } from './components/TerminologyModal';
 import { FilterPanel } from './components/FilterPanel';
+import { ProjectSettingsModal } from './components/ProjectSettingsModal';
+import { ExportReportModal } from './components/ExportReportModal';
 
 type ParsedAssertionRecord = {
   id: string;
@@ -86,6 +89,18 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefi
       const dev = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model');
       if (dev) return dev;
     }
+    if (typeLower === 'website' || typeLower.includes('website')) {
+      const url = getStr('url') || getStr('domain') || getStr('title');
+      if (url) return url;
+    }
+    if (typeLower === 'server') {
+      const host = getStr('hostname') || getStr('ipAddress') || getStr('ip_address');
+      if (host) return host;
+    }
+    if (typeLower === 'cryptocurrency') {
+      const addr = getStr('address');
+      if (addr) return addr;
+    }
     // Generic fallbacks
     const nameLike = getStr('name')
       || getStr('title')
@@ -133,6 +148,7 @@ export default function App() {
   const [graph, setGraph] = useState<GraphSnapshot>({ nodes: [], edges: [] });
   const [graphLoaded, setGraphLoaded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [assertions, setAssertions] = useState<AssertionView[]>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [consentData, setConsentData] = useState<{
@@ -187,6 +203,8 @@ export default function App() {
   });
   const [localAIEnabled, setLocalAIEnabled] = useState(false);
   const [isLocalAILoading, setIsLocalAILoading] = useState(true);
+  const [loadingStage, setLoadingStage] = useState<'settings' | 'graph' | 'complete'>('settings');
+  const [splashReadyToHide, setSplashReadyToHide] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
@@ -209,6 +227,8 @@ export default function App() {
     onSelect?: ((source: SourceRecord) => void) | null;
   }>({ isOpen: false, mode: 'manage', onSelect: null });
   const [view, setView] = useState<'graph' | 'timeline'>('graph');
+  const [projectInfoOpen, setProjectInfoOpen] = useState(false);
+  const [exportReportOpen, setExportReportOpen] = useState(false);
   const graphApiRef = useRef<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
@@ -219,6 +239,7 @@ export default function App() {
 
   const loadSettings = useCallback(async () => {
     setIsLocalAILoading(true);
+    setLoadingStage('settings');
     try {
       const [localAI, showLabels, autoLayout, defaultConfidence] = await Promise.all([
         window.piBridge.getProjectSetting(LOCAL_AI_SETTING_KEY),
@@ -230,12 +251,19 @@ export default function App() {
       setShowNodeLabels(showLabels === null ? true : Boolean(showLabels));
       setAutoLayoutOnCreate(Boolean(autoLayout));
       setDefaultRelationshipConfidence((defaultConfidence as typeof defaultRelationshipConfidence) || 'unverified');
+      // Only move to 'graph' stage if graph isn't loaded yet
+      if (!graphLoaded) {
+        setLoadingStage('graph');
+      }
     } catch (error) {
       console.error('[App] Failed to load settings', error);
+      if (!graphLoaded) {
+        setLoadingStage('graph');
+      }
     } finally {
       setIsLocalAILoading(false);
     }
-  }, []);
+  }, [graphLoaded]);
 
   const handleLocalAIToggle = useCallback(async () => {
     const next = !localAIEnabled;
@@ -303,46 +331,74 @@ export default function App() {
   }, [hasSourcesOnly, graph.nodes]);
 
   useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
-
-  useEffect(() => {
-    void window.piBridge.loadGraph().then((data) => {
-      setGraph({ nodes: data.nodes, edges: data.edges });
-      setGraphLoaded(true);
+    const startTime = Date.now();
+    setLoadingStage('graph'); // Set to graph stage when graph loading starts
+    
+    // Load settings and graph in parallel
+    Promise.all([
+      loadSettings(),
+      window.piBridge.loadGraph()
+    ]).then(([, graphData]) => {
+      setGraph({ nodes: graphData.nodes, edges: graphData.edges });
+      setLoadingStage('complete');
+      const elapsed = Date.now() - startTime;
+      // Ensure minimum 2 seconds display time for smooth UX
+      const remainingTime = Math.max(0, 2000 - elapsed);
+      setTimeout(() => {
+        setGraphLoaded(true);
+        // Additional delay before hiding splash for polish
+        setTimeout(() => setSplashReadyToHide(true), 300);
+      }, remainingTime);
       // Normalize labels for identifiers if missing or generic
       (async () => {
         try {
           await Promise.allSettled(
-            data.nodes.map(async (n) => {
+            graphData.nodes.map(async (n) => {
               const typeLower = (n.type || '').toLowerCase();
               const props = (n.properties || {}) as Record<string, unknown>;
               const getStr = (k: string) => (props[k] as string | undefined) || '';
               let candidate: string | undefined;
-              if (typeLower.includes('phone')) {
-                candidate = getStr('phone_number') || getStr('phone') || getStr('e164') || getStr('number') || undefined;
-              } else if (typeLower.includes('email')) {
-                candidate = getStr('email') || getStr('email_address') || getStr('address') || undefined;
-              } else if (typeLower.includes('device')) {
-                candidate = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model') || undefined;
+              
+              // Map node types to their required/primary identifier properties
+              if (typeLower === 'phone' || typeLower.includes('phone')) {
+                candidate = getStr('number') || getStr('phone_number') || getStr('phone') || getStr('e164') || undefined;
+              } else if (typeLower === 'email' || typeLower.includes('email')) {
+                candidate = getStr('address') || getStr('email_address') || getStr('email') || undefined;
+              } else if (typeLower === 'device' || typeLower.includes('device')) {
+                candidate = getStr('name') || getStr('device_id') || getStr('imei') || getStr('serialNumber') || getStr('serial') || getStr('model') || undefined;
+              } else if (typeLower === 'server') {
+                candidate = getStr('hostname') || getStr('ipAddress') || getStr('ip_address') || undefined;
+              } else if (typeLower === 'website' || typeLower.includes('website')) {
+                candidate = getStr('url') || getStr('domain') || getStr('title') || undefined;
+              } else if (typeLower === 'cryptocurrency') {
+                candidate = getStr('address') || undefined;
+              } else if (typeLower === 'organization' || typeLower === 'educational' || typeLower === 'government' || typeLower === 'healthcare') {
+                // All organization types use 'name' as the required field
+                candidate = getStr('name') || getStr('legalName') || getStr('dba') || undefined;
               } else if (
                 typeLower.includes('organization') ||
                 typeLower.includes('company') ||
                 typeLower.includes('institution') ||
+                typeLower.includes('educational') ||
                 typeLower.includes('agency') ||
+                typeLower.includes('government') ||
+                typeLower.includes('healthcare') ||
                 typeLower.includes('university') ||
                 typeLower.includes('school')
               ) {
+                // Fallback for any organization-like types
                 candidate =
+                  getStr('name') ||
                   getStr('organization_name') ||
                   getStr('company_name') ||
                   getStr('institution_name') ||
                   getStr('legal_name') ||
-                  getStr('name') ||
+                  getStr('legalName') ||
                   getStr('abbr') ||
                   getStr('alias') ||
                   undefined;
               }
+              
               if (!candidate) return;
               const currentLabel = (n.label || '').trim().toLowerCase();
               const typeWord = (n.type || '').replaceAll('_', ' ').trim().toLowerCase();
@@ -439,6 +495,8 @@ export default function App() {
     const offMediaGallery = window.piMenu.onMediaGalleryOpen(() => {
       setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null });
     });
+    const offProjectInfo = window.piMenu.onProjectInfoOpen?.(() => setProjectInfoOpen(true));
+    const offExportReport = window.piMenu.onExportReportOpen?.(() => setExportReportOpen(true));
     return () => {
       offNew?.();
       offOpen?.();
@@ -446,6 +504,8 @@ export default function App() {
       offSettings?.();
       offMediaGallery?.();
       offTerminology?.();
+      offProjectInfo?.();
+      offExportReport?.();
     };
   }, []);
 
@@ -534,8 +594,24 @@ export default function App() {
     try {
       const ok = await window.piBridge.projectNew();
       if (ok) {
+        // Reset loading states for new project
+        setGraphLoaded(false);
+        setSplashReadyToHide(false);
+        setLoadingStage('settings');
+        setIsLocalAILoading(true);
+        
+        const startTime = Date.now();
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+        setLoadingStage('complete');
+        
+        const elapsed = Date.now() - startTime;
+        const remainingTime = Math.max(0, 2000 - elapsed);
+        setTimeout(() => {
+          setGraphLoaded(true);
+          setTimeout(() => setSplashReadyToHide(true), 300);
+        }, remainingTime);
+        
         setShowWelcome(false);
         void loadSettings();
       }
@@ -550,8 +626,24 @@ export default function App() {
     try {
       const ok = await window.piBridge.projectOpen();
       if (ok) {
+        // Reset loading states for loaded project
+        setGraphLoaded(false);
+        setSplashReadyToHide(false);
+        setLoadingStage('settings');
+        setIsLocalAILoading(true);
+        
+        const startTime = Date.now();
         const updatedGraph = await window.piBridge.loadGraph();
         setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+        setLoadingStage('complete');
+        
+        const elapsed = Date.now() - startTime;
+        const remainingTime = Math.max(0, 2000 - elapsed);
+        setTimeout(() => {
+          setGraphLoaded(true);
+          setTimeout(() => setSplashReadyToHide(true), 300);
+        }, remainingTime);
+        
         setShowWelcome(false);
         void loadSettings();
       }
@@ -559,6 +651,40 @@ export default function App() {
       console.error('project:open failed', e);
     }
   };
+
+  const handleProjectLoaded = useCallback(async () => {
+    try {
+      // Reset loading states
+      setGraphLoaded(false);
+      setSplashReadyToHide(false);
+      setLoadingStage('settings');
+      setIsLocalAILoading(true);
+      
+      const startTime = Date.now();
+      const updatedGraph = await window.piBridge.loadGraph();
+      setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+      setLoadingStage('complete');
+      
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, 2000 - elapsed);
+      setTimeout(() => {
+        setGraphLoaded(true);
+        setTimeout(() => setSplashReadyToHide(true), 300);
+      }, remainingTime);
+      
+      setShowWelcome(false);
+      void loadSettings();
+    } catch (e) {
+      console.error('project:loaded event handler failed', e);
+    }
+  }, [loadSettings]);
+
+  // Listen for project:loaded event from WelcomeScreen
+  useEffect(() => {
+    const handler = () => handleProjectLoaded();
+    window.addEventListener('project:loaded', handler);
+    return () => window.removeEventListener('project:loaded', handler);
+  }, [handleProjectLoaded]);
 
   const handleNodeDragStart = (nodeType: NodeType, event: React.DragEvent) => {
     event.dataTransfer.setData('application/json', JSON.stringify({ id: nodeType.id }));
@@ -819,26 +945,42 @@ export default function App() {
       let nextLabel: string | undefined;
       const typeLower = (node.type || '').toLowerCase();
       const getStr = (k: string) => (newProperties[k] as string | undefined) || '';
-      if (typeLower.includes('phone')) {
-        nextLabel = getStr('phone_number') || getStr('phone') || getStr('e164') || getStr('number') || undefined;
-      } else if (typeLower.includes('email')) {
-        nextLabel = getStr('email') || getStr('email_address') || getStr('address') || undefined;
-      } else if (typeLower.includes('device')) {
-        nextLabel = getStr('device_id') || getStr('imei') || getStr('serial') || getStr('name') || getStr('model') || undefined;
+      
+      // Map node types to their required/primary identifier properties
+      if (typeLower === 'phone' || typeLower.includes('phone')) {
+        nextLabel = getStr('number') || getStr('phone_number') || getStr('phone') || getStr('e164') || undefined;
+      } else if (typeLower === 'email' || typeLower.includes('email')) {
+        nextLabel = getStr('address') || getStr('email_address') || getStr('email') || undefined;
+      } else if (typeLower === 'device' || typeLower.includes('device')) {
+        nextLabel = getStr('name') || getStr('device_id') || getStr('imei') || getStr('serialNumber') || getStr('serial') || getStr('model') || undefined;
+      } else if (typeLower === 'server') {
+        nextLabel = getStr('hostname') || getStr('ipAddress') || getStr('ip_address') || undefined;
+      } else if (typeLower === 'website' || typeLower.includes('website')) {
+        nextLabel = getStr('url') || getStr('domain') || getStr('title') || undefined;
+      } else if (typeLower === 'cryptocurrency') {
+        nextLabel = getStr('address') || undefined;
+      } else if (typeLower === 'organization' || typeLower === 'educational' || typeLower === 'government' || typeLower === 'healthcare') {
+        // All organization types use 'name' as the required field
+        nextLabel = getStr('name') || getStr('legalName') || getStr('dba') || undefined;
       } else if (
         typeLower.includes('organization') ||
         typeLower.includes('company') ||
         typeLower.includes('institution') ||
+        typeLower.includes('educational') ||
         typeLower.includes('agency') ||
+        typeLower.includes('government') ||
+        typeLower.includes('healthcare') ||
         typeLower.includes('university') ||
         typeLower.includes('school')
       ) {
+        // Fallback for any organization-like types
         nextLabel =
+          getStr('name') ||
           getStr('organization_name') ||
           getStr('company_name') ||
           getStr('institution_name') ||
           getStr('legal_name') ||
-          getStr('name') ||
+          getStr('legalName') ||
           getStr('abbr') ||
           getStr('alias') ||
           undefined;
@@ -888,33 +1030,72 @@ export default function App() {
     }
   };
 
-  const isBooting = isLocalAILoading || !graphLoaded;
+  const isBooting = isLocalAILoading || !graphLoaded || !splashReadyToHide;
+
+  const handleProjectClose = useCallback(() => {
+    setShowWelcome(true);
+    setGraph({ nodes: [], edges: [] });
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
+    setSelectedEdgeId(null);
+  }, []);
+
+  const titleBarProps = {
+    context: isBooting ? 'booting' : showWelcome ? 'welcome' : 'main',
+    onProjectNew: handleProjectCreate,
+    onProjectOpen: handleProjectLoad,
+    onProjectClose: handleProjectClose,
+    onProjectSaveAs: async () => {
+      try {
+        const ok = await window.piBridge.projectSaveAs();
+        if (ok) console.debug('[App] Project saved');
+      } catch (e) {
+        console.error('project:saveAs failed', e);
+      }
+    },
+    onExportReport: () => setExportReportOpen(true),
+    onSettingsOpen: () => setSettingsModalOpen(true),
+    onProjectInfo: () => setProjectInfoOpen(true),
+    onTerminology: () => setTerminologyOpen(true),
+    onMediaGallery: () => setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null }),
+    onViewZoomSelection: () => graphApiRef.current?.zoomToSelection(),
+    onViewFit: () => graphApiRef.current?.fitToScreen(),
+    onViewCenterSelection: () => graphApiRef.current?.centerSelection()
+  };
 
   if (isBooting) {
     return (
-      <div className="relative h-full">
-        <SplashOverlay showing={true} />
+      <div className="relative flex h-full flex-col overflow-hidden">
+        <TitleBar {...titleBarProps} />
+        <div className="flex-1 overflow-auto pt-8">
+          <SplashOverlay showing={true} loadingStage={loadingStage} />
+        </div>
       </div>
     );
   }
 
   if (showWelcome) {
     return (
-      <div className="relative h-full">
-        <SplashOverlay showing={false} />
-        <WelcomeScreen onProjectCreate={handleProjectCreate} onProjectLoad={handleProjectLoad} />
+      <div className="relative flex h-full flex-col overflow-hidden">
+        <TitleBar {...titleBarProps} />
+        <div className="flex-1 overflow-auto pt-8">
+          <SplashOverlay showing={false} />
+          <WelcomeScreen onProjectCreate={handleProjectCreate} onProjectLoad={handleProjectLoad} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full flex-col">
-      <TopToolbar
+    <div className="relative flex h-full flex-col overflow-hidden">
+      <TitleBar {...titleBarProps} />
+      <div className="flex-1 flex flex-col overflow-hidden pt-8">
+        <TopToolbar
         view={view}
         relationshipTool={relationshipTool}
         onRelationshipToolActivate={handleRelationshipToolActivate}
         onRelationshipToolDeactivate={handleRelationshipToolDeactivate}
-        onToggleBoxSelect={() => { graphApiRef.current?.toggleBoxSelect(); setBoxSelectEnabled(v => !v); }}
+        onToggleBoxSelect={() => { const next = !boxSelectEnabled; graphApiRef.current?.setBoxSelectEnabled?.(next); setBoxSelectEnabled(next); }}
         boxSelectEnabled={boxSelectEnabled}
         onLayoutGrid={() => graphApiRef.current?.runLayout('grid')}
         onLayoutConcentric={() => graphApiRef.current?.runLayout('concentric')}
@@ -964,9 +1145,9 @@ export default function App() {
         <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} />
       ) : null}
       
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-w-0">
       {view === 'graph' ? (
-        <aside className="w-80 border-r border-slate-800 bg-slate-950/70">
+        <aside className="w-80 min-w-[240px] max-w-[320px] flex-shrink-0 border-r border-slate-800 bg-slate-950/70">
           <div className="flex h-full flex-col overflow-hidden">
             <div className="flex items-center gap-2 border-b border-slate-800 px-4 pt-4">
               <button
@@ -996,18 +1177,21 @@ export default function App() {
         </aside>
       ) : null}
 
-      <main className="flex flex-1 flex-col">
-        <div className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 flex-col min-w-0">
+        <div className="flex flex-1 overflow-hidden min-w-0">
             {view === 'graph' ? (
               <>
                 <section
-                  className="flex-1"
+                  className="flex-1 min-w-0"
                   onDrop={handleGraphDrop}
                   onDragOver={handleGraphDragOver}
                 >
                   <GraphCanvas
                     elements={filteredElements}
-                    apiRef={graphApiRef}
+                apiRef={graphApiRef}
+                onSelectionChange={(nodeIds) => {
+                  setSelectedNodeIds(nodeIds);
+                }}
                     onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
                     onUnselectNode={() => setSelectedNodeId(null)}
                     onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}
@@ -1039,16 +1223,26 @@ export default function App() {
                   graphNodes={graph.nodes}
                   graphEdges={graph.edges}
                   selectedNodeId={selectedNodeId}
+                selectedNodeIds={selectedNodeIds}
                   selectedEdgeId={selectedEdgeId}
                   assertions={assertions}
                   sources={sources}
                   onAddAssertion={() => setAssertionModalOpen(true)}
                   onAddSource={() => setSourceModalOpen(true)}
                   onDeleteNode={handleDeleteNode}
+                onDeleteNodes={async (ids) => {
+                  for (const id of ids) {
+                    await window.piBridge.deleteEntity(id);
+                  }
+                  const updatedGraph = await window.piBridge.loadGraph();
+                  setGraph({ nodes: updatedGraph.nodes, edges: updatedGraph.edges });
+                }}
                   onDeleteEdge={handleDeleteEdge}
                   onUpdateLabel={handleLabelUpdate}
                   onUpdateProperty={handlePropertyUpdate}
-                  onUpdateEdgeProperty={handleUpdateEdgeProperty}
+                onUpdateEdgeProperty={handleUpdateEdgeProperty}
+                onAlignLeft={() => graphApiRef.current?.alignSelected('left')}
+                onAlignTop={() => graphApiRef.current?.alignSelected('top')}
                 />
               </>
             ) : (
@@ -1058,7 +1252,8 @@ export default function App() {
             )}
           </div>
         </main>
-        </div>
+      </div>
+      </div>
       {consentData && (
         <ConsentModal
           consent={consentData}
@@ -1158,6 +1353,8 @@ export default function App() {
       />
 
       <TerminologyModal isOpen={terminologyOpen} onClose={() => setTerminologyOpen(false)} />
+      <ProjectSettingsModal isOpen={projectInfoOpen} onClose={() => setProjectInfoOpen(false)} />
+      <ExportReportModal isOpen={exportReportOpen} onClose={() => setExportReportOpen(false)} />
     </div>
   );
 }

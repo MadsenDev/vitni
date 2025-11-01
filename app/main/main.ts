@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
 import { createTransformRegistry } from './transforms/registry';
 import { ProjectManager } from './projectManager';
+import { ollamaManager } from './services/ollama';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -29,6 +30,12 @@ function buildMenu() {
           label: 'Save Project As…',
           accelerator: 'CmdOrCtrl+Shift+S',
           click: () => mainWindow?.webContents.send('menu:project:saveAs')
+        },
+        { type: 'separator' },
+        {
+          label: 'Export Report…',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => mainWindow?.webContents.send('menu:report:export')
         },
         { type: 'separator' },
         isDevelopment ? { role: 'close' } : { role: 'quit' }
@@ -84,6 +91,11 @@ function buildMenu() {
           click: () => mainWindow?.webContents.send('menu:settings:open')
         },
         {
+          label: 'Project Info…',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => mainWindow?.webContents.send('menu:project:info')
+        },
+        {
           label: 'Terminology…',
           accelerator: 'CmdOrCtrl+/',
           click: () => mainWindow?.webContents.send('menu:settings:terminology')
@@ -101,6 +113,33 @@ function buildMenu() {
       ]
     }
   ];
+
+  // Inject Settings menu if not present or extend it
+  const settingsMenu: Electron.MenuItemConstructorOptions = {
+    label: 'Settings',
+    submenu: [
+      {
+        label: 'Preferences…',
+        accelerator: 'CmdOrCtrl+,',
+        click: () => mainWindow?.webContents.send('menu:settings:open')
+      },
+      {
+        label: 'Project Info…',
+        accelerator: 'CmdOrCtrl+I',
+        click: () => mainWindow?.webContents.send('menu:project:info')
+      },
+      {
+        label: 'Terminology…',
+        accelerator: 'CmdOrCtrl+/',
+        click: () => mainWindow?.webContents.send('menu:settings:terminology')
+      }
+    ]
+  };
+
+  // Replace existing Settings or append
+  const idx = template.findIndex(m => m.label === 'Settings');
+  if (idx >= 0) template[idx] = settingsMenu; else template.push(settingsMenu);
+
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 }
@@ -112,8 +151,12 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
+    minWidth: 800,
+    minHeight: 600,
     backgroundColor: '#0f172a',
     show: true,
+    frame: false, // Custom titlebar
+    titleBarStyle: 'hidden', // macOS-style hidden titlebar
     webPreferences: {
       preload: path.join(__dirname, '../../../preload/app/preload/preload.js'),
       contextIsolation: true,
@@ -121,7 +164,8 @@ async function createWindow() {
       sandbox: true
     }
   });
-  buildMenu();
+  // Don't build native menu - using custom titlebar
+  // buildMenu();
 
   // Register IPC handlers immediately so renderer calls won't fail during init
   console.log('[Main] init: creating project manager');
@@ -129,7 +173,7 @@ async function createWindow() {
   console.log('[Main] init: building transform registry');
   const transformRegistry = createTransformRegistry();
   console.log('[Main] init: registering IPC handlers');
-  registerIpcHandlers(ipcMain, projectManager, transformRegistry);
+  registerIpcHandlers(ipcMain, projectManager, transformRegistry, ollamaManager, mainWindow);
 
   if (isDevelopment) {
     const rendererUrl = new URL('http://localhost:5173');
@@ -193,7 +237,20 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  void projectManager?.closeProject();
+  try {
+    if (!projectManager) return;
+    const db = projectManager.getDatabase();
+    let keepAlive = false;
+    try {
+      const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get('ai:ollama:keepAlive') as { value_json: string } | undefined;
+      keepAlive = row ? Boolean(JSON.parse(row.value_json)) : false;
+    } catch {
+      keepAlive = false;
+    }
+    if (!keepAlive) ollamaManager.stop();
+  } catch {
+    // ignore
+  }
 });
 
 app.on('activate', () => {

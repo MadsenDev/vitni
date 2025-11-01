@@ -14,9 +14,11 @@ interface GraphCanvasProps {
   isRelationshipMode?: boolean;
   onRequestCreateEdge?: (sourceId: string, targetId: string) => void;
   onNodeDragFree?: (id: string, x: number, y: number) => void;
+  onSelectionChange?: (nodeIds: string[], edgeIds: string[]) => void;
   apiRef?: React.MutableRefObject<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
+    setBoxSelectEnabled: (enabled: boolean) => void;
     alignSelected: (kind: 'left' | 'top') => void;
     invertSelection: () => void;
     zoomToSelection: () => void;
@@ -24,6 +26,8 @@ interface GraphCanvasProps {
     centerSelection: () => void;
     containerToGraph: (clientX: number, clientY: number) => { x: number; y: number } | null;
     getNodePositions: () => Record<string, { x: number; y: number }>;
+    getSelectedNodeIds: () => string[];
+    getSelectedEdgeIds: () => string[];
   } | null>;
 }
 
@@ -40,25 +44,40 @@ export function GraphCanvas({
   isRelationshipMode = false,
   onRequestCreateEdge,
   onNodeDragFree,
+  onSelectionChange,
   apiRef
 }: GraphCanvasProps) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const relationSourceRef = useRef<string | null>(null);
   const completedRef = useRef<boolean>(false);
   const boxSelectRef = useRef<boolean>(false);
+  const prevUserPanningRef = useRef<boolean | null>(null);
+  const prevPanningRef = useRef<boolean | null>(null);
+  const prevZoomingRef = useRef<boolean | null>(null);
 
   const applyBoxSelectState = (cy: cytoscape.Core, enabled: boolean) => {
     boxSelectRef.current = enabled;
     cy.boxSelectionEnabled(enabled);
     cy.autounselectify(false);
-    cy.selectionType(enabled ? 'additive' : 'single');
+    try { cy.selectionType((enabled ? 'additive' : 'single') as any); } catch {}
+
+    // Manage panning/zoom so box selection takes precedence when enabled
     if (enabled) {
-      cy.userPanningEnabled(false);
-      cy.panningEnabled(false);
+      if (prevUserPanningRef.current === null) prevUserPanningRef.current = Boolean((cy as any).userPanningEnabled());
+      if (prevPanningRef.current === null) prevPanningRef.current = Boolean((cy as any).panningEnabled());
+      if (prevZoomingRef.current === null) prevZoomingRef.current = Boolean((cy as any).zoomingEnabled());
+      try { cy.userPanningEnabled(false); } catch {}
+      try { cy.panningEnabled(false); } catch {}
+      try { cy.zoomingEnabled(false); } catch {}
     } else {
-      cy.userPanningEnabled(true);
-      cy.panningEnabled(true);
+      try { cy.userPanningEnabled(prevUserPanningRef.current ?? true); } catch {}
+      try { cy.panningEnabled(prevPanningRef.current ?? true); } catch {}
+      try { cy.zoomingEnabled(prevZoomingRef.current ?? true); } catch {}
+      prevUserPanningRef.current = null;
+      prevPanningRef.current = null;
+      prevZoomingRef.current = null;
     }
+
     const container = (cy as any).container?.() as HTMLElement | undefined;
     if (container) {
       if (enabled) container.classList.add('pi-box-select');
@@ -91,6 +110,13 @@ export function GraphCanvas({
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    const emitSelection = () => {
+      if (!onSelectionChange) return;
+      const nodeIds = cy.nodes(':selected').map((n: any) => n.id()) as unknown as string[];
+      const edgeIds = cy.edges(':selected').map((e: any) => e.id()) as unknown as string[];
+      onSelectionChange(nodeIds, edgeIds);
+    };
 
     const handleMouseDown = (evt: cytoscape.EventObject) => {
       const id = evt.target.id();
@@ -150,6 +176,9 @@ export function GraphCanvas({
       cy.on('mouseup', handleMouseUpCore);
     }
 
+    cy.on('select unselect', 'node', emitSelection);
+    cy.on('select unselect', 'edge', emitSelection);
+
     return () => {
       if (isRelationshipMode) {
         cy.off('mousedown', 'node', handleMouseDown);
@@ -161,8 +190,22 @@ export function GraphCanvas({
         relationSourceRef.current = null;
         completedRef.current = false;
       }
+      cy.off('select unselect', 'node', emitSelection);
+      cy.off('select unselect', 'edge', emitSelection);
+      // Ensure box select is disabled on cleanup to avoid stuck state
+      applyBoxSelectState(cy, false);
+      try { cy.userPanningEnabled(true); } catch {}
+      try { cy.panningEnabled(true); } catch {}
+      try { cy.zoomingEnabled(true); } catch {}
     };
-  }, [isRelationshipMode, onRequestCreateEdge]);
+  }, [isRelationshipMode, onRequestCreateEdge, onSelectionChange]);
+
+  // Ensure box select state reapplies if cy remounts
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    if (boxSelectRef.current) applyBoxSelectState(cy, true);
+  });
 
   // Expose imperative API
   useEffect(() => {
@@ -175,6 +218,9 @@ export function GraphCanvas({
           },
           toggleBoxSelect: () => {
             applyBoxSelectState(cy, !boxSelectRef.current);
+          },
+          setBoxSelectEnabled: (enabled: boolean) => {
+            applyBoxSelectState(cy, enabled);
           },
           alignSelected: (kind) => {
             const sel = cy.nodes(':selected');
@@ -210,25 +256,27 @@ export function GraphCanvas({
             if (sel.nonempty()) {
               cy.center(sel);
             }
-        },
-        containerToGraph: (clientX: number, clientY: number) => {
-          const container = (cy as any).container() as HTMLElement;
-          if (!container) return null;
-          const rect = container.getBoundingClientRect();
-          const zoom = cy.zoom();
-          const pan = cy.pan();
-          const x = (clientX - rect.left - pan.x) / zoom;
-          const y = (clientY - rect.top - pan.y) / zoom;
-          return { x, y };
-        },
-        getNodePositions: () => {
-          const map: Record<string, { x: number; y: number }> = {};
-          cy.nodes().forEach(n => {
-            const p = n.position();
-            map[n.id()] = { x: p.x, y: p.y };
-          });
-          return map;
-          }
+          },
+          containerToGraph: (clientX: number, clientY: number) => {
+            const container = (cy as any).container() as HTMLElement;
+            if (!container) return null;
+            const rect = container.getBoundingClientRect();
+            const zoom = cy.zoom();
+            const pan = cy.pan();
+            const x = (clientX - rect.left - pan.x) / zoom;
+            const y = (clientY - rect.top - pan.y) / zoom;
+            return { x, y };
+          },
+          getNodePositions: () => {
+            const map: Record<string, { x: number; y: number }> = {};
+            cy.nodes().forEach(n => {
+              const p = n.position();
+              map[n.id()] = { x: p.x, y: p.y };
+            });
+            return map;
+          },
+          getSelectedNodeIds: () => cy.nodes(':selected').map((n: any) => n.id()) as unknown as string[],
+          getSelectedEdgeIds: () => cy.edges(':selected').map((e: any) => e.id()) as unknown as string[]
         }
       : null;
     return () => {
@@ -341,6 +389,8 @@ export function GraphCanvas({
       ]}
       cy={(cyInstance: cytoscape.Core) => {
         cyRef.current = cyInstance;
+        // Reapply box-select state on mount if previously enabled
+        if (boxSelectRef.current) applyBoxSelectState(cyInstance, true);
         cyInstance.on('select', 'node', (event) => onSelectNode(event.target.id()));
         cyInstance.on('unselect', 'node', () => onUnselectNode());
         cyInstance.on('select', 'edge', (event) => onSelectEdge(event.target.id()));

@@ -1,7 +1,10 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
-import { dialog } from 'electron';
+import { app, dialog, shell, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import fs from 'node:fs';
+import * as fsp from 'node:fs/promises';
+import { spawn, type ChildProcess } from 'node:child_process';
 import type { TransformRegistry, AttachmentResult } from '../../../shared/types';
 import type {
   AssertionRecord,
@@ -16,6 +19,9 @@ import type {
 } from '../../../shared/types';
 import type { ProjectManager } from '../projectManager';
 import type { DbConnection } from '../persistence/database';
+import type { OllamaManager } from '../services/ollama';
+
+let currentInstallChild: ChildProcess | null = null;
 
 interface ParsedEntityRecord extends Omit<EntityRecord, 'properties_json'> {
   properties: Record<string, unknown>;
@@ -77,8 +83,221 @@ function withDb<Args extends unknown[], ReturnType>(
 export function registerIpcHandlers(
   ipcMain: IpcMain,
   projectManager: ProjectManager,
-  transformRegistry: TransformRegistry
+  transformRegistry: TransformRegistry,
+  ollamaManager: OllamaManager,
+  mainWindow: BrowserWindow | null
 ) {
+  ipcMain.handle('app:openExternal', async (_e, url: string) => {
+    await shell.openExternal(url);
+    return true;
+  });
+
+  ipcMain.handle('window:minimize', () => {
+    const win = mainWindow || BrowserWindow.getFocusedWindow();
+    if (win) win.minimize();
+  });
+
+  ipcMain.handle('window:maximize', () => {
+    const win = mainWindow || BrowserWindow.getFocusedWindow();
+    if (win) {
+      if (win.isMaximized()) {
+        win.unmaximize();
+      } else {
+        win.maximize();
+      }
+    }
+  });
+
+  ipcMain.handle('window:close', () => {
+    const win = mainWindow || BrowserWindow.getFocusedWindow();
+    if (win) win.close();
+  });
+
+  ipcMain.handle('window:isMaximized', () => {
+    const win = mainWindow || BrowserWindow.getFocusedWindow();
+    return win ? win.isMaximized() : false;
+  });
+
+  ipcMain.handle('ai:ollama:download', async () => {
+    try {
+      const userData = app.getPath('userData');
+      const ollamaDir = path.join(userData, 'ollama');
+      await fsp.mkdir(ollamaDir, { recursive: true });
+      
+      // Fetch latest release info from GitHub API to get correct asset URLs
+      const apiRes = await fetch('https://api.github.com/repos/ollama/ollama/releases/latest');
+      if (!apiRes.ok) return { ok: false, message: `GitHub API error: ${apiRes.status}` };
+      const release = await apiRes.json() as { assets?: Array<{ name: string; browser_download_url: string }> };
+      
+      let url = '';
+      const filename = process.platform === 'win32' ? 'OllamaSetup.exe' : process.platform === 'darwin' ? 'ollama-darwin' : 'ollama-linux-amd64';
+      const asset = release.assets?.find(a => a.name.includes(filename) || (process.platform === 'win32' && a.name.endsWith('.exe') && !a.name.includes('zip')));
+      
+      if (asset) {
+        url = asset.browser_download_url;
+      } else {
+        // Fallback to known patterns
+        url = process.platform === 'win32'
+          ? 'https://github.com/ollama/ollama/releases/latest/download/OllamaSetup.exe'
+          : process.platform === 'darwin'
+          ? 'https://github.com/ollama/ollama/releases/latest/download/ollama-darwin'
+          : 'https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64';
+      }
+      
+      const dest = process.platform === 'win32' ? path.join(ollamaDir, 'ollama.exe') : path.join(ollamaDir, 'ollama');
+      const res = await fetch(url);
+      if (!res.ok) return { ok: false, message: `HTTP ${res.status}: ${url}` };
+      const buf = Buffer.from(await res.arrayBuffer());
+      await fsp.writeFile(dest, buf as Uint8Array);
+      if (process.platform !== 'win32') {
+        await fsp.chmod(dest, 0o755);
+      }
+      return { ok: true, path: dest };
+    } catch (e) {
+      return { ok: false, message: String((e as Error).message) };
+    }
+  });
+
+  ipcMain.handle('ai:ollama:install:start', async () => {
+    if (currentInstallChild) return { started: false };
+    let cmd = '';
+    let args: string[] = [];
+    if (process.platform === 'win32') {
+      cmd = 'winget';
+      args = ['install', 'Ollama.Ollama', '-e', '--silent'];
+    } else {
+      cmd = 'sh';
+      args = ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'];
+    }
+    try {
+      currentInstallChild = spawn(cmd, args, { stdio: 'ignore' });
+      currentInstallChild.on('exit', () => { currentInstallChild = null; });
+      currentInstallChild.on('error', () => { currentInstallChild = null; });
+      return { started: true };
+    } catch {
+      currentInstallChild = null;
+      return { started: false };
+    }
+  });
+
+  ipcMain.handle('ai:ollama:install:cancel', async () => {
+    try {
+      if (currentInstallChild && currentInstallChild.kill) {
+        currentInstallChild.kill('SIGTERM');
+      }
+    } catch {
+      // ignore
+    } finally {
+      currentInstallChild = null;
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle('ai:ollama:install:running', async () => {
+    return { running: Boolean(currentInstallChild) };
+  });
+
+  ipcMain.handle('ai:ollama:install', async () => {
+    return new Promise<{ ok: boolean }>((resolve) => {
+      let cmd = '';
+      let args: string[] = [];
+      if (process.platform === 'win32') {
+        cmd = 'winget';
+        args = ['install', 'Ollama.Ollama', '-e', '--silent'];
+      } else {
+        cmd = 'sh';
+        args = ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'];
+      }
+      try {
+        const child = spawn(cmd, args, { stdio: 'ignore' });
+        child.on('error', () => resolve({ ok: false }));
+        child.on('exit', (code) => resolve({ ok: code === 0 }));
+      } catch {
+        resolve({ ok: false });
+      }
+    });
+  });
+
+  ipcMain.handle('ai:ollama:status', async (_e) => {
+    try {
+      const db = projectManager.getDatabase();
+      const endpoint = (readProjectSettingJson(db, 'ai:ollama:endpoint') as string) || 'http://localhost:11434';
+      const model = (readProjectSettingJson(db, 'ai:ollama:model') as string) || 'llama3.1:8b';
+      const serverUp = await ollamaManager.isAvailable(endpoint);
+      // Model check via tags
+      let modelAvailable = false;
+      if (serverUp) {
+        try {
+          const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/tags` as any, { method: 'GET' } as any);
+          if (res.ok) {
+            const data = await res.json() as { models?: Array<{ name: string }> };
+            modelAvailable = Boolean(data.models?.some(m => (m.name || '').includes(model.split(':')[0])));
+          }
+        } catch {}
+      }
+      return { endpoint, model, serverUp, modelAvailable };
+    } catch {
+      return { endpoint: 'http://localhost:11434', model: 'llama3.1:8b', serverUp: false, modelAvailable: false };
+    }
+  });
+
+  ipcMain.handle('ai:ollama:start', async (_e) => {
+    try {
+      const db = projectManager.getDatabase();
+      const endpoint = (readProjectSettingJson(db, 'ai:ollama:endpoint') as string) || 'http://localhost:11434';
+      const bin = ollamaManager.getResolvedBinary();
+      if (!bin) return { ok: false, message: 'Ollama binary not found. Try "Download bundled" first.' };
+      const ok = await ollamaManager.ensure(endpoint);
+      if (!ok) return { ok: false, message: 'Failed to start server or server not ready' };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String((e as Error).message || 'Start failed') };
+    }
+  });
+
+  ipcMain.handle('ai:ollama:pull', async (_e) => {
+    try {
+      const db = projectManager.getDatabase();
+      const endpoint = (readProjectSettingJson(db, 'ai:ollama:endpoint') as string) || 'http://localhost:11434';
+      const model = (readProjectSettingJson(db, 'ai:ollama:model') as string) || 'llama3.1:8b';
+      const ok = await ollamaManager.ensure(endpoint);
+      if (!ok) return { ok: false, message: 'Server not available. Start the server first.' };
+      
+      // Try HTTP API first
+      try {
+        const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/pull`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: model, stream: false }) } as any);
+        if (res.ok) {
+          // Wait a bit for pull to start, then return
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return { ok: true };
+        }
+      } catch (e) {
+        console.warn('[AI] HTTP pull failed, falling back to CLI:', e);
+      }
+      
+      // Fallback to CLI
+      const bin = ollamaManager.getResolvedBinary();
+      if (!bin) return { ok: false, message: 'Ollama binary not found' };
+      try {
+        const child = spawn(bin, ['pull', model], { stdio: 'pipe' });
+        let stderr = '';
+        child.stderr?.on('data', (chunk) => { stderr += chunk.toString(); });
+        const exitCode: number = await new Promise((resolve) => child.on('exit', (code) => resolve(code ?? 1)));
+        if (exitCode === 0) return { ok: true };
+        return { ok: false, message: `Pull failed: ${stderr.slice(0, 100) || 'exit code ' + exitCode}` };
+      } catch (e) {
+        return { ok: false, message: `CLI spawn failed: ${String((e as Error).message)}` };
+      }
+    } catch (e) {
+      return { ok: false, message: String((e as Error).message || 'Pull failed') };
+    }
+  });
+
+  ipcMain.handle('ai:ollama:stop', async () => {
+    try { ollamaManager.stop(); } catch {}
+    return { ok: true };
+  });
+
   ipcMain.handle(
     'db:entities:list',
     withDb(projectManager, (db) => {
@@ -380,6 +599,331 @@ export function registerIpcHandlers(
     })
   );
 
+  // Project metadata convenience wrappers
+  ipcMain.handle(
+    'project:metadata:get',
+    withDb(projectManager, (db) => {
+      const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get('project:metadata') as
+        | { value_json: string }
+        | undefined;
+      if (!row) return null;
+      try {
+        return JSON.parse(row.value_json);
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  ipcMain.handle(
+    'project:metadata:set',
+    withDb(projectManager, (db, meta: Record<string, unknown>) => {
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        key: 'project:metadata',
+        value_json: JSON.stringify(meta ?? {}),
+        updated_at: now
+      } satisfies ProjectSettingRecord;
+      db.prepare(
+        `INSERT INTO project_setting (key, value_json, updated_at)
+         VALUES (@key, @value_json, @updated_at)
+         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`
+      ).run(payload);
+      return true;
+    })
+  );
+
+  ipcMain.handle(
+    'report:generate',
+    withDb(projectManager, async (db, options: { template: 'full' | 'selection' | 'timeline' | 'person'; includeAttachments?: boolean; selectionIds?: string[]; personId?: string; useAI?: boolean }) => {
+      const root = projectManager.getRoot();
+      const manifest = projectManager.getManifest();
+      const exportsRoot = path.join(root, manifest.paths.exports);
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const outDir = path.join(exportsRoot, `report-${options.template}-${stamp}`);
+      await fsp.mkdir(outDir, { recursive: true });
+
+      // Load metadata
+      let metadata: Record<string, unknown> | null = null;
+      try {
+        const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get('project:metadata') as { value_json: string } | undefined;
+        metadata = row ? JSON.parse(row.value_json) : null;
+      } catch {
+        metadata = null;
+      }
+
+      // Load data
+      const allEntities = db.prepare('SELECT * FROM entity').all() as EntityRecord[];
+      const allEdges = db.prepare('SELECT * FROM edge').all() as EdgeRecord[];
+      const allSources = db.prepare('SELECT * FROM source').all() as SourceRecord[];
+      const assertions = db.prepare('SELECT * FROM assertion').all() as AssertionRecord[];
+
+      if (options.template === 'person') {
+        const personId = options.personId?.trim();
+        const person = personId ? allEntities.find(e => e.id === personId) : undefined;
+        if (!person) {
+          await fsp.writeFile(path.join(outDir, 'report.html'), '<p>Person not found.</p>', 'utf8');
+          return { outputDir: outDir };
+        }
+        const neighborsEdges = allEdges.filter(e => e.src_id === person.id || e.dst_id === person.id);
+        const neighborIds = new Set<string>();
+        for (const ed of neighborsEdges) { neighborIds.add(ed.src_id); neighborIds.add(ed.dst_id); }
+        neighborIds.delete(person.id);
+        const neighbors = allEntities.filter(e => neighborIds.has(e.id));
+        const personAssertions = assertions.filter(a => a.subject_id === person.id);
+        const personSources = new Map<string, SourceRecord>();
+        for (const a of personAssertions) { const s = allSources.find(s => s.id === a.source_id); if (s) personSources.set(s.id, s); }
+
+        const birth = personAssertions.find(a => a.path.toLowerCase().includes('birth') || a.path.toLowerCase() === 'dob');
+        let birthDate = '';
+        try { const val = birth ? JSON.parse(birth.value_json || '{}') : null; birthDate = typeof val?.date === 'string' ? val.date : (typeof val === 'string' ? val : ''); } catch {}
+
+        // Heuristic narrative base
+        const narrativeLines: string[] = [];
+        const personName = (person.label || person.id).toString();
+        if (birthDate) narrativeLines.push(`${personName} was born on ${birthDate}.`);
+        const edgesByType = new Map<string, EdgeRecord[]>();
+        for (const ed of neighborsEdges) { const list = edgesByType.get(ed.type) || []; list.push(ed); edgesByType.set(ed.type, list); }
+        const dateOf = (ed: EdgeRecord) => { try { const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>; const d = typeof p.date === 'string' ? p.date : ''; return d; } catch { return ''; } };
+        const otherLabel = (ed: EdgeRecord) => { const otherId = ed.src_id === person.id ? ed.dst_id : ed.src_id; const n = neighbors.find(nn => nn.id === otherId); return (n?.label || otherId).toString(); };
+        const parental = (edgesByType.get('parent_of') || []).concat(edgesByType.get('child_of') || []);
+        for (const ed of parental) { const d = dateOf(ed); const other = otherLabel(ed); const isParent = ed.type === 'parent_of' ? (ed.src_id === person.id) : (ed.dst_id === person.id); if (isParent) narrativeLines.push(`${personName} is a parent of ${other}${d ? ` (since ${d})` : ''}.`); else narrativeLines.push(`${personName} is a child of ${other}${d ? ` (since ${d})` : ''}.`); }
+        const ownershipLike = (edgesByType.get('ownership') || []).concat(edgesByType.get('owns') || []);
+        for (const ed of ownershipLike) { const d = dateOf(ed); const other = otherLabel(ed); let subtype = ''; try { const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>; subtype = (p.subtype as string) || ''; } catch {} const verb = subtype === 'leases' ? 'leases' : subtype === 'borrowed' ? 'borrowed' : subtype === 'assigned_to' ? 'is assigned' : 'owns'; narrativeLines.push(`${personName} ${verb} ${other}${d ? ` (as of ${d})` : ''}.`); }
+        for (const ed of edgesByType.get('employed_by') || []) { const d = dateOf(ed); const other = otherLabel(ed); narrativeLines.push(`${personName} is employed by ${other}${d ? ` (since ${d})` : ''}.`); }
+        const comms = (edgesByType.get('communicated_with') || []).slice(0, 10);
+        if (comms.length > 0) { const who = Array.from(new Set(comms.map(otherLabel))).join(', '); narrativeLines.push(`${personName} has communicated with ${who}.`); }
+        for (const [t, list] of edgesByType.entries()) { if (['parent_of','child_of','ownership','owns','employed_by','communicated_with'].includes(t)) continue; const sample = list.slice(0, 5).map(ed => `${otherLabel(ed)}${dateOf(ed) ? ` (${dateOf(ed)})` : ''}`).join(', '); if (sample) narrativeLines.push(`${personName} has relationship "${t}" with ${sample}.`); }
+        const heuristicNarrative = narrativeLines.join(' ');
+
+        // Optional Ollama call
+        let narrativeHtml = '';
+        if (options.useAI) {
+          const endpoint = (readProjectSettingJson(db, 'ai:ollama:endpoint') as string) || 'http://localhost:11434';
+          const model = (readProjectSettingJson(db, 'ai:ollama:model') as string) || 'llama3.1:8b';
+          const ok = await ollamaManager.ensure(endpoint);
+          if (ok) {
+            const prompt = [
+              'You are a professional investigator writing a concise, neutral profile.',
+              `Subject: ${personName}${birthDate ? `, DOB: ${birthDate}` : ''}.`,
+              'Facts:',
+              heuristicNarrative,
+              'Write 3-6 short paragraphs: Background, Associations, Assets/Identifiers, Activities/Communications, Notable Events. Avoid speculation; only use provided facts.'
+            ].join('\n');
+            try {
+              const response = await ollamaGenerate(endpoint, model, prompt, 25000);
+              const safe = escapeHtml(response || '').replace(/\n/g, '<br/>');
+              narrativeHtml = `<p><em>AI narrative (${escapeHtml(model)})</em></p><div class="small">${safe}</div>`;
+            } catch (e) {
+              narrativeHtml = `<p class="muted small">AI narrative unavailable (${escapeHtml(String((e as Error).message || 'error'))}). Using heuristic summary below.</p><p>${escapeHtml(heuristicNarrative)}</p>`;
+            }
+          } else {
+            narrativeHtml = `<p class="muted small">Local AI is not installed or not in PATH. Using heuristic summary below.</p><p>${escapeHtml(heuristicNarrative)}</p>`;
+          }
+        } else {
+          narrativeHtml = `<p>${escapeHtml(heuristicNarrative || 'No narrative available.')}</p>`;
+        }
+
+        const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Person Profile - ${escapeHtml(person.label || person.id)}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif; background:#0b1220; color:#e2e8f0; padding:32px; }
+    h1,h2,h3 { color:#fff; margin: 0.4em 0; }
+    .muted { color:#94a3b8; }
+    .section { margin-top:28px; padding-top:12px; border-top:1px solid #1f2a44; }
+    table { width:100%; border-collapse: collapse; margin-top:8px; }
+    td,th { border:1px solid #1f2a44; padding:6px 8px; font-size:13px; vertical-align: top; }
+    th { background:#111827; text-align:left; }
+    code { background:#111827; padding:2px 4px; border-radius:4px; }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Person Profile</h1>
+  <div class="muted small">Generated ${new Date().toISOString()}</div>
+
+  <div class="section">
+    <h2>Subject</h2>
+    <table><tbody>
+      <tr><th style="width:200px">ID</th><td class="small"><code>${person.id}</code></td></tr>
+      <tr><th>Name</th><td>${escapeHtml(person.label || '')}</td></tr>
+      <tr><th>Date of Birth</th><td>${escapeHtml(birthDate)}</td></tr>
+      <tr><th>Type</th><td>${escapeHtml(person.type)}</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <h2>Narrative</h2>
+    ${narrativeHtml}
+  </div>
+
+  <div class="section">
+    <h2>Connected Entities (${neighbors.length})</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Label</th></tr></thead>
+      <tbody>
+        ${neighbors.map(n => `<tr><td class="small"><code>${n.id}</code></td><td>${escapeHtml(n.type)}</td><td>${escapeHtml(n.label || '')}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Relationships (${neighborsEdges.length})</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Other Party</th><th>Properties</th></tr></thead>
+      <tbody>
+        ${neighborsEdges.map(ed => { const otherId = ed.src_id === person.id ? ed.dst_id : ed.src_id; const other = neighbors.find(n => n.id === otherId); let props: unknown; try { props = JSON.parse(ed.properties_json || '{}'); } catch { props = {}; } return `<tr><td class="small"><code>${ed.id}</code></td><td>${escapeHtml(ed.type)}</td><td>${other ? `${escapeHtml(other.label || other.id)}` : `<code>${otherId}</code>`}</td><td class="small"><pre>${escapeHtml(JSON.stringify(props, null, 2))}</pre></td></tr>`; }).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Assertions (${personAssertions.length})</h2>
+    <table>
+      <thead><tr><th>Path</th><th>Value</th><th>Source</th></tr></thead>
+      <tbody>
+        ${personAssertions.map(a => { let v: unknown; try { v = JSON.parse(a.value_json || '{}'); } catch { v = {}; } const s = personSources.get(a.source_id); return `<tr><td>${escapeHtml(a.path)}</td><td class=\"small\"><pre>${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v, null, 2))}</pre></td><td class=\"small\">${s ? `${escapeHtml(s.title || s.locator)}${s.hash ? `<br/><code>${s.hash}</code>` : ''}` : ''}</td></tr>`; }).join('')}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+
+        await fsp.writeFile(path.join(outDir, 'report.html'), html, 'utf8');
+        if (options.includeAttachments) { const src = path.join(root, manifest.paths.attachments); const dest = path.join(outDir, 'attachments'); await copyDir(src, dest); }
+        return { outputDir: outDir };
+      }
+
+      // Load data for general templates
+      const allEntities2 = allEntities; const allEdges2 = allEdges; const allSources2 = allSources; const assertions2 = assertions;
+      const selectedIds = new Set(options.selectionIds ?? []);
+      const entities = options.template === 'selection' && selectedIds.size > 0
+        ? allEntities2.filter(e => selectedIds.has(e.id))
+        : allEntities2;
+      const edges = options.template === 'selection' && selectedIds.size > 0
+        ? allEdges2.filter(ed => selectedIds.has(ed.src_id) || selectedIds.has(ed.dst_id))
+        : allEdges2;
+
+      // Build timeline events
+      type TimelineEvent = { date: string; label: string };
+      const events: TimelineEvent[] = [];
+      for (const ed of edges) {
+        try {
+          const props = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>;
+          const date = typeof props.date === 'string' ? props.date : '';
+          if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+            events.push({ date, label: `${ed.type} between ${ed.src_id} → ${ed.dst_id}` });
+          }
+        } catch {}
+      }
+      for (const asrt of assertions2) {
+        if (asrt.path.toLowerCase().includes('birth') || asrt.path.toLowerCase() === 'dob') {
+          try {
+            const v = JSON.parse(asrt.value_json || '{}');
+            const date = typeof v?.date === 'string' ? v.date : (typeof v === 'string' ? v : '');
+            if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+              events.push({ date, label: `Birth of ${asrt.subject_id}` });
+            }
+          } catch {}
+        }
+      }
+      events.sort((a,b) => a.date.localeCompare(b.date));
+
+      const bySourceId = new Map<string, { source: SourceRecord; usedIn: Array<{ entityId: string; path: string }> }>();
+      for (const s of allSources2) bySourceId.set(s.id, { source: s, usedIn: [] });
+      for (const a of assertions2) {
+        const entry = bySourceId.get(a.source_id);
+        if (entry) entry.usedIn.push({ entityId: a.subject_id, path: a.path });
+      }
+
+      const getLabel = (e: EntityRecord) => (e.label || '').toString();
+      const caseTitle = escapeHtml((metadata?.['caseId'] ? `[${metadata['caseId']}] ` : '') + manifest.name);
+      const authoredBy = escapeHtml((metadata?.['author'] as string) || '');
+      const agency = escapeHtml((metadata?.['agency'] as string) || '');
+      const description = escapeHtml((metadata?.['description'] as string) || '');
+
+      const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Investigation Report - ${caseTitle}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif; background:#0b1220; color:#e2e8f0; padding:32px; }
+    h1,h2,h3 { color:#fff; margin: 0.4em 0; }
+    .muted { color:#94a3b8; }
+    .section { margin-top:28px; padding-top:12px; border-top:1px solid #1f2a44; }
+    table { width:100%; border-collapse: collapse; margin-top:8px; }
+    td,th { border:1px solid #1f2a44; padding:6px 8px; font-size:13px; vertical-align: top; }
+    th { background:#111827; text-align:left; }
+    code { background:#111827; padding:2px 4px; border-radius:4px; }
+    .meta { display:grid; grid-template-columns: 1fr 1fr; gap:8px 16px; }
+    .box { background:#0b1327; border:1px solid #1f2a44; border-radius:8px; padding:12px; }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Investigation Report</h1>
+  <div class="muted small">Generated ${new Date().toISOString()}</div>
+  <div class="section box">
+    <div class="meta">
+      <div><strong>Case</strong><br/>${caseTitle}</div>
+      <div><strong>Author</strong><br/>${authoredBy}</div>
+      <div><strong>Agency</strong><br/>${agency}</div>
+      <div><strong>Project Created</strong><br/>${new Date(manifest.created_at).toISOString()}</div>
+    </div>
+    ${description ? `<div style="margin-top:12px"><strong>Summary</strong><br/>${description}</div>` : ''}
+  </div>
+  <div class="section">
+    <h2>Methodology</h2>
+    <p class="muted">This report was generated from the Vitni case database...</p>
+  </div>
+  <div class="section">
+    <h2>Findings: Entities (${entities.length})</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Label</th><th>Properties</th></tr></thead>
+      <tbody>
+        ${entities.map(e => { let p:unknown; try{p=JSON.parse(e.properties_json||'{}')}catch{p={}}; return `<tr><td class="small"><code>${e.id}</code></td><td>${escapeHtml(e.type)}</td><td>${escapeHtml(getLabel(e))}</td><td class="small"><pre>${escapeHtml(JSON.stringify(p,null,2))}</pre></td></tr>`; }).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h2>Findings: Relationships (${edges.length})</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Source → Target</th><th>Properties</th></tr></thead>
+      <tbody>
+        ${edges.map(ed => { let p:unknown; try{p=JSON.parse(ed.properties_json||'{}')}catch{p={}}; return `<tr><td class="small"><code>${ed.id}</code></td><td>${escapeHtml(ed.type)}</td><td class="small"><code>${ed.src_id}</code> → <code>${ed.dst_id}</code></td><td class="small"><pre>${escapeHtml(JSON.stringify(p,null,2))}</pre></td></tr>`; }).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h2>Timeline (${events.length})</h2>
+    ${events.length === 0 ? '<p class="muted">No dated events found.</p>' : `<table><thead><tr><th>Date</th><th>Event</th></tr></thead><tbody>${events.map(ev => `<tr><td>${ev.date}</td><td>${escapeHtml(ev.label)}</td></tr>`).join('')}</tbody></table>`}
+  </div>
+  <div class="section">
+    <h2>Evidence Appendix (${allSources2.length})</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Kind</th><th>Locator/Title</th><th>Hash</th><th>Used In</th></tr></thead>
+      <tbody>
+        ${Array.from(bySourceId.values()).map(entry => { const usage = entry.usedIn.map(u => `${u.entityId}:${u.path}`).join('<br/>'); return `<tr><td class="small"><code>${entry.source.id}</code></td><td>${escapeHtml(entry.source.kind)}</td><td class="small">${escapeHtml(entry.source.title || entry.source.locator)}</td><td class="small"><code>${entry.source.hash || ''}</code></td><td class="small">${usage || ''}</td></tr>`; }).join('')}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+
+      await fsp.writeFile(path.join(outDir, 'report.html'), html, 'utf8');
+      if (options.includeAttachments) {
+        const src = path.join(root, manifest.paths.attachments);
+        const dest = path.join(outDir, 'attachments');
+        await copyDir(src, dest);
+      }
+      return { outputDir: outDir };
+    })
+  );
+
   ipcMain.handle('project:new', async () => {
     const res = await dialog.showSaveDialog({
       title: 'Create Investigation Project',
@@ -416,6 +960,19 @@ export function registerIpcHandlers(
 
     await projectManager.openProject(res.filePaths[0]);
     return true;
+  });
+
+  ipcMain.handle('project:open:path', async (_e, projectPath: string) => {
+    try {
+      await projectManager.openProject(projectPath);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: String((error as Error).message) };
+    }
+  });
+
+  ipcMain.handle('project:recent', async () => {
+    return await projectManager.getRecentProjects();
   });
 
   ipcMain.handle(
@@ -523,4 +1080,46 @@ export function registerIpcHandlers(
       return result.changes > 0;
     })
   );
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+async function copyDir(src: string, dest: string) {
+  try { await fsp.mkdir(dest, { recursive: true }); } catch {}
+  const entries = await fsp.readdir(src, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
+  for (const entry of entries) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    if (entry.isDirectory()) await copyDir(s, d);
+    else await fsp.copyFile(s, d).catch(() => {});
+  }
+}
+
+async function ollamaGenerate(endpoint: string, model: string, prompt: string, timeoutMs = 20000): Promise<string> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, prompt, stream: false }),
+      signal: controller.signal
+    } as any);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { response?: string };
+    return (data.response || '').trim();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function readProjectSettingJson(db: DbConnection, key: string): unknown | null {
+  try {
+    const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get(key) as { value_json: string } | undefined;
+    return row ? JSON.parse(row.value_json) : null;
+  } catch {
+    return null;
+  }
 }

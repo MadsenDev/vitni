@@ -1,9 +1,11 @@
 import { ConfidenceBadge } from './ConfidenceBadge';
-import React from 'react';
 import { SourcesList } from './SourcesList';
+import { MediaLibraryModal } from './MediaLibraryModal';
 import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
 import { relationshipTypes } from '../lib/relationshipTypes';
+import { useAttachmentPreviews } from '../lib/useAttachmentPreviews';
+import React from 'react';
 
 interface ParsedNode {
   id: string;
@@ -32,16 +34,20 @@ interface InspectorPanelProps {
   graphNodes: ParsedNode[];
   graphEdges: ParsedEdge[];
   selectedNodeId: string | null;
+  selectedNodeIds?: string[];
   selectedEdgeId: string | null;
   assertions: AssertionView[];
   sources: SourceRecord[];
   onAddAssertion: () => void;
   onAddSource: () => void;
   onDeleteNode: () => void;
+  onDeleteNodes?: (ids: string[]) => void;
   onDeleteEdge: () => void;
   onUpdateLabel: (nodeId: string, label: string) => void;
   onUpdateProperty: (nodeId: string, key: string, value: unknown) => void;
   onUpdateEdgeProperty?: (edgeId: string, key: string, value: unknown) => void;
+  onAlignLeft?: () => void;
+  onAlignTop?: () => void;
 }
 
 export function InspectorPanel({
@@ -49,22 +55,77 @@ export function InspectorPanel({
   graphNodes,
   graphEdges,
   selectedNodeId,
+  selectedNodeIds,
   selectedEdgeId,
   assertions,
   sources,
   onAddAssertion,
   onAddSource,
   onDeleteNode,
+  onDeleteNodes,
   onDeleteEdge,
   onUpdateLabel,
   onUpdateProperty
-  , onUpdateEdgeProperty
+  , onUpdateEdgeProperty,
+  onAlignLeft,
+  onAlignTop
 }: InspectorPanelProps) {
   const [tab, setTab] = React.useState<'details' | 'evidence'>('details');
+  const [imageModalOpen, setImageModalOpen] = React.useState(false);
+  const [imagePropertyKey, setImagePropertyKey] = React.useState<string | null>(null);
+  const [allSources, setAllSources] = React.useState<SourceRecord[]>([]);
   const selectedNode = selectedNodeId ? graphNodes.find(n => n.id === selectedNodeId) ?? null : null;
+  const multiSelected = (selectedNodeIds ?? []).filter(id => graphNodes.some(n => n.id === id));
+  
+  // Load all sources for image previews (including ones referenced in properties)
+  React.useEffect(() => {
+    const loadAllSources = async () => {
+      try {
+        const all = await window.piBridge.listAllSourcesWithUsage();
+        setAllSources(all);
+      } catch (error) {
+        console.error('Failed to load all sources for image previews:', error);
+      }
+    };
+    loadAllSources();
+  }, [selectedNodeId]);
+  
+  // Get sources that are referenced in node properties (for previews)
+  const imageSourceIds = React.useMemo(() => {
+    if (!selectedNode) return [];
+    const imageProps = Object.entries(selectedNode.properties || {})
+      .filter(([_, value]) => value && typeof value === 'string' && value.length > 0)
+      .map(([_, value]) => String(value));
+    return imageProps;
+  }, [selectedNode]);
+  
+  const imageSources = React.useMemo(() => {
+    return allSources.filter(s => imageSourceIds.includes(s.id));
+  }, [allSources, imageSourceIds]);
+  
+  // Get all sources for previews (sources from evidence + image sources)
+  const allSourcesForPreviews = React.useMemo(() => {
+    const sourceIds = new Set<string>();
+    sources.forEach(s => sourceIds.add(s.id));
+    imageSources.forEach(s => sourceIds.add(s.id));
+    return allSources.filter(s => sourceIds.has(s.id));
+  }, [sources, imageSources, allSources]);
+  
+  const { previews } = useAttachmentPreviews(allSourcesForPreviews);
+  const previewMap = React.useMemo(() => {
+    const map = new Map<string, { url: string; mimeType: string; fileName: string }>();
+    previews.forEach((preview) => {
+      map.set(preview.source.id, {
+        url: preview.url,
+        mimeType: preview.mimeType,
+        fileName: preview.fileName
+      });
+    });
+    return map;
+  }, [previews]);
 
   return (
-    <aside className="w-96 overflow-y-auto border-l border-slate-800 bg-slate-950/70">
+    <aside className="w-96 min-w-[280px] max-w-[400px] flex-shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-950/70">
       <div className="flex items-center gap-2 border-b border-slate-800 px-6 pt-4">
         <button
           className={`rounded-t px-3 py-2 text-sm ${tab === 'details' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-200'}`}
@@ -80,7 +141,56 @@ export function InspectorPanel({
         </button>
       </div>
       <div className="p-6 pr-4">
-      {selectedNode ? (
+      {multiSelected.length > 1 ? (
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Multiple selected</h3>
+            <div className="text-sm text-slate-400">{multiSelected.length} items</div>
+          </div>
+          <div className="mb-4 grid grid-cols-2 gap-2 text-sm text-slate-300">
+            <div>
+              <div className="text-slate-400">Types</div>
+              <ul className="mt-1 list-disc pl-5">
+                {Array.from(new Map(multiSelected.map(id => {
+                  const n = graphNodes.find(nn => nn.id === id);
+                  return [n?.type || 'unknown', (n?.type || 'unknown')];
+                })).values()).map(t => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-slate-400">First items</div>
+              <ul className="mt-1 space-y-1">
+                {multiSelected.slice(0, 5).map(id => {
+                  const n = graphNodes.find(nn => nn.id === id);
+                  return <li key={id} className="truncate">{n?.label || id}</li>;
+                })}
+              </ul>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="rounded bg-slate-800 px-3 py-1 text-xs text-slate-200 hover:bg-slate-700"
+              onClick={() => onAlignLeft && onAlignLeft()}
+            >
+              Align left
+            </button>
+            <button
+              className="rounded bg-slate-800 px-3 py-1 text-xs text-slate-200 hover:bg-slate-700"
+              onClick={() => onAlignTop && onAlignTop()}
+            >
+              Align top
+            </button>
+            <button
+              className="rounded bg-red-900/30 px-3 py-1 text-xs text-red-300 hover:bg-red-900/50"
+              onClick={() => onDeleteNodes && onDeleteNodes(multiSelected)}
+            >
+              Delete selected
+            </button>
+          </div>
+        </div>
+      ) : selectedNode ? (
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Node Inspector</h3>
@@ -220,6 +330,54 @@ export function InspectorPanel({
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           );
+                        case 'image': {
+                          const sourceId = String(currentValue);
+                          const preview = sourceId ? previewMap.get(sourceId) : null;
+                          return (
+                            <div className="space-y-2">
+                              {preview && preview.mimeType?.startsWith('image/') ? (
+                                <div className="relative group">
+                                  <img
+                                    src={preview.url}
+                                    alt={preview.fileName}
+                                    className="w-full h-48 object-cover rounded-lg border border-slate-700"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setImagePropertyKey(property.id);
+                                      setImageModalOpen(true);
+                                    }}
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm rounded-lg"
+                                  >
+                                    Change Image
+                                  </button>
+                                  <button
+                                    onClick={() => onUpdateProperty(selectedNode.id, property.id, '')}
+                                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setImagePropertyKey(property.id);
+                                    setImageModalOpen(true);
+                                  }}
+                                  className="w-full px-4 py-8 border-2 border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-slate-500 hover:text-slate-300 transition-colors text-sm"
+                                >
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>{property.placeholder || 'Click to upload image'}</span>
+                                  </div>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        }
                         default:
                           return (
                             <input
@@ -426,6 +584,23 @@ export function InspectorPanel({
         </div>
       )}
       </div>
+      
+      {/* Image selection modal */}
+      <MediaLibraryModal
+        isOpen={imageModalOpen}
+        mode="select"
+        onClose={() => {
+          setImageModalOpen(false);
+          setImagePropertyKey(null);
+        }}
+        onSelect={(source) => {
+          if (imagePropertyKey && selectedNode) {
+            onUpdateProperty(selectedNode.id, imagePropertyKey, source.id);
+          }
+          setImageModalOpen(false);
+          setImagePropertyKey(null);
+        }}
+      />
     </aside>
   );
 }

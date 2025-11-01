@@ -3,7 +3,7 @@ import type React from 'react';
 export interface NodeProperty {
   id: string;
   label: string;
-  type: 'text' | 'email' | 'phone' | 'date' | 'number' | 'url' | 'textarea' | 'select';
+  type: 'text' | 'email' | 'phone' | 'date' | 'number' | 'url' | 'textarea' | 'select' | 'image';
   required?: boolean;
   placeholder?: string;
   options?: string[];

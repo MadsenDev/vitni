@@ -37,6 +37,7 @@ export const peopleNodeTypes: NodeType[] = [
       { id: 'hairColor', label: 'Hair Color', type: 'select', options: ['Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White', 'Unknown'] },
       { id: 'race', label: 'Race/Ethnicity', type: 'text', placeholder: 'Caucasian' },
       { id: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Non-binary', 'Unknown'] },
+      { id: 'photo', label: 'Photo', type: 'image', placeholder: 'Upload a photo of this person' },
       { id: 'notes', label: 'Additional Notes', type: 'textarea', placeholder: 'Any additional information...' }
     ]
   },

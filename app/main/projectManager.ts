@@ -24,7 +24,7 @@ const SUBDIRECTORIES = [
 const RECENT_PROJECTS_FILENAME = 'recent.json';
 const DEFAULT_PROJECT_NAME = 'Scratch Investigation';
 
-interface RecentProjectEntry {
+export interface RecentProjectEntry {
   root: string;
   name: string;
   lastOpenedAt: number;
@@ -303,7 +303,21 @@ export class ProjectManager {
     }
   }
 
+  async getRecentProjects(): Promise<RecentProjectEntry[]> {
+    try {
+      await this.ensureRecentProjectsFile();
+      const raw = await fsp.readFile(this.recentProjectsPath, 'utf8');
+      const entries = JSON.parse(raw) as RecentProjectEntry[];
+      // Filter out projects that no longer exist
+      return entries.filter((entry) => fs.existsSync(entry.root));
+    } catch (error) {
+      console.warn('[ProjectManager] Failed to read recent projects', error);
+      return [];
+    }
+  }
+
   private async recordRecentProject(entry: RecentProjectEntry) {
+    await this.ensureRecentProjectsFile();
     const raw = await fsp.readFile(this.recentProjectsPath, 'utf8');
     const entries = (JSON.parse(raw) as RecentProjectEntry[]).filter((item) => item.root !== entry.root);
     entries.unshift(entry);

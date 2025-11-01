@@ -53,6 +53,8 @@ interface PiBridge {
   updateEntityPosition: (entityId: string, pos: { x: number; y: number }) => Promise<boolean>;
   projectNew: () => Promise<boolean>;
   projectOpen: () => Promise<boolean>;
+  projectOpenPath: (path: string) => Promise<{ ok: boolean; message?: string }>;
+  projectRecent: () => Promise<Array<{ root: string; name: string; lastOpenedAt: number }>>;
   projectSaveAs: () => Promise<boolean>;
   attachFile: (payload: { data: ArrayBuffer; name: string; mime: string }) => Promise<AttachmentResult>;
   getAttachmentData: (
@@ -72,6 +74,10 @@ interface PiBridge {
     updates: { title?: string | null; locator?: string; kind?: string; mime?: string | null }
   ) => Promise<boolean>;
   deleteSource?: (sourceId: string) => Promise<boolean>;
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
 }
 
 declare global {
