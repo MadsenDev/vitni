@@ -311,11 +311,7 @@ export function GraphCanvas({
             'width': 'label',
             'height': 'label',
             'padding': '10px',
-            'shape': 'round-rectangle',
-            'shadow-blur': 16,
-            'shadow-color': 'rgba(56,189,248,0.12)',
-            'shadow-offset-x': 0,
-            'shadow-offset-y': 0
+            'shape': 'round-rectangle'
           }
         },
         {
@@ -324,8 +320,6 @@ export function GraphCanvas({
             'border-color': '#22d3ee',
             'border-width': 4,
             'background-color': '#0f3a4f',
-            'shadow-color': 'rgba(34,211,238,0.75)',
-            'shadow-blur': 40,
             'outline-width': 10,
             'outline-color': 'rgba(34,211,238,0.22)',
             'color': '#ffffff',
