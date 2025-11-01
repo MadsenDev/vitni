@@ -1275,15 +1275,16 @@ export default function App() {
                 >
                   <GraphCanvas
                     elements={filteredElements}
-                apiRef={graphApiRef}
-                onSelectionChange={(nodeIds) => {
-                  setSelectedNodeIds(nodeIds);
-                }}
+                    apiRef={graphApiRef}
+                    onSelectionChange={(nodeIds) => {
+                      setSelectedNodeIds(nodeIds);
+                    }}
                     onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
                     onUnselectNode={() => setSelectedNodeId(null)}
                     onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}
                     onUnselectEdge={() => setSelectedEdgeId(null)}
                     onTapNode={() => { /* disabled: drag-only relationship creation */ }}
+                    showNodeImages={showNodeImages}
                     isRelationshipMode={relationshipTool.isActive}
                     onNodeDragFree={(id, x, y) => {
                       void window.piBridge.updateEntityPosition(id, { x, y });
