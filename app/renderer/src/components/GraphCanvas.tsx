@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import { useEffect, useMemo, useRef } from 'react';
+=======
+import { useEffect, useRef, useMemo } from 'react';
+>>>>>>> Stashed changes
 import CytoscapeComponent from 'react-cytoscapejs';
 import type cytoscape from 'cytoscape';
 import type { ElementDefinition } from 'cytoscape';
@@ -286,8 +290,125 @@ export function GraphCanvas({
     };
   }, [apiRef]);
 
+<<<<<<< Updated upstream
   const stylesheet = useMemo<cytoscape.Stylesheet[]>(
     () => [
+=======
+  // Apply image styles programmatically after graph initialization to avoid Cytoscape parser errors
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !showNodeImages) return;
+
+    // Small delay to ensure graph is fully initialized
+    const timeoutId = setTimeout(() => {
+      // Find nodes with images and apply styles directly
+      const imageNodes = elements.filter((el: any) => {
+        const hasImage = el.data?.hasImage === 'true';
+        const imageUrl = el.data?.imageUrl;
+        return hasImage && imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && imageUrl.startsWith('blob:');
+      });
+
+      imageNodes.forEach((el: any) => {
+        const nodeId = el.data?.id;
+        const imageUrl = el.data?.imageUrl;
+        
+        if (!nodeId || !imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('blob:')) {
+          return;
+        }
+        
+        try {
+          const node = cy.$(`#${nodeId}`);
+          if (node.length === 0) return;
+          
+          // Apply image styles for a taller node with image at top and label below
+          const imageHeight = 110; // Height of the image area at top (good aspect ratio for portraits)
+          const labelPadding = 10; // Padding between image and label
+          const estimatedLabelHeight = 40; // Estimated height needed for wrapped label text
+          const totalHeight = imageHeight + labelPadding + estimatedLabelHeight; // Total node height (~160px)
+          
+          // Apply all image styles with error handling
+          try {
+            // Set image dimensions and positioning first
+            node.style('background-image', imageUrl);
+            node.style('background-fit', 'cover');
+            node.style('background-width', '100%');
+            node.style('background-height', imageHeight);
+            node.style('background-position-x', 'center');
+            node.style('background-position-y', 'top');
+            node.style('background-clip', 'none');
+            
+            // Dim the image by reducing its opacity and adding a dark overlay
+            // This ensures text is always readable even if it overlaps the image
+            node.style('background-opacity', 0.6); // Reduce image brightness to 60%
+            node.style('background-color', 'rgba(15, 23, 42, 0.5)'); // Semi-transparent dark overlay (matches app theme)
+            
+            // Ensure good minimum width for image display (maintain aspect ratio)
+            const currentWidth = parseFloat(node.style('width') as string) || 0;
+            const minWidth = Math.max(160, currentWidth); // At least 160px wide, or keep current if wider
+            node.style('width', minWidth);
+            
+            // Make node taller to accommodate image + label
+            node.style('height', totalHeight);
+            
+            // Position label below the image with proper spacing
+            node.style('padding-top', imageHeight + labelPadding);
+            node.style('padding-bottom', 12);
+            node.style('padding-left', 10);
+            node.style('padding-right', 10);
+            node.style('text-valign', 'bottom');
+            node.style('text-halign', 'center');
+            
+            // Enhance text readability with outline
+            node.style('text-outline-width', 1);
+            node.style('text-outline-color', 'rgba(0, 0, 0, 0.8)');
+            node.style('color', '#ffffff'); // Brighter text color for contrast
+            
+            // Ensure text wraps nicely and doesn't overflow
+            node.style('text-wrap', 'wrap');
+            node.style('text-max-width', `${minWidth - 20}px`);
+          } catch (e) {
+            // Silently fail - image display is optional
+          }
+        } catch (error) {
+          // Silently fail - image display is optional
+        }
+      });
+
+      // Reset image styles for nodes that should no longer have them
+      cy.nodes().forEach((node: any) => {
+        const nodeData = node.data();
+        const shouldHaveImage = nodeData.hasImage === 'true' && nodeData.imageUrl && typeof nodeData.imageUrl === 'string' && nodeData.imageUrl.length > 0 && nodeData.imageUrl.startsWith('blob:');
+        if (!shouldHaveImage) {
+          try {
+            // Remove image-specific styles by resetting to defaults
+            node.style('background-image', 'none');
+            node.style('background-fit', '');
+            node.style('background-width', '');
+            node.style('background-height', '');
+            node.style('background-position-x', '');
+            node.style('background-position-y', '');
+            node.style('background-clip', '');
+            node.style('background-opacity', 1); // Reset opacity
+            node.style('background-color', '#0b1220'); // Reset to default background color
+            node.style('padding-top', '10px');
+            node.style('padding-bottom', '10px');
+            node.style('text-valign', 'center');
+            node.style('text-outline-width', 0); // Reset text outline
+            node.style('color', '#e2e8f0'); // Reset to default text color
+          } catch (error) {
+            // Ignore style errors when resetting
+          }
+        }
+      });
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [showNodeImages, elements]);
+
+  // Build stylesheet - no image styles here to avoid parser errors
+  const stylesheet = useMemo(() => {
+    const baseStyles: any[] = [
+>>>>>>> Stashed changes
       {
         selector: 'node',
         style: {
@@ -310,6 +431,7 @@ export function GraphCanvas({
           'padding': '10px',
           'shape': 'round-rectangle'
         }
+<<<<<<< Updated upstream
       },
       ...(showNodeImages
         ? [
@@ -400,6 +522,17 @@ export function GraphCanvas({
     ],
     [showNodeImages]
   );
+=======
+      }
+    ];
+
+    // Note: Image styles are applied programmatically via useEffect to avoid Cytoscape parser errors
+    // We don't include them in the stylesheet because Cytoscape tries to evaluate data() expressions
+    // for all nodes during parsing, even when using specific selectors
+
+    return baseStyles;
+  }, [showNodeImages, elements]);
+>>>>>>> Stashed changes
 
   return (
     <CytoscapeComponent
@@ -407,7 +540,79 @@ export function GraphCanvas({
       elements={elements}
       layout={{ name: 'preset' }}
       style={{ background: '#0f172a' }}
+<<<<<<< Updated upstream
       stylesheet={stylesheet}
+=======
+      stylesheet={[
+        ...stylesheet,
+        {
+          selector: 'node:selected',
+          style: {
+            'border-color': '#22d3ee',
+            'border-width': 4,
+            'background-color': '#0f3a4f',
+            'outline-width': 10,
+            'outline-color': 'rgba(34,211,238,0.22)',
+            'color': '#ffffff',
+            'text-outline-width': 2,
+            'text-outline-color': '#081018'
+          }
+        },
+        {
+          selector: 'node:hover',
+          style: {
+            'border-color': '#38bdf8',
+            'border-width': 2
+          }
+        },
+        {
+          selector: 'node.preview',
+          style: {
+            'opacity': 0,
+            'width': 1,
+            'height': 1,
+            'label': '',
+            'events': 'no'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#334155',
+            'target-arrow-color': '#334155',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '10px',
+            'color': '#cbd5e1',
+            'text-outline-width': 0,
+            'text-background-color': '#0f172a',
+            'text-background-opacity': 0.6,
+            'text-background-padding': 2
+          }
+        },
+        {
+          selector: 'edge.preview',
+          style: {
+            'line-color': '#3b82f6',
+            'target-arrow-color': '#3b82f6',
+            'target-arrow-shape': 'triangle',
+            'width': 2,
+            'line-style': 'dashed',
+            'events': 'no'
+          }
+        },
+        {
+          selector: 'edge:selected',
+          style: {
+            'line-color': '#3b82f6',
+            'target-arrow-color': '#3b82f6',
+            'width': 3
+          }
+        }
+      ]}
+>>>>>>> Stashed changes
       cy={(cyInstance: cytoscape.Core) => {
         cyRef.current = cyInstance;
         // Reapply box-select state on mount if previously enabled

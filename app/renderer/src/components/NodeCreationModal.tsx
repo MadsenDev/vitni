@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { NodeType } from '../lib/nodeTypes/index';
+import { fetchWebsiteMetadata } from '../lib/fetchWebsiteMetadata';
 
 interface NodeCreationModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export function NodeCreationModal({
 }: NodeCreationModalProps) {
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fetchingMetadata, setFetchingMetadata] = useState(false);
 
   useEffect(() => {
     if (nodeType) {
@@ -189,16 +191,104 @@ export function NodeCreationModal({
         );
       
       case 'url':
+        // Add fetch button for website nodes
+        const isWebsiteNode = nodeType?.id === 'website';
+        const isUrlProperty = property.id === 'url';
+        
+        const handleFetchMetadata = async () => {
+          const url = (value as string || '').trim();
+          if (!url) return;
+          
+          setFetchingMetadata(true);
+          try {
+            const metadata = await fetchWebsiteMetadata(url);
+            
+                    // Auto-populate available fields
+                    if (metadata.domain) {
+                      const domainProp = nodeType?.properties.find(p => p.id === 'domain');
+                      if (domainProp) {
+                        handleInputChange('domain', metadata.domain);
+                      }
+                    }
+                    
+                    // IP address
+                    if ((metadata as any).ipAddress) {
+                      const ipProp = nodeType?.properties.find(p => p.id === 'ipAddress');
+                      if (ipProp) {
+                        handleInputChange('ipAddress', (metadata as any).ipAddress);
+                      }
+                    }
+                    
+                    // Hosting provider
+                    if ((metadata as any).hosting) {
+                      const hostingProp = nodeType?.properties.find(p => p.id === 'hosting');
+                      if (hostingProp) {
+                        handleInputChange('hosting', (metadata as any).hosting);
+                      }
+                    }
+                    
+                    // Domain registration info (if available from WHOIS)
+                    if (metadata.registrar) {
+                      const registrarProp = nodeType?.properties.find(p => p.id === 'registrar');
+                      if (registrarProp) {
+                        handleInputChange('registrar', metadata.registrar);
+                      }
+                    }
+                    
+                    if (metadata.registrationDate) {
+                      const regDateProp = nodeType?.properties.find(p => p.id === 'registrationDate');
+                      if (regDateProp) {
+                        const date = new Date(metadata.registrationDate);
+                        if (!isNaN(date.getTime())) {
+                          handleInputChange('registrationDate', date.toISOString().split('T')[0]);
+                        }
+                      }
+                    }
+                    
+                    if (metadata.expirationDate) {
+                      const expDateProp = nodeType?.properties.find(p => p.id === 'expirationDate');
+                      if (expDateProp) {
+                        const date = new Date(metadata.expirationDate);
+                        if (!isNaN(date.getTime())) {
+                          handleInputChange('expirationDate', date.toISOString().split('T')[0]);
+                        }
+                      }
+                    }
+          } catch (error) {
+            console.warn('[NodeCreationModal] Failed to fetch website metadata:', error);
+          } finally {
+            setFetchingMetadata(false);
+          }
+        };
+        
         return (
-          <input
-            type="url"
-            value={value as string}
-            onChange={(e) => handleInputChange(property.id, e.target.value)}
-            placeholder={property.placeholder}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
-          />
+          <div className="space-y-2">
+            <div className="flex gap-1.5">
+              <input
+                type="url"
+                value={value as string}
+                onChange={(e) => handleInputChange(property.id, e.target.value)}
+                placeholder={property.placeholder}
+                className={`flex-1 min-w-0 px-3 py-2 bg-slate-800 border rounded-md text-white ${
+                  error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
+                }`}
+              />
+              {isWebsiteNode && isUrlProperty && (
+                <button
+                  type="button"
+                  onClick={handleFetchMetadata}
+                  disabled={fetchingMetadata || !(value as string || '').trim()}
+                  className="px-2.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs rounded-md transition-colors whitespace-nowrap shrink-0"
+                  title="Look up domain registration information (WHOIS)"
+                >
+                  {fetchingMetadata ? '...' : 'Fetch'}
+                </button>
+              )}
+            </div>
+            {isWebsiteNode && isUrlProperty && fetchingMetadata && (
+              <p className="text-xs text-slate-400">Looking up domain registration information...</p>
+            )}
+          </div>
         );
       
       case 'phone':

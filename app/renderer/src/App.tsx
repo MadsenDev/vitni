@@ -126,10 +126,11 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean, showImages: 
         hasImage: Boolean(imageUrl) ? 'true' : 'false'
       };
       
-      // Only add imageUrl if it exists (Cytoscape parser fails on undefined)
-      if (imageUrl) {
+      // Only add imageUrl if it exists - Cytoscape fails on empty strings in background-image
+      if (imageUrl && imageUrl.length > 0) {
         data.imageUrl = imageUrl;
       }
+      
       
       return {
         data,
@@ -596,7 +597,14 @@ export default function App() {
                   mime: source.mime
                 });
                 if (data.mimeType?.startsWith('image/')) {
-                  const blob = base64ToBlob(data.base64, data.mimeType);
+                  // Convert base64 to blob
+                  const binaryString = atob(data.base64);
+                  const length = binaryString.length;
+                  const bytes = new Uint8Array(length);
+                  for (let i = 0; i < length; i += 1) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  const blob = new Blob([bytes], { type: data.mimeType });
                   const url = URL.createObjectURL(blob);
                   previews.set(sourceId, url);
                 }
@@ -1276,6 +1284,10 @@ export default function App() {
                   <GraphCanvas
                     elements={filteredElements}
                     apiRef={graphApiRef}
+<<<<<<< Updated upstream
+=======
+                    showNodeImages={showNodeImages}
+>>>>>>> Stashed changes
                     onSelectionChange={(nodeIds) => {
                       setSelectedNodeIds(nodeIds);
                     }}

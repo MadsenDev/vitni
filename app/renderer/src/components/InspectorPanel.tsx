@@ -5,6 +5,7 @@ import type { SourceRecord } from '@shared/types';
 import type { NodeType } from '../lib/nodeTypes/index';
 import { relationshipTypes } from '../lib/relationshipTypes';
 import { useAttachmentPreviews } from '../lib/useAttachmentPreviews';
+import { fetchWebsiteMetadata } from '../lib/fetchWebsiteMetadata';
 import React from 'react';
 
 interface ParsedNode {
@@ -74,6 +75,7 @@ export function InspectorPanel({
   const [imageModalOpen, setImageModalOpen] = React.useState(false);
   const [imagePropertyKey, setImagePropertyKey] = React.useState<string | null>(null);
   const [allSources, setAllSources] = React.useState<SourceRecord[]>([]);
+  const [fetchingMetadata, setFetchingMetadata] = React.useState(false);
   const selectedNode = selectedNodeId ? graphNodes.find(n => n.id === selectedNodeId) ?? null : null;
   const multiSelected = (selectedNodeIds ?? []).filter(id => graphNodes.some(n => n.id === id));
   
@@ -311,14 +313,102 @@ export function InspectorPanel({
                             />
                           );
                         case 'url':
+                          // Add fetch button for website nodes
+                          const isWebsiteNode = selectedNode.type === 'website';
+                          const isUrlProperty = property.id === 'url';
+                          
+                          const handleFetchMetadata = async () => {
+                            const url = String(currentValue || '').trim();
+                            if (!url) return;
+                            
+                            setFetchingMetadata(true);
+                            try {
+                              const metadata = await fetchWebsiteMetadata(url);
+                              
+                              // Auto-populate available fields
+                              if (metadata.domain) {
+                                const domainProp = nodeType.properties.find(p => p.id === 'domain');
+                                if (domainProp) {
+                                  onUpdateProperty(selectedNode.id, 'domain', metadata.domain);
+                                }
+                              }
+                              
+                              // IP address
+                              if ((metadata as any).ipAddress) {
+                                const ipProp = nodeType.properties.find(p => p.id === 'ipAddress');
+                                if (ipProp) {
+                                  onUpdateProperty(selectedNode.id, 'ipAddress', (metadata as any).ipAddress);
+                                }
+                              }
+                              
+                              // Hosting provider
+                              if ((metadata as any).hosting) {
+                                const hostingProp = nodeType.properties.find(p => p.id === 'hosting');
+                                if (hostingProp) {
+                                  onUpdateProperty(selectedNode.id, 'hosting', (metadata as any).hosting);
+                                }
+                              }
+                              
+                              // Domain registration info (if available from WHOIS)
+                              if (metadata.registrar) {
+                                const registrarProp = nodeType.properties.find(p => p.id === 'registrar');
+                                if (registrarProp) {
+                                  onUpdateProperty(selectedNode.id, 'registrar', metadata.registrar);
+                                }
+                              }
+                              
+                              if (metadata.registrationDate) {
+                                const regDateProp = nodeType.properties.find(p => p.id === 'registrationDate');
+                                if (regDateProp) {
+                                  const date = new Date(metadata.registrationDate);
+                                  if (!isNaN(date.getTime())) {
+                                    onUpdateProperty(selectedNode.id, 'registrationDate', date.toISOString().split('T')[0]);
+                                  }
+                                }
+                              }
+                              
+                              if (metadata.expirationDate) {
+                                const expDateProp = nodeType.properties.find(p => p.id === 'expirationDate');
+                                if (expDateProp) {
+                                  const date = new Date(metadata.expirationDate);
+                                  if (!isNaN(date.getTime())) {
+                                    onUpdateProperty(selectedNode.id, 'expirationDate', date.toISOString().split('T')[0]);
+                                  }
+                                }
+                              }
+                            } catch (error) {
+                              console.warn('[InspectorPanel] Failed to fetch website metadata:', error);
+                            } finally {
+                              setFetchingMetadata(false);
+                            }
+                          };
+                          
                           return (
-                            <input
-                              type="url"
-                              value={String(currentValue)}
-                              onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
-                              placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                            <div className="space-y-2">
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="url"
+                                  value={String(currentValue)}
+                                  onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                                  placeholder={property.placeholder}
+                                  className="flex-1 min-w-0 px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                {isWebsiteNode && isUrlProperty && (
+                                  <button
+                                    type="button"
+                                    onClick={handleFetchMetadata}
+                                    disabled={fetchingMetadata || !String(currentValue || '').trim()}
+                                    className="px-2.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs rounded-md transition-colors whitespace-nowrap shrink-0"
+                                    title="Look up domain registration information (WHOIS)"
+                                  >
+                                    {fetchingMetadata ? '...' : 'Fetch'}
+                                  </button>
+                                )}
+                              </div>
+                              {isWebsiteNode && isUrlProperty && fetchingMetadata && (
+                                <p className="text-xs text-slate-400">Looking up domain registration information...</p>
+                              )}
+                            </div>
                           );
                         case 'phone':
                           return (
