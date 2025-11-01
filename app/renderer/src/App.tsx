@@ -55,12 +55,13 @@ cytoscape.warnings(false);
 
 const LOCAL_AI_SETTING_KEY = 'local_ai_enabled';
 const SHOW_NODE_LABELS_SETTING_KEY = 'show_node_labels';
+const SHOW_NODE_IMAGES_SETTING_KEY = 'show_node_images';
 const AUTO_LAYOUT_ON_CREATE_SETTING_KEY = 'auto_layout_on_create';
 const DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY = 'default_relationship_confidence';
 
 type AssertionView = ParsedAssertionRecord;
 
-function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefinition[] {
+function mapGraphElements(data: GraphSnapshot, showLabels: boolean, showImages: boolean, imagePreviewMap: Map<string, string>): ElementDefinition[] {
   const relById = new Map(relationshipTypes.map(rt => [rt.id, rt]));
   const buildPersonName = (props: Record<string, unknown> | undefined, fallback: string) => {
     const first = (props?.first_name as string) || (props?.firstname as string) || '';
@@ -112,15 +113,29 @@ function mapGraphElements(data: GraphSnapshot, showLabels: boolean): ElementDefi
     return pick || node.id;
   };
   return [
-    ...data.nodes.map((node) => ({
-      data: {
+    ...data.nodes.map((node) => {
+      // Get image URL if showImages is enabled and node has photo property
+      const photoSourceId = showImages && node.type === 'person' ? (node.properties?.photo as string | undefined) : undefined;
+      const imageUrl = photoSourceId ? imagePreviewMap.get(photoSourceId) : undefined;
+      
+      const data: Record<string, unknown> = {
         id: node.id,
         label: showLabels ? `${nodeTypeIcons[node.type] || '●'} ${displayNameForNode(node)}` : '',
         type: node.type,
-        icon: nodeTypeIcons[node.type] || '●'
-      },
-      position: node.pos_x != null && node.pos_y != null ? { x: Number(node.pos_x), y: Number(node.pos_y) } : undefined
-    })),
+        icon: nodeTypeIcons[node.type] || '●',
+        hasImage: Boolean(imageUrl) ? 'true' : 'false'
+      };
+      
+      // Only add imageUrl if it exists (Cytoscape parser fails on undefined)
+      if (imageUrl) {
+        data.imageUrl = imageUrl;
+      }
+      
+      return {
+        data,
+        position: node.pos_x != null && node.pos_y != null ? { x: Number(node.pos_x), y: Number(node.pos_y) } : undefined
+      };
+    }),
     ...data.edges.map((edge) => {
       const rel = relById.get(edge.type);
       const subtypeId = (edge.properties?.subtype as string | undefined) || '';
@@ -207,6 +222,7 @@ export default function App() {
   const [splashReadyToHide, setSplashReadyToHide] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [showNodeLabels, setShowNodeLabels] = useState(true);
+  const [showNodeImages, setShowNodeImages] = useState(false);
   const [autoLayoutOnCreate, setAutoLayoutOnCreate] = useState(false);
   const [defaultRelationshipConfidence, setDefaultRelationshipConfidence] = useState<'unverified' | 'asserted' | 'verified'>('unverified');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -241,14 +257,16 @@ export default function App() {
     setIsLocalAILoading(true);
     setLoadingStage('settings');
     try {
-      const [localAI, showLabels, autoLayout, defaultConfidence] = await Promise.all([
+      const [localAI, showLabels, showImages, autoLayout, defaultConfidence] = await Promise.all([
         window.piBridge.getProjectSetting(LOCAL_AI_SETTING_KEY),
         window.piBridge.getProjectSetting(SHOW_NODE_LABELS_SETTING_KEY),
+        window.piBridge.getProjectSetting(SHOW_NODE_IMAGES_SETTING_KEY),
         window.piBridge.getProjectSetting(AUTO_LAYOUT_ON_CREATE_SETTING_KEY),
         window.piBridge.getProjectSetting(DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY)
       ]);
       setLocalAIEnabled(Boolean(localAI));
       setShowNodeLabels(showLabels === null ? true : Boolean(showLabels));
+      setShowNodeImages(showImages === null ? false : Boolean(showImages));
       setAutoLayoutOnCreate(Boolean(autoLayout));
       setDefaultRelationshipConfidence((defaultConfidence as typeof defaultRelationshipConfidence) || 'unverified');
       // Only move to 'graph' stage if graph isn't loaded yet
@@ -284,6 +302,15 @@ export default function App() {
       setShowNodeLabels(value);
     } catch (error) {
       console.error('[App] Failed to persist show node labels setting', error);
+    }
+  }, []);
+
+  const handleShowNodeImagesChange = useCallback(async (value: boolean) => {
+    try {
+      await window.piBridge.setProjectSetting(SHOW_NODE_IMAGES_SETTING_KEY, value);
+      setShowNodeImages(value);
+    } catch (error) {
+      console.error('[App] Failed to persist show node images setting', error);
     }
   }, []);
 
@@ -536,7 +563,67 @@ export default function App() {
     setSourceModalOpen(false);
   }, [selectedNodeId]);
 
-  const elements = useMemo(() => mapGraphElements(graph, showNodeLabels), [graph, showNodeLabels]);
+  // Load image previews when showNodeImages is enabled
+  const [imagePreviews, setImagePreviews] = useState<Map<string, string>>(new Map());
+  
+  useEffect(() => {
+    if (!showNodeImages) {
+      setImagePreviews(new Map());
+      return;
+    }
+    
+    const loadImagePreviews = async () => {
+      try {
+        const allSources = await window.piBridge.listAllSourcesWithUsage();
+        const photoSourceIds = new Set<string>();
+        
+        // Find all person nodes with photo properties
+        graph.nodes.forEach(node => {
+          if (node.type === 'person' && node.properties?.photo) {
+            photoSourceIds.add(String(node.properties.photo));
+          }
+        });
+        
+        // Load previews for photo sources
+        const previews = new Map<string, string>();
+        await Promise.all(
+          Array.from(photoSourceIds).map(async (sourceId) => {
+            try {
+              const source = allSources.find(s => s.id === sourceId);
+              if (source && source.hash && source.locator) {
+                const data = await window.piBridge.getAttachmentData({
+                  locator: source.locator,
+                  mime: source.mime
+                });
+                if (data.mimeType?.startsWith('image/')) {
+                  const blob = base64ToBlob(data.base64, data.mimeType);
+                  const url = URL.createObjectURL(blob);
+                  previews.set(sourceId, url);
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to load image preview for source', sourceId, error);
+            }
+          })
+        );
+        
+        setImagePreviews(previews);
+      } catch (error) {
+        console.error('Failed to load image previews', error);
+      }
+    };
+    
+    loadImagePreviews();
+  }, [showNodeImages, graph.nodes]);
+
+  // Cleanup: revoke object URLs when component unmounts or previews change
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
+
+  const elements = useMemo(() => mapGraphElements(graph, showNodeLabels, showNodeImages, imagePreviews), [graph, showNodeLabels, showNodeImages, imagePreviews]);
   const filteredElements = useMemo(() => {
     // Filter nodes by type and source presence
     const allowedTypes = activeTypeIds;
@@ -1294,18 +1381,20 @@ export default function App() {
         onCreate={handleRelationshipCreate}
       />
       
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        localAIEnabled={localAIEnabled}
-        onLocalAIToggle={handleLocalAIToggle}
-        showNodeLabels={showNodeLabels}
-        onShowNodeLabelsChange={handleShowNodeLabelsChange}
-        autoLayoutOnCreate={autoLayoutOnCreate}
-        onAutoLayoutOnCreateChange={handleAutoLayoutOnCreateChange}
-        defaultRelationshipConfidence={defaultRelationshipConfidence}
-        onDefaultRelationshipConfidenceChange={handleDefaultRelationshipConfidenceChange}
-      />
+        <SettingsModal
+          isOpen={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+          localAIEnabled={localAIEnabled}
+          onLocalAIToggle={handleLocalAIToggle}
+          showNodeLabels={showNodeLabels}
+          onShowNodeLabelsChange={handleShowNodeLabelsChange}
+          showNodeImages={showNodeImages}
+          onShowNodeImagesChange={handleShowNodeImagesChange}
+          autoLayoutOnCreate={autoLayoutOnCreate}
+          onAutoLayoutOnCreateChange={handleAutoLayoutOnCreateChange}
+          defaultRelationshipConfidence={defaultRelationshipConfidence}
+          onDefaultRelationshipConfidenceChange={handleDefaultRelationshipConfidenceChange}
+        />
       
       <NodeDeletionModal
         isOpen={deletionModal.isOpen}

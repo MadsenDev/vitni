@@ -8,6 +8,8 @@ interface SettingsModalProps {
   onLocalAIToggle: () => void;
   showNodeLabels: boolean;
   onShowNodeLabelsChange: (value: boolean) => void;
+  showNodeImages: boolean;
+  onShowNodeImagesChange: (value: boolean) => void;
   autoLayoutOnCreate: boolean;
   onAutoLayoutOnCreateChange: (value: boolean) => void;
   defaultRelationshipConfidence: 'unverified' | 'asserted' | 'verified';
@@ -21,6 +23,8 @@ export function SettingsModal({
   onLocalAIToggle,
   showNodeLabels,
   onShowNodeLabelsChange,
+  showNodeImages,
+  onShowNodeImagesChange,
   autoLayoutOnCreate,
   onAutoLayoutOnCreateChange,
   defaultRelationshipConfidence,
@@ -218,6 +222,25 @@ export function SettingsModal({
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     showNodeLabels ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm text-slate-300">Show Node Images</label>
+                <p className="text-xs text-slate-400 mt-1">Display photos on person nodes</p>
+              </div>
+              <button
+                onClick={() => onShowNodeImagesChange(!showNodeImages)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  showNodeImages ? 'bg-blue-600' : 'bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    showNodeImages ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>

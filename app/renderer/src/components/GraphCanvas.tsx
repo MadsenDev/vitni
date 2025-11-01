@@ -319,6 +319,22 @@ export function GraphCanvas({
           }
         },
         {
+          selector: 'node[hasImage = "true"][imageUrl]',
+          style: {
+            'background-image': 'data(imageUrl)',
+            'background-fit': 'cover',
+            'background-width': '100%',
+            'background-height': '100px',
+            'background-position-x': 'center',
+            'background-position-y': 'top',
+            'height': 'label',
+            'min-height': '140px',
+            'padding-top': '100px',
+            'text-valign': 'bottom',
+            'text-margin-y': -8
+          }
+        },
+        {
           selector: 'node:selected',
           style: {
             'border-color': '#22d3ee',
