@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
 import { useEffect, useMemo, useRef } from 'react';
-=======
-import { useEffect, useRef, useMemo } from 'react';
->>>>>>> Stashed changes
 import CytoscapeComponent from 'react-cytoscapejs';
 import type cytoscape from 'cytoscape';
 import type { ElementDefinition } from 'cytoscape';
@@ -220,7 +216,71 @@ export function GraphCanvas({
     apiRef.current = cy
       ? {
           runLayout: (name) => {
-            cy.layout({ name }).run();
+            let layoutOptions: any = {};
+            
+            switch (name) {
+              case 'grid':
+                layoutOptions = {
+                  name: 'grid',
+                  fit: true,
+                  padding: 30,
+                  spacingFactor: 0.9, // Tighter spacing for grid
+                  avoidOverlap: true,
+                  avoidOverlapPadding: 8,
+                  nodeDimensionsIncludeLabels: true,
+                  condense: false,
+                  rows: undefined,
+                  columns: undefined
+                };
+                break;
+              case 'concentric':
+                layoutOptions = {
+                  name: 'concentric',
+                  fit: true,
+                  padding: 40,
+                  spacingFactor: 1.3,
+                  avoidOverlap: true,
+                  avoidOverlapPadding: 12,
+                  nodeDimensionsIncludeLabels: true,
+                  concentric: (node: any) => {
+                    return node.degree();
+                  },
+                  levelWidth: (nodes: any) => {
+                    return nodes.length > 10 ? 220 : 160;
+                  }
+                };
+                break;
+              case 'cose':
+                // Calculate adaptive spacing based on graph complexity
+                const nodeCount = cy.nodes().length;
+                const edgeCount = cy.edges().length;
+                const complexity = edgeCount / Math.max(nodeCount, 1);
+                
+                layoutOptions = {
+                  name: 'cose',
+                  fit: true,
+                  padding: 100, // More padding around the graph
+                  nodeDimensionsIncludeLabels: true,
+                  idealEdgeLength: (edge: any) => {
+                    // More edges per node = need much longer edges to prevent overlaps
+                    return complexity > 2 ? 600 : complexity > 1 ? 450 : 350;
+                  },
+                  edgeElasticity: (edge: any) => 0.2,
+                  nestingFactor: 0.1,
+                  gravity: 0.005, // Even lower gravity to prevent clustering
+                  numIter: 5000, // More iterations for better separation
+                  initialTemp: 300,
+                  coolingFactor: 0.99, // Very slow cooling for more exploration
+                  minTemp: 0.1,
+                  nodeRepulsion: (node: any) => 35000, // Even stronger repulsion
+                  animate: true,
+                  animationDuration: 1000,
+                  animationEasing: 'ease-out'
+                };
+                break;
+            }
+            
+            cy.layout(layoutOptions).run();
           },
           toggleBoxSelect: () => {
             applyBoxSelectState(cy, !boxSelectRef.current);
@@ -290,10 +350,6 @@ export function GraphCanvas({
     };
   }, [apiRef]);
 
-<<<<<<< Updated upstream
-  const stylesheet = useMemo<cytoscape.Stylesheet[]>(
-    () => [
-=======
   // Apply image styles programmatically after graph initialization to avoid Cytoscape parser errors
   useEffect(() => {
     const cy = cyRef.current;
@@ -311,21 +367,21 @@ export function GraphCanvas({
       imageNodes.forEach((el: any) => {
         const nodeId = el.data?.id;
         const imageUrl = el.data?.imageUrl;
-        
+
         if (!nodeId || !imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('blob:')) {
           return;
         }
-        
+
         try {
           const node = cy.$(`#${nodeId}`);
           if (node.length === 0) return;
-          
+
           // Apply image styles for a taller node with image at top and label below
           const imageHeight = 110; // Height of the image area at top (good aspect ratio for portraits)
           const labelPadding = 10; // Padding between image and label
           const estimatedLabelHeight = 40; // Estimated height needed for wrapped label text
           const totalHeight = imageHeight + labelPadding + estimatedLabelHeight; // Total node height (~160px)
-          
+
           // Apply all image styles with error handling
           try {
             // Set image dimensions and positioning first
@@ -336,20 +392,20 @@ export function GraphCanvas({
             node.style('background-position-x', 'center');
             node.style('background-position-y', 'top');
             node.style('background-clip', 'none');
-            
+
             // Dim the image by reducing its opacity and adding a dark overlay
             // This ensures text is always readable even if it overlaps the image
             node.style('background-opacity', 0.6); // Reduce image brightness to 60%
             node.style('background-color', 'rgba(15, 23, 42, 0.5)'); // Semi-transparent dark overlay (matches app theme)
-            
+
             // Ensure good minimum width for image display (maintain aspect ratio)
             const currentWidth = parseFloat(node.style('width') as string) || 0;
             const minWidth = Math.max(160, currentWidth); // At least 160px wide, or keep current if wider
             node.style('width', minWidth);
-            
+
             // Make node taller to accommodate image + label
             node.style('height', totalHeight);
-            
+
             // Position label below the image with proper spacing
             node.style('padding-top', imageHeight + labelPadding);
             node.style('padding-bottom', 12);
@@ -357,12 +413,12 @@ export function GraphCanvas({
             node.style('padding-right', 10);
             node.style('text-valign', 'bottom');
             node.style('text-halign', 'center');
-            
+
             // Enhance text readability with outline
             node.style('text-outline-width', 1);
             node.style('text-outline-color', 'rgba(0, 0, 0, 0.8)');
             node.style('color', '#ffffff'); // Brighter text color for contrast
-            
+
             // Ensure text wraps nicely and doesn't overflow
             node.style('text-wrap', 'wrap');
             node.style('text-max-width', `${minWidth - 20}px`);
@@ -408,7 +464,6 @@ export function GraphCanvas({
   // Build stylesheet - no image styles here to avoid parser errors
   const stylesheet = useMemo(() => {
     const baseStyles: any[] = [
->>>>>>> Stashed changes
       {
         selector: 'node',
         style: {
@@ -431,108 +486,104 @@ export function GraphCanvas({
           'padding': '10px',
           'shape': 'round-rectangle'
         }
-<<<<<<< Updated upstream
-      },
-      ...(showNodeImages
-        ? [
-            {
-              selector: 'node[hasImage = "true"][imageUrl]',
-              style: {
-                'background-image': 'data(imageUrl)',
-                'background-fit': 'cover',
-                'background-width': '100%',
-                'background-height': '100px',
-                'background-position-x': 'center',
-                'background-position-y': 'top',
-                'height': 'label',
-                'min-height': '140px',
-                'padding-top': '100px',
-                'text-valign': 'bottom',
-                'text-margin-y': -8
-              }
-            } satisfies cytoscape.Stylesheet
-          ]
-        : []),
-      {
-        selector: 'node:selected',
-        style: {
-          'border-color': '#22d3ee',
-          'border-width': 4,
-          'background-color': '#0f3a4f',
-          'outline-width': 10,
-          'outline-color': 'rgba(34,211,238,0.22)',
-          'color': '#ffffff',
-          'text-outline-width': 2,
-          'text-outline-color': '#081018'
-        }
-      },
-      {
-        selector: 'node:hover',
-        style: {
-          'border-color': '#38bdf8',
-          'border-width': 2
-        }
-      },
-      {
-        selector: 'node.preview',
-        style: {
-          'opacity': 0,
-          'width': 1,
-          'height': 1,
-          'label': '',
-          'events': 'no'
-        }
-      },
-      {
-        selector: 'edge',
-        style: {
-          'width': 2,
-          'line-color': '#334155',
-          'target-arrow-color': '#334155',
-          'target-arrow-shape': 'triangle',
-          'curve-style': 'bezier',
-          'label': 'data(label)',
-          'font-size': '10px',
-          'color': '#cbd5e1',
-          'text-outline-width': 0,
-          'text-background-color': '#0f172a',
-          'text-background-opacity': 0.6,
-          'text-background-padding': 2
-        }
-      },
-      {
-        selector: 'edge.preview',
-        style: {
-          'line-color': '#3b82f6',
-          'target-arrow-color': '#3b82f6',
-          'target-arrow-shape': 'triangle',
-          'width': 2,
-          'line-style': 'dashed',
-          'events': 'no'
-        }
-      },
-      {
-        selector: 'edge:selected',
-        style: {
-          'line-color': '#3b82f6',
-          'target-arrow-color': '#3b82f6',
-          'width': 3
-        }
-      }
-    ],
-    [showNodeImages]
-  );
-=======
       }
     ];
 
-    // Note: Image styles are applied programmatically via useEffect to avoid Cytoscape parser errors
-    // We don't include them in the stylesheet because Cytoscape tries to evaluate data() expressions
-    // for all nodes during parsing, even when using specific selectors
+    // Note: Image styles are NOT included in the stylesheet because Cytoscape's parser
+    // evaluates data() expressions for all nodes during parsing, even with specific selectors.
+    // When a node doesn't have the imageUrl property, it evaluates to null and causes errors.
+    // Instead, image styles are applied programmatically via useEffect (see lines ~290-380).
+
+    // Node selected
+    baseStyles.push({
+      selector: 'node:selected',
+      style: {
+        'border-color': '#22d3ee',
+        'border-width': 4,
+        'background-color': '#0f3a4f',
+        'outline-width': 10,
+        'outline-color': 'rgba(34,211,238,0.22)',
+        'color': '#ffffff',
+        'text-outline-width': 2,
+        'text-outline-color': '#081018'
+      }
+    });
+
+    // Node hover
+    baseStyles.push({
+      selector: 'node:hover',
+      style: {
+        'border-color': '#38bdf8',
+        'border-width': 2
+      }
+    });
+
+    // Node preview
+    baseStyles.push({
+      selector: 'node.preview',
+      style: {
+        'opacity': 0,
+        'width': 1,
+        'height': 1,
+        'label': '',
+        'events': 'no'
+      }
+    });
+
+    // Edge default
+    baseStyles.push({
+      selector: 'edge',
+      style: {
+        'width': 2,
+        'line-color': '#334155',
+        'target-arrow-color': '#334155',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'control-point-step-size': 80, // Larger step size for smoother, more spaced curves
+        'control-point-weight': 0.5,
+        'source-endpoint': 'outside-to-node',
+        'target-endpoint': 'outside-to-node',
+        'label': 'data(label)',
+        'font-size': '9px', // Slightly smaller to reduce overlap
+        'color': '#cbd5e1',
+        'text-outline-width': 1, // Add outline for better readability
+        'text-outline-color': '#0f172a',
+        'text-background-color': '#0f172a',
+        'text-background-opacity': 0.85, // More opaque background
+        'text-background-padding': 4, // More padding around text
+        'text-margin-y': -5, // Offset label slightly above edge
+        'edge-text-rotation': 'autorotate',
+        'text-rotation': 'none', // Don't rotate text if possible
+        'text-max-width': '100px', // Limit label width
+        'text-wrap': 'wrap'
+      }
+    });
+
+    // Edge preview
+    baseStyles.push({
+      selector: 'edge.preview',
+      style: {
+        'line-color': '#3b82f6',
+        'target-arrow-color': '#3b82f6',
+        'target-arrow-shape': 'triangle',
+        'width': 2,
+        'line-style': 'dashed',
+        'events': 'no'
+      }
+    });
+
+    // Edge selected
+    baseStyles.push({
+      selector: 'edge:selected',
+      style: {
+        'line-color': '#3b82f6',
+        'target-arrow-color': '#3b82f6',
+        'width': 3
+      }
+    });
 
     return baseStyles;
-  }, [showNodeImages, elements]);
->>>>>>> Stashed changes
+  }, [showNodeImages]);
 
   return (
     <CytoscapeComponent
@@ -540,79 +591,7 @@ export function GraphCanvas({
       elements={elements}
       layout={{ name: 'preset' }}
       style={{ background: '#0f172a' }}
-<<<<<<< Updated upstream
       stylesheet={stylesheet}
-=======
-      stylesheet={[
-        ...stylesheet,
-        {
-          selector: 'node:selected',
-          style: {
-            'border-color': '#22d3ee',
-            'border-width': 4,
-            'background-color': '#0f3a4f',
-            'outline-width': 10,
-            'outline-color': 'rgba(34,211,238,0.22)',
-            'color': '#ffffff',
-            'text-outline-width': 2,
-            'text-outline-color': '#081018'
-          }
-        },
-        {
-          selector: 'node:hover',
-          style: {
-            'border-color': '#38bdf8',
-            'border-width': 2
-          }
-        },
-        {
-          selector: 'node.preview',
-          style: {
-            'opacity': 0,
-            'width': 1,
-            'height': 1,
-            'label': '',
-            'events': 'no'
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 2,
-            'line-color': '#334155',
-            'target-arrow-color': '#334155',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-            'label': 'data(label)',
-            'font-size': '10px',
-            'color': '#cbd5e1',
-            'text-outline-width': 0,
-            'text-background-color': '#0f172a',
-            'text-background-opacity': 0.6,
-            'text-background-padding': 2
-          }
-        },
-        {
-          selector: 'edge.preview',
-          style: {
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
-            'target-arrow-shape': 'triangle',
-            'width': 2,
-            'line-style': 'dashed',
-            'events': 'no'
-          }
-        },
-        {
-          selector: 'edge:selected',
-          style: {
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
-            'width': 3
-          }
-        }
-      ]}
->>>>>>> Stashed changes
       cy={(cyInstance: cytoscape.Core) => {
         cyRef.current = cyInstance;
         // Reapply box-select state on mount if previously enabled

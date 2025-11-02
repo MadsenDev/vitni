@@ -249,8 +249,16 @@ export default function App() {
   const graphApiRef = useRef<{
     runLayout: (name: 'grid' | 'concentric' | 'cose') => void;
     toggleBoxSelect: () => void;
+    setBoxSelectEnabled: (enabled: boolean) => void;
     alignSelected: (kind: 'left' | 'top') => void;
     invertSelection: () => void;
+    zoomToSelection: () => void;
+    fitToScreen: () => void;
+    centerSelection: () => void;
+    containerToGraph: (clientX: number, clientY: number) => { x: number; y: number } | null;
+    getNodePositions: () => Record<string, { x: number; y: number }>;
+    getSelectedNodeIds: () => string[];
+    getSelectedEdgeIds: () => string[];
   } | null>(null);
   // Real-time editing state - no separate editing mode needed
 
@@ -429,7 +437,7 @@ export default function App() {
               
               if (!candidate) return;
               const currentLabel = (n.label || '').trim().toLowerCase();
-              const typeWord = (n.type || '').replaceAll('_', ' ').trim().toLowerCase();
+              const typeWord = (n.type || '').replace(/_/g, ' ').trim().toLowerCase();
               const isGeneric = currentLabel === '' || currentLabel === typeWord;
               if (isGeneric || currentLabel !== candidate.toLowerCase()) {
                 await window.piBridge.updateEntity(n.id, { label: candidate });
@@ -1136,7 +1144,7 @@ export default function App() {
   }, []);
 
   const titleBarProps = {
-    context: isBooting ? 'booting' : showWelcome ? 'welcome' : 'main',
+    context: (isBooting ? 'booting' : showWelcome ? 'welcome' : 'main') as 'welcome' | 'booting' | 'main',
     onProjectNew: handleProjectCreate,
     onProjectOpen: handleProjectLoad,
     onProjectClose: handleProjectClose,
@@ -1284,10 +1292,7 @@ export default function App() {
                   <GraphCanvas
                     elements={filteredElements}
                     apiRef={graphApiRef}
-<<<<<<< Updated upstream
-=======
                     showNodeImages={showNodeImages}
->>>>>>> Stashed changes
                     onSelectionChange={(nodeIds) => {
                       setSelectedNodeIds(nodeIds);
                     }}
@@ -1296,7 +1301,6 @@ export default function App() {
                     onSelectEdge={(id) => { setSelectedEdgeId(id); setSelectedNodeId(null); }}
                     onUnselectEdge={() => setSelectedEdgeId(null)}
                     onTapNode={() => { /* disabled: drag-only relationship creation */ }}
-                    showNodeImages={showNodeImages}
                     isRelationshipMode={relationshipTool.isActive}
                     onNodeDragFree={(id, x, y) => {
                       void window.piBridge.updateEntityPosition(id, { x, y });

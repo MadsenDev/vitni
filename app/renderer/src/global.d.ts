@@ -90,6 +90,8 @@ declare global {
       onSettingsOpen: (cb: () => void) => () => void;
       onMediaGalleryOpen: (cb: () => void) => () => void;
       onTerminologyOpen?: (cb: () => void) => () => void;
+      onProjectInfoOpen?: (cb: () => void) => () => void;
+      onExportReportOpen?: (cb: () => void) => () => void;
       onViewZoomSelection?: (cb: () => void) => () => void;
       onViewFit?: (cb: () => void) => () => void;
       onViewCenterSelection?: (cb: () => void) => () => void;
