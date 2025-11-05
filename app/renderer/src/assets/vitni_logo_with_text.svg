@@ -32,15 +32,39 @@
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1" />
-  <defs
-     id="defs1" />
+  <defs>
+    <linearGradient id="brandGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1ce5d7;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="brandGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="brandGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="brandGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1ce5d7;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-45.035898,-86.046984)">
     <path
-       style="font-weight:bold;font-size:76.7196px;font-family:'Adwaita Sans';-inkscape-font-specification:'Adwaita Sans Bold';fill:#ffffff;stroke-width:0.799163"
+       style="font-weight:bold;font-size:76.7196px;font-family:'Adwaita Sans';-inkscape-font-specification:'Adwaita Sans Bold';fill:#ffffff;fill-opacity:0.95;stroke-width:0.799163"
        d="m 136.08977,175.10287 -19.59197,-55.8165 h 12.54935 l 9.02804,27.15904 q 1.61081,5.0572 3.334,11.01346 1.76066,5.91879 3.821,12.92395 h -3.33401 q 1.98542,-7.00516 3.67115,-12.92395 1.7232,-5.95626 3.25909,-11.01346 l 8.72835,-27.15904 h 12.39951 l -19.1799,55.8165 z m 49.8977,-55.8165 v 55.8165 h -11.5379 v -55.8165 z m 5.84388,9.88964 v -9.88964 h 45.36495 v 9.88964 h -16.89479 v 45.92686 H 208.7636 v -45.92686 z m 51.20883,45.92686 v -55.8165 h 12.13728 l 17.9437,28.54509 q 0.82414,1.31112 2.0978,3.52131 1.27367,2.21018 2.65971,4.75751 1.42351,2.50987 2.69718,4.8699 l -1.31113,2.95939 q -0.11238,-2.54733 -0.22476,-5.84387 -0.11239,-3.33401 -0.14985,-6.40579 -0.0375,-3.07178 -0.0375,-4.79497 v -27.60857 h 11.50045 v 55.8165 H 278.17836 L 261.9204,149.25496 q -1.01144,-1.61081 -2.54733,-4.1956 -1.53589,-2.62225 -3.44639,-5.9188 -1.87304,-3.334 -3.89592,-7.04262 l 2.02288,-1.31112 q 0.22477,4.12068 0.33715,7.75437 0.11238,3.59623 0.14984,6.36833 0.0375,2.73463 0.0375,4.30798 v 25.88537 z m 67.16711,-55.8165 v 55.8165 h -11.53791 v -55.8165 z"
        id="text2"
        transform="scale(1.0495191,0.95281734)"
@@ -49,13 +73,13 @@
        id="g2"
        transform="matrix(0.62176436,0.04901559,0.04901559,-0.62176436,-1.3921698,239.85966)">
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient1);fill-opacity:1"
          id="path1"
          cx="92.993744"
          cy="101.88736"
          r="26.27284" />
       <rect
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient3);fill-opacity:1"
          id="rect1"
          width="18.583229"
          height="107.65457"
@@ -63,13 +87,13 @@
          y="149.79471"
          transform="rotate(-25.260167)" />
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient4);fill-opacity:1"
          id="circle1"
          cx="155.07384"
          cy="233.25157"
          r="26.27284" />
       <rect
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient2);fill-opacity:1"
          id="rect2"
          width="18.583229"
          height="107.65457"
@@ -77,7 +101,7 @@
          y="14.854075"
          transform="matrix(-0.90437944,-0.42672923,-0.42672923,0.90437944,0,0)" />
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient2);fill-opacity:1"
          id="circle2"
          cx="214.99374"
          cy="101.88736"

@@ -39,17 +39,36 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-45.035898,-86.046984)">
+    <defs>
+      <linearGradient id="brandGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#1ce5d7;stop-opacity:1" />
+        <stop offset="50%" style="stop-color:#38bdf8;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="brandGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="brandGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="brandGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+      </linearGradient>
+    </defs>
     <g
        id="g2"
        transform="matrix(0.62176436,0.04901559,0.04901559,-0.62176436,-1.3921698,239.85966)">
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient1);fill-opacity:1"
          id="path1"
          cx="92.993744"
          cy="101.88736"
          r="26.27284" />
       <rect
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient3);fill-opacity:1"
          id="rect1"
          width="18.583229"
          height="107.65457"
@@ -57,13 +76,13 @@
          y="149.79471"
          transform="rotate(-25.260167)" />
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient4);fill-opacity:1"
          id="circle1"
          cx="155.07384"
          cy="233.25157"
          r="26.27284" />
       <rect
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient2);fill-opacity:1"
          id="rect2"
          width="18.583229"
          height="107.65457"
@@ -71,7 +90,7 @@
          y="14.854075"
          transform="matrix(-0.90437944,-0.42672923,-0.42672923,0.90437944,0,0)" />
       <circle
-         style="fill:#1ce5d7;fill-opacity:1"
+         style="fill:url(#brandGradient2);fill-opacity:1"
          id="circle2"
          cx="214.99374"
          cy="101.88736"
