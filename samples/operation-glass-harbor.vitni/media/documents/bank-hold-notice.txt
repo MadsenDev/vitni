@@ -1,0 +1,14 @@
+MERIDIAN TRUST BANK
+Compliance operations alert
+
+Date: 2026-03-25
+Subject: Manual review hold on settlement account IE38-MTBE-9099-2211-4400
+
+Trigger notes
+- Incoming transfer CL-8831 flagged against recent shell-vendor heuristics
+- Immediate outbound funding pattern observed toward wallet
+  0xBC84F1944B6B1D7264A4F2A52B909B99E77AA91F
+- Account frozen pending supporting KYC package from Northline Fulfillment LLC
+
+Contact: Priya Sethi
+Desk: Cross-border compliance liaison

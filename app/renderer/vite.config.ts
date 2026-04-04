@@ -4,6 +4,7 @@ import path from 'node:path';
 
 export default defineConfig({
   root: __dirname,
+  base: './',
   plugins: [react()],
   server: {
     port: 5173,
@@ -18,5 +19,10 @@ export default defineConfig({
       '@renderer': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, '../../shared')
     }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: path.resolve(__dirname, 'src/setupTests.ts')
   }
 });

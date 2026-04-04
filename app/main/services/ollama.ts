@@ -1,19 +1,50 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { app } from 'electron';
 
 export class OllamaManager {
-  private proc: ChildProcessWithoutNullStreams | null = null;
+  private proc: ChildProcess | null = null;
   private readyCheckInFlight: Promise<boolean> | null = null;
+  private lastStartError: string | null = null;
 
   async isAvailable(endpoint: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
-      return res.ok;
-    } catch {
-      return false;
+    for (const candidate of this.endpointCandidates(endpoint)) {
+      try {
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        if (res.ok) return true;
+      } catch {
+        // try next candidate
+      }
     }
+    return false;
+  }
+
+  async listModelNames(endpoint: string): Promise<string[]> {
+    for (const candidate of this.endpointCandidates(endpoint)) {
+      try {
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        if (!res.ok) continue;
+        const data = await res.json() as { models?: Array<{ name: string }> };
+        return (data.models || []).map((item) => item.name || '').filter(Boolean);
+      } catch {
+        // try next candidate
+      }
+    }
+    return [];
+  }
+
+  async resolveReachableEndpoint(endpoint: string): Promise<string | null> {
+    for (const candidate of this.endpointCandidates(endpoint)) {
+      try {
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        if (res.ok) return candidate;
+      } catch {
+        // try next candidate
+      }
+    }
+    return null;
   }
 
   private getBundledPath(): string | null {
@@ -58,11 +89,54 @@ export class OllamaManager {
         if (path.isAbsolute(c)) {
           if (fs.existsSync(c)) return c;
         } else {
-          return c;
+          const resolved = this.findInPath(c);
+          if (resolved) return resolved;
         }
       } catch {}
     }
     return null;
+  }
+
+  private findInPath(binaryName: string): string | null {
+    const rawPath = process.env.PATH || '';
+    const segments = rawPath.split(path.delimiter).filter(Boolean);
+    const executableNames =
+      process.platform === 'win32'
+        ? [binaryName, `${binaryName}.exe`, `${binaryName}.cmd`, `${binaryName}.bat`]
+        : [binaryName];
+
+    for (const segment of segments) {
+      for (const executableName of executableNames) {
+        const candidate = path.join(segment, executableName);
+        try {
+          fs.accessSync(candidate, fs.constants.X_OK);
+          return candidate;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Flatpak and some shells expose additional bins outside PATH inherited by Electron.
+    if (process.platform !== 'win32') {
+      for (const candidate of [
+        path.join(os.homedir(), '.local', 'bin', binaryName),
+        path.join('/var/lib/flatpak/exports/bin', binaryName)
+      ]) {
+        try {
+          fs.accessSync(candidate, fs.constants.X_OK);
+          return candidate;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    return null;
+  }
+
+  getLastStartError() {
+    return this.lastStartError;
   }
 
   async ensure(endpoint: string): Promise<boolean> {
@@ -73,16 +147,79 @@ export class OllamaManager {
     const bin = this.getResolvedBinary();
     if (!bin) return false;
     try {
-      this.proc = spawn(bin, ['serve'], { stdio: 'ignore', detached: false });
+      this.lastStartError = null;
+      const host = this.endpointToHost(endpoint);
+      this.proc = spawn(bin, ['serve'], {
+        stdio: ['ignore', 'ignore', 'pipe'],
+        detached: false,
+        env: {
+          ...process.env,
+          OLLAMA_HOST: host
+        }
+      });
+      let stderr = '';
+      this.proc.stderr?.on('data', (chunk) => {
+        stderr = `${stderr}\n${chunk.toString()}`.trim().slice(-2000);
+      });
       this.proc.on('error', () => {
+        this.lastStartError = stderr || `Failed to launch Ollama from ${bin}`;
         try { this.proc && !this.proc.killed && this.proc.kill('SIGTERM'); } catch {}
         this.proc = null;
       });
+      this.proc.on('exit', (code) => {
+        if (code !== 0 && !this.lastStartError) {
+          this.lastStartError = stderr || `Ollama exited with code ${code ?? 1}`;
+        }
+        this.proc = null;
+      });
     } catch {
+      this.lastStartError = `Failed to spawn Ollama from ${bin}`;
       this.proc = null;
       return false;
     }
-    return await this.waitUntilReady(endpoint, 12000);
+    const ready = await this.waitUntilReady(endpoint, 12000);
+    if (!ready && this.lastStartError && String(this.lastStartError).toLowerCase().includes('address already in use')) {
+      const existingReady = await this.waitUntilReady(endpoint, 12000);
+      if (existingReady) {
+        this.lastStartError = null;
+        return true;
+      }
+    }
+    if (!ready && !this.lastStartError) {
+      this.lastStartError = `Ollama did not become ready at ${endpoint}`;
+    }
+    return ready || false;
+  }
+
+  private endpointToHost(endpoint: string) {
+    try {
+      const url = new URL(endpoint);
+      if (url.hostname === 'localhost') {
+        return `127.0.0.1:${url.port || '11434'}`;
+      }
+      return url.host;
+    } catch {
+      return '127.0.0.1:11434';
+    }
+  }
+
+  private endpointCandidates(endpoint: string) {
+    const candidates = new Set<string>([endpoint]);
+    try {
+      const url = new URL(endpoint);
+      if (url.hostname === 'localhost') {
+        const ipv4 = new URL(endpoint);
+        ipv4.hostname = '127.0.0.1';
+        candidates.add(ipv4.toString());
+      } else if (url.hostname === '127.0.0.1') {
+        const localhost = new URL(endpoint);
+        localhost.hostname = 'localhost';
+        candidates.add(localhost.toString());
+      }
+    } catch {
+      // ignore
+    }
+    return Array.from(candidates);
   }
 
   private async waitUntilReady(endpoint: string, timeoutMs: number): Promise<boolean> {

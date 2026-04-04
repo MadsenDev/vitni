@@ -1,0 +1,19 @@
+NORTHLINE FULFILLMENT LLC
+Vendor onboarding settlement instruction
+
+Invoice ID: CL-8831
+Issue Date: 2026-03-23
+Recipient: Argent Pulse Labs AS
+Amount: EUR 48,200
+
+Remittance account
+Bank: Meridian Trust Bank
+IBAN: IE38-MTBE-9099-2211-4400
+Reference: CL-8831
+
+Portal note
+All settlement confirmations must be uploaded through the secure onboarding
+portal at secure.argentpulse-payments.com/settlement before treasury release.
+
+Prepared by: Elias Voss
+Role: Vendor integration contractor

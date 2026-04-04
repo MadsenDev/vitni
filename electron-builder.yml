@@ -1,0 +1,34 @@
+appId: dev.madsens.vitni
+productName: Vitni
+copyright: Copyright © 2026 Christoffer Madsen
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - node_modules/**/*
+  - package.json
+  - transforms/**/*
+  - db/migrations/**/*
+  - samples/operation-glass-harbor.vitni/**/*
+
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+  - node_modules/**/*.node
+
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+linux:
+  category: Utility
+  target:
+    - target: AppImage
+    - target: tar.gz
+  icon: build/icon.png
+
+win:
+  target:
+    - target: portable
+    - target: zip
+  icon: build/icon.ico

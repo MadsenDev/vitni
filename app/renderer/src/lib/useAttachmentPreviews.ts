@@ -18,7 +18,7 @@ interface UseAttachmentPreviewsResult {
 
 export function useAttachmentPreviews(sources: SourceRecord[]): UseAttachmentPreviewsResult {
   const attachmentSources = useMemo(
-    () => sources.filter((source) => Boolean(source.hash) && Boolean(source.locator)),
+    () => sources.filter((source) => Boolean(source.hash)),
     [sources]
   );
 
@@ -46,10 +46,7 @@ export function useAttachmentPreviews(sources: SourceRecord[]): UseAttachmentPre
         const loaded = await Promise.all(
           attachmentSources.map(async (source) => {
             try {
-              const data = await window.piBridge.getAttachmentData({
-                locator: source.locator,
-                mime: source.mime
-              });
+              const data = await window.piBridge.getAttachmentDataBySourceId({ sourceId: source.id });
               const blob = base64ToBlob(data.base64, data.mimeType);
               const url = URL.createObjectURL(blob);
               return {

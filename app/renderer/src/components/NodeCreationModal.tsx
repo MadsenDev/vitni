@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { NodeType } from '../lib/nodeTypes/index';
+import { resolveNodeTypeIcon } from '@renderer/features/personalization/iconPacks';
+import type { IconPackId } from '@renderer/features/personalization/theme';
 import { fetchWebsiteMetadata } from '../lib/fetchWebsiteMetadata';
 
 interface NodeCreationModalProps {
   isOpen: boolean;
   nodeType: NodeType | null;
+  iconPack: IconPackId;
   position: { x: number; y: number } | null;
   onClose: () => void;
   onCreate: (data: { label: string; properties: Record<string, unknown> }) => void;
@@ -13,6 +16,7 @@ interface NodeCreationModalProps {
 export function NodeCreationModal({
   isOpen,
   nodeType,
+  iconPack,
   position,
   onClose,
   onCreate
@@ -84,22 +88,56 @@ export function NodeCreationModal({
       label = `${firstName} ${lastName}`.trim() || 'Unknown Person';
     } else if (nodeType.id === 'organization') {
       label = (formData.name as string) || 'Unknown Organization';
+    } else if (nodeType.id === 'domain') {
+      label = (formData.domain as string) || 'Unknown Domain';
+    } else if (nodeType.id === 'website') {
+      label = (formData.url as string) || 'Unknown Website';
+    } else if (nodeType.id === 'online_account') {
+      label = (formData.handle as string) || (formData.displayName as string) || 'Unknown Account';
+    } else if (nodeType.id === 'email') {
+      label = (formData.address as string) || 'Unknown Email';
+    } else if (nodeType.id === 'phone') {
+      label = (formData.number as string) || 'Unknown Phone';
+    } else if (nodeType.id === 'device') {
+      label = (formData.name as string) || (formData.model as string) || 'Unknown Device';
+    } else if (nodeType.id === 'ip_address') {
+      label = (formData.ipAddress as string) || 'Unknown IP';
+    } else if (nodeType.id === 'infrastructure') {
+      label = (formData.hostname as string) || 'Unknown Infrastructure';
+    } else if (nodeType.id === 'crypto_wallet') {
+      label = (formData.address as string) || 'Unknown Wallet';
     } else if (nodeType.id === 'location') {
       label = (formData.name as string) || 'Unknown Location';
     } else if (nodeType.id === 'event') {
       label = (formData.title as string) || 'Unknown Event';
+    } else if (nodeType.id === 'incident') {
+      label = (formData.title as string) || 'Unknown Incident';
     } else if (nodeType.id === 'document') {
       label = (formData.title as string) || 'Unknown Document';
+    } else if (nodeType.id === 'identity_document') {
+      label = (formData.documentNumber as string) || 'Unknown Identity Document';
     } else if (nodeType.id === 'communication') {
       const from = formData.from as string || '';
       const to = formData.to as string || '';
-      label = `${from} → ${to}` || 'Unknown Communication';
-    } else if (nodeType.id === 'financial') {
-      const type = formData.type as string || '';
+      label = `${from} → ${to}`.trim() || 'Unknown Communication';
+    } else if (nodeType.id === 'media') {
+      label = (formData.filename as string) || 'Unknown Media';
+    } else if (nodeType.id === 'financial_account') {
+      const type = formData.accountType as string || '';
+      const institution = formData.institutionName as string || '';
+      label = `${type}${institution ? ` • ${institution}` : ''}`.trim() || 'Unknown Financial Account';
+    } else if (nodeType.id === 'financial_transaction') {
+      const type = formData.transactionType as string || '';
       const amount = formData.amount as string || '';
-      label = amount ? `${type} - ${amount}` : type || 'Unknown Financial';
+      label = amount ? `${type} - ${amount}` : type || 'Unknown Transaction';
     } else if (nodeType.id === 'evidence') {
       label = (formData.title as string) || 'Unknown Evidence';
+    } else if (nodeType.id === 'case') {
+      label = (formData.title as string) || (formData.caseNumber as string) || 'Unknown Case';
+    } else if (nodeType.id === 'vehicle') {
+      label = [formData.make as string || '', formData.model as string || ''].join(' ').trim() || 'Unknown Vehicle';
+    } else if (nodeType.id === 'aircraft') {
+      label = (formData.registration as string) || 'Unknown Aircraft';
     } else {
       label = nodeType.label;
     }
@@ -320,13 +358,14 @@ export function NodeCreationModal({
   };
 
   if (!isOpen || !nodeType) return null;
+  const Icon = resolveNodeTypeIcon(nodeType, iconPack);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center space-x-3 mb-6">
           <div className={`w-10 h-10 rounded-full ${nodeType.color} flex items-center justify-center text-white text-lg`}>
-            {nodeType.icon && <nodeType.icon className="w-5 h-5" />}
+            <Icon className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">Create {nodeType.label}</h2>

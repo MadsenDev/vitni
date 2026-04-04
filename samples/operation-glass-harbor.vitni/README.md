@@ -1,9 +1,11 @@
-# Operation Glass Harbor Demo Project
+# Operation Circuit Ledger Showcase Project
 
-This directory contains a ready-to-open investigation bundle that exercises the
-new project-folder layout, manifest metadata, and hashed media workflow.
-Because the repository cannot ship binary payloads, regenerate the database and
-image attachment locally before launching Vitni.
+This directory now contains the primary sample investigation for Vitni. It is a
+larger cyber/financial case designed to showcase graph navigation, evidence
+review, media previews, saved views, search, and cross-domain pivots.
+
+The repository still does not ship a generated encrypted database, so create the
+SQLite file locally before opening the project.
 
 ## Prepare the database
 
@@ -12,35 +14,32 @@ cd samples/operation-glass-harbor.vitni
 sqlite3 db/case.sqlite < db/case.sqlite.sql
 ```
 
-If you want to test SQLCipher integration, wrap the generated database with
-your own key afterwards and export `PI_DB_KEY` to the chosen value.
-
-## Restore the hashed PNG attachment
-
-```bash
-printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=' \
-  | base64 -d > attachments/52/8d/528d4f1e1e4be74f18d29cea6837e8559215577e913dcca6d8b1e38a80e27c1d.png
-```
-
-This command recreates the `Dockside surveillance still` referenced by the
-`src-surveillance` record in `db/case.sqlite.sql` and aligns the file digest with
-the manifest entry.
+If you want to test SQLCipher integration, wrap the generated file afterwards
+and export the same key you intend to use at runtime.
 
 ## Open the project
 
-1. From the repository root export `PI_DB_KEY=glass-harbor-demo`.
-2. Launch the Vitni app and choose **File → Open Project**.
+1. From the repository root export `PI_DB_KEY=circuit-ledger-demo`.
+2. Launch Vitni and choose **File → Open Project**.
 3. Select this `operation-glass-harbor.vitni` directory.
-4. Explore the seeded entities, relationships, assertions, and media assets.
+4. Explore the saved views, recent evidence, and digital/financial pivots.
 
-Included media:
+## What the sample demonstrates
 
-- `Harbor Freight Logistics - Invoice NW-2291` (text attachment hashed as
-  `a8722cae02b4646c8c90dcf2ffa28f49107e5ac710e1af5fb18ef4c0c91a5599`)
-- `Dockside surveillance still` (regenerate from the Base64 snippet above to
-  match hash `528d4f1e1e4be74f18d29cea6837e8559215577e913dcca6d8b1e38a80e27c1d`)
-- Redacted board strategy transcript stored under `sources/board-strategy-thread.txt`
+- A synthetic settlement-diversion case spanning people, organizations, digital
+  infrastructure, financial accounts, transactions, and evidence records.
+- Shipped media under the modern `media/` tree, including previewable SVG
+  assets and text-based document sources.
+- Source-backed assertions that drive search, evidence review, and reporting.
+- Seeded project metadata and saved views so the case feels curated on first
+  open instead of looking like raw database rows.
 
-The directory also ships with empty placeholders for exports, snapshots,
-transform logs, cache, and temporary files so the on-disk layout matches
-projects created by the application.
+## Suggested exploration path
+
+1. Open the saved view `Fraud Chain` to follow the money from the reserve
+   account into the shell account and crypto off-ramp.
+2. Open the saved view `Digital Access Trail` to inspect the domain, portal,
+   burner device, IP, and VPS.
+3. Turn on **Show node images** to see the seeded portrait and portal capture.
+4. Use `Ctrl+F` to search for identifiers such as `CL-8831`,
+   `argentpulse-payments.com`, `185.220.101.44`, or `0xBC84`.

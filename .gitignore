@@ -6,3 +6,4 @@ dist/
 # Editor directories
 .vscode/
 .idea/
+/release

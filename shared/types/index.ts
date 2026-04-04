@@ -1,10 +1,28 @@
 export type EntityType =
   | 'person'
-  | 'org'
+  | 'organization'
   | 'domain'
+  | 'website'
+  | 'online_account'
   | 'phone'
   | 'email'
-  | 'document';
+  | 'device'
+  | 'ip_address'
+  | 'infrastructure'
+  | 'crypto_wallet'
+  | 'document'
+  | 'identity_document'
+  | 'communication'
+  | 'media'
+  | 'evidence'
+  | 'financial_account'
+  | 'financial_transaction'
+  | 'event'
+  | 'incident'
+  | 'location'
+  | 'vehicle'
+  | 'aircraft'
+  | 'case';
 
 export type Confidence = 'asserted' | 'unverified' | 'verified';
 
@@ -35,6 +53,11 @@ export interface SourceRecord {
   added_at: number;
   hash: string | null;
   mime: string | null;
+  folder_path?: string | null;
+  file_name?: string | null;
+  display_name?: string | null;
+  file_size?: number | null;
+  modified_at?: number | null;
 }
 
 export interface SourceUsageRecord {
@@ -46,6 +69,20 @@ export interface SourceUsageRecord {
 
 export interface SourceWithUsage extends SourceRecord {
   usage: SourceUsageRecord[];
+}
+
+export interface MediaLibraryItem extends SourceWithUsage {
+  folderPath: string;
+  fileName: string;
+  displayName: string;
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'other';
+  usageCount: number;
+}
+
+export interface MediaFolderNode {
+  path: string;
+  name: string;
+  parentPath: string | null;
 }
 
 export interface AssertionRecord {

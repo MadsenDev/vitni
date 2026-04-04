@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { app } from 'electron';
 import type { DbConnection, DatabaseProvider } from './database';
 
 interface Migration {
@@ -8,7 +9,23 @@ interface Migration {
   sql: string;
 }
 
-const MIGRATIONS_DIR = path.join(__dirname, '../../../../../db/migrations');
+function resolveMigrationsDir(): string {
+  const candidates = [
+    path.resolve(__dirname, '../../../../../db/migrations'),
+    path.resolve(app.getAppPath(), 'db/migrations'),
+    path.resolve(process.cwd(), 'db/migrations')
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return candidates[candidates.length - 1];
+}
+
+const MIGRATIONS_DIR = resolveMigrationsDir();
 
 function readMigrations(): Migration[] {
   const files = fs

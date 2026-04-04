@@ -37,11 +37,14 @@ const UNIQUE_IDENTITY_FIELDS = new Set([
   'driversLicense',
   'vin',
   'accountNumber',
+  'documentNumber',
   'username',
   'handle',
   'domain',
   'url',
-  'ipAddress'
+  'ipAddress',
+  'address',
+  'transactionReference'
 ]);
 
 function normalizeText(value: unknown): string {

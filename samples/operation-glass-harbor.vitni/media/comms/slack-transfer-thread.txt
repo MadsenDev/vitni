@@ -1,0 +1,17 @@
+Transfer coordination thread
+Captured from exported messaging cache
+
+2026-03-24 14:07 Noor Halabi
+Need the final vendor confirmation before treasury pushes CL-8831.
+
+2026-03-24 14:09 Elias Ops
+Use the settlement portal. Old inbox trail is not current.
+
+2026-03-24 14:11 Noor Halabi
+The portal wants a screenshot and remittance confirmation.
+
+2026-03-24 14:12 Elias Ops
+Uploading now. Same vendor, updated path. Use the reference exactly as shown.
+
+2026-03-24 14:18 Elias Ops
+Attached: settlement-portal-capture.svg

@@ -1,9 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { URL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
 import { createTransformRegistry } from './transforms/registry';
 import { ProjectManager } from './projectManager';
+import { deviceSettingsService } from './services/deviceSettings';
 import { ollamaManager } from './services/ollama';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -169,7 +171,11 @@ async function createWindow() {
 
   // Register IPC handlers immediately so renderer calls won't fail during init
   console.log('[Main] init: creating project manager');
-  projectManager = new ProjectManager(path.join(app.getPath('userData'), 'projects'));
+  const encryptionKey =
+    process.env.PI_DB_KEY && process.env.PI_DB_KEY.trim().length > 0
+      ? process.env.PI_DB_KEY
+      : await deviceSettingsService.getOrCreateDatabaseEncryptionKey();
+  projectManager = new ProjectManager(path.join(app.getPath('userData'), 'projects'), encryptionKey);
   console.log('[Main] init: building transform registry');
   const transformRegistry = createTransformRegistry();
   console.log('[Main] init: registering IPC handlers');
@@ -179,7 +185,7 @@ async function createWindow() {
     const rendererUrl = new URL('http://localhost:5173');
     await mainWindow.loadURL(rendererUrl.toString());
   } else {
-    const indexHtml = path.join(__dirname, '../renderer/index.html');
+    const indexHtml = path.join(__dirname, '../../../renderer/index.html');
     await mainWindow.loadFile(indexHtml);
   }
 
@@ -238,12 +244,18 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   try {
-    if (!projectManager) return;
-    const db = projectManager.getDatabase();
     let keepAlive = false;
     try {
-      const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get('ai:ollama:keepAlive') as { value_json: string } | undefined;
-      keepAlive = row ? Boolean(JSON.parse(row.value_json)) : false;
+      const deviceSettingsPath = path.join(app.getPath('userData'), 'device-settings.json');
+      if (fs.existsSync(deviceSettingsPath)) {
+        const raw = fs.readFileSync(deviceSettingsPath, 'utf8');
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        keepAlive = Boolean(parsed['ai:ollama:keepAlive']);
+      } else if (projectManager) {
+        const db = projectManager.getDatabase();
+        const row = db.prepare('SELECT value_json FROM project_setting WHERE key = ? LIMIT 1').get('ai:ollama:keepAlive') as { value_json: string } | undefined;
+        keepAlive = row ? Boolean(JSON.parse(row.value_json)) : false;
+      }
     } catch {
       keepAlive = false;
     }

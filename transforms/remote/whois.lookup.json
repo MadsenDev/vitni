@@ -1,7 +1,9 @@
 {
   "id": "whois.lookup",
   "name": "WHOIS Lookup",
-  "input": [{ "entityType": "domain" }],
+  "description": "Look up domain registration and registrant details via RDAP.",
+  "appliesTo": ["domain", "website"],
+  "input": [{ "entityType": "domain" }, { "entityType": "website" }],
   "network": {
     "kind": "http",
     "host": "rdap.org",

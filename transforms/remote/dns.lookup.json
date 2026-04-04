@@ -1,0 +1,15 @@
+{
+  "id": "dns.lookup",
+  "name": "DNS Lookup",
+  "description": "Resolve common DNS records and create pivots for observed IPs and infrastructure.",
+  "appliesTo": ["domain", "website"],
+  "input": [{ "entityType": "domain" }, { "entityType": "website" }],
+  "network": {
+    "kind": "http",
+    "host": "dns.google",
+    "path": "/resolve?name=${domain}&type=A",
+    "method": "GET",
+    "sends": ["domain"],
+    "receives": ["aRecords", "aaaaRecords", "mxRecords", "nsRecords", "txtRecords", "cnameRecords"]
+  }
+}

@@ -1,5 +1,8 @@
 interface ConsentDetails {
   transformId: string;
+  transformName: string;
+  subjectEntityId: string;
+  subjectEntityType: string;
   payload: Record<string, unknown>;
   destination: string;
 }
@@ -16,8 +19,12 @@ export function ConsentModal({ consent, onCancel, onConfirm }: Props) {
       <div className="w-full max-w-lg rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-slate-100">Confirm Remote Transform</h3>
         <p className="mt-2 text-sm text-slate-300">
-          This action will send the following data to <span className="font-semibold">{consent.destination}</span>.
+          <span className="font-semibold">{consent.transformName}</span> will send the following data to{' '}
+          <span className="font-semibold">{consent.destination}</span>.
           Review and confirm before proceeding.
+        </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Subject type: <span className="font-semibold text-slate-300">{consent.subjectEntityType}</span>
         </p>
         <div className="mt-4 rounded border border-slate-700 bg-slate-950 p-3 text-xs text-slate-300">
           <pre className="whitespace-pre-wrap">{JSON.stringify(consent.payload, null, 2)}</pre>

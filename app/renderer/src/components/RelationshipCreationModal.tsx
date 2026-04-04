@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { relationshipTypes, type RelationshipType } from '../lib/relationshipTypes';
+import { relationshipTypes, isRelationshipAllowed, type RelationshipType } from '../lib/relationshipTypes';
 
 interface RelationshipCreationModalProps {
   isOpen: boolean;
   relationshipType: RelationshipType | null;
-  sourceNode: { id: string; label: string } | null;
-  targetNode: { id: string; label: string } | null;
+  sourceNode: { id: string; label: string; type: string } | null;
+  targetNode: { id: string; label: string; type: string } | null;
   defaultConfidence?: 'unverified' | 'asserted' | 'verified';
   onClose: () => void;
   onCreate: (data: { 
@@ -32,9 +32,13 @@ export function RelationshipCreationModal({
   const [strength, setStrength] = useState<'weak' | 'moderate' | 'strong'>('moderate');
   const [dateStr, setDateStr] = useState<string>('');
 
+  const availableTypes = useMemo(() => {
+    return relationshipTypes.filter((type) => isRelationshipAllowed(type, sourceNode?.type, targetNode?.type));
+  }, [sourceNode?.type, targetNode?.type]);
+
   const selectedType = useMemo(() => {
-    return relationshipTypes.find(t => t.id === selectedTypeId) || null;
-  }, [selectedTypeId]);
+    return availableTypes.find(t => t.id === selectedTypeId) || null;
+  }, [availableTypes, selectedTypeId]);
 
   const availableSubtypes = useMemo(() => selectedType?.subtypes ?? [], [selectedType]);
 
@@ -44,12 +48,25 @@ export function RelationshipCreationModal({
       setConfidence(defaultConfidence);
       setStrength('moderate');
       setDateStr('');
-      // Initialize selection from prop or default to first
-      setSelectedTypeId(relationshipType?.id ?? relationshipTypes[0]?.id ?? '');
-      const initialType = relationshipTypes.find(t => t.id === (relationshipType?.id ?? relationshipTypes[0]?.id));
+      const initialId =
+        relationshipType && isRelationshipAllowed(relationshipType, sourceNode?.type, targetNode?.type)
+          ? relationshipType.id
+          : availableTypes[0]?.id ?? '';
+      setSelectedTypeId(initialId);
+      const initialType = availableTypes.find(t => t.id === initialId);
       setSelectedSubtypeId(initialType?.subtypes?.[0]?.id ?? '');
     }
-  }, [isOpen, relationshipType, defaultConfidence]);
+  }, [availableTypes, defaultConfidence, isOpen, relationshipType, sourceNode?.type, targetNode?.type]);
+
+  useEffect(() => {
+    if (!selectedType) {
+      setSelectedSubtypeId('');
+      return;
+    }
+    if (!availableSubtypes.some((subtype) => subtype.id === selectedSubtypeId)) {
+      setSelectedSubtypeId(availableSubtypes[0]?.id ?? '');
+    }
+  }, [availableSubtypes, selectedSubtypeId, selectedType]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,11 +107,16 @@ export function RelationshipCreationModal({
                 onChange={(e) => setSelectedTypeId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {relationshipTypes.map((t) => (
+                {availableTypes.map((t) => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
               </select>
             </div>
+            {availableTypes.length === 0 && (
+              <p className="mt-3 text-sm text-amber-300">
+                No canonical relationship families are valid for {sourceNode.type} to {targetNode.type}.
+              </p>
+            )}
             {availableSubtypes.length > 0 && (
               <div className="mt-3">
                 <label className="block text-sm text-slate-300 mb-1">Subtype</label>
@@ -119,9 +141,7 @@ export function RelationshipCreationModal({
               <div className={`w-6 h-6 rounded-full ${selectedType?.color ?? 'bg-slate-600'} flex items-center justify-center text-white text-xs`}>
                 {selectedType?.icon && <selectedType.icon className="w-3 h-3" />}
               </div>
-              {selectedType?.bidirectional && (
-                <span className="text-slate-400">↔</span>
-              )}
+              <span className="text-slate-400">{selectedType?.bidirectional ? '↔' : '→'}</span>
             </div>
             <div className="text-slate-300 font-medium">{targetNode.label}</div>
           </div>
@@ -144,6 +164,7 @@ export function RelationshipCreationModal({
             </select>
           </div>
 
+          {selectedType?.supportsStrength !== false && (
           <div>
             <label htmlFor="strength" className="block text-sm font-medium text-slate-300 mb-2">
               Relationship Strength
@@ -159,7 +180,9 @@ export function RelationshipCreationModal({
               <option value="strong">Strong</option>
             </select>
           </div>
+          )}
 
+          {selectedType?.supportsDate !== false && (
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-slate-300 mb-2">
               Date (optional)
@@ -172,6 +195,7 @@ export function RelationshipCreationModal({
               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
+          )}
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-slate-300 mb-2">
@@ -198,7 +222,7 @@ export function RelationshipCreationModal({
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-              disabled={!selectedTypeId}
+              disabled={!selectedTypeId || availableTypes.length === 0}
             >
               Create Relationship
             </button>

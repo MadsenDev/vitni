@@ -6,7 +6,7 @@ interface Props {
   onEntityCreated: (entity: { id: string } | null) => void;
 }
 
-const ENTITY_TYPES: EntityType[] = ['person', 'org', 'domain', 'phone', 'email', 'document'];
+const ENTITY_TYPES: EntityType[] = ['person', 'organization', 'domain', 'phone', 'email', 'document'];
 const CONFIDENCE_LEVELS: Confidence[] = ['verified', 'asserted', 'unverified'];
 
 export function AddEntityForm({ onEntityCreated }: Props) {
