@@ -5,6 +5,9 @@
 
 export interface WebsiteMetadata {
   domain?: string;
+  ipAddress?: string;
+  hosting?: string;
+  location?: string;
   registrar?: string;
   registrationDate?: string;
   expirationDate?: string;
@@ -58,7 +61,13 @@ export async function fetchWebsiteMetadata(url: string): Promise<WebsiteMetadata
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as {
+          ip?: string;
+          org?: string;
+          isp?: string;
+          city?: string;
+          country?: string;
+        };
         console.log('[fetchWebsiteMetadata] Raw API response:', JSON.stringify(data, null, 2));
         
         // Note: This API returns IP geolocation data, not WHOIS domain registration data
@@ -66,21 +75,19 @@ export async function fetchWebsiteMetadata(url: string): Promise<WebsiteMetadata
         
         // IP address information (useful for investigation)
         if (data.ip) {
-          // Note: We don't have an ipAddress field in WebsiteMetadata interface,
-          // but we can log it and the caller can handle it
-          (metadata as any).ipAddress = data.ip;
+          metadata.ipAddress = data.ip;
         }
         
         // Hosting provider (from org/isp fields)
         if (data.org) {
-          (metadata as any).hosting = data.org;
+          metadata.hosting = data.org;
         } else if (data.isp) {
-          (metadata as any).hosting = data.isp;
+          metadata.hosting = data.isp;
         }
         
         // Location information (could be useful)
         if (data.city && data.country) {
-          (metadata as any).location = `${data.city}, ${data.country}`;
+          metadata.location = `${data.city}, ${data.country}`;
         }
         
         // Try to get actual WHOIS data using a different approach
@@ -105,4 +112,3 @@ export async function fetchWebsiteMetadata(url: string): Promise<WebsiteMetadata
     return { domain };
   }
 }
-

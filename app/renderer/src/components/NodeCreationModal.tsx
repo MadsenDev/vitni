@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { NodeType } from '../lib/nodeTypes/index';
+import type { NodeProperty, NodeType } from '../lib/nodeTypes/index';
 import { resolveNodeTypeIcon } from '@renderer/features/personalization/iconPacks';
 import type { IconPackId } from '@renderer/features/personalization/theme';
 import { fetchWebsiteMetadata } from '../lib/fetchWebsiteMetadata';
@@ -156,7 +156,7 @@ export function NodeCreationModal({
     onClose();
   };
 
-  const renderInput = (property: any) => {
+  const renderInput = (property: NodeProperty) => {
     const value = formData[property.id] || '';
     const error = errors[property.id];
     
@@ -228,7 +228,7 @@ export function NodeCreationModal({
           />
         );
       
-      case 'url':
+      case 'url': {
         // Add fetch button for website nodes
         const isWebsiteNode = nodeType?.id === 'website';
         const isUrlProperty = property.id === 'url';
@@ -250,18 +250,18 @@ export function NodeCreationModal({
                     }
                     
                     // IP address
-                    if ((metadata as any).ipAddress) {
+                    if (metadata.ipAddress) {
                       const ipProp = nodeType?.properties.find(p => p.id === 'ipAddress');
                       if (ipProp) {
-                        handleInputChange('ipAddress', (metadata as any).ipAddress);
+                        handleInputChange('ipAddress', metadata.ipAddress);
                       }
                     }
                     
                     // Hosting provider
-                    if ((metadata as any).hosting) {
+                    if (metadata.hosting) {
                       const hostingProp = nodeType?.properties.find(p => p.id === 'hosting');
                       if (hostingProp) {
-                        handleInputChange('hosting', (metadata as any).hosting);
+                        handleInputChange('hosting', metadata.hosting);
                       }
                     }
                     
@@ -328,6 +328,7 @@ export function NodeCreationModal({
             )}
           </div>
         );
+      }
       
       case 'phone':
         return (

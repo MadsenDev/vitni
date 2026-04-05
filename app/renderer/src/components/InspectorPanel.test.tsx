@@ -10,7 +10,7 @@ describe('InspectorPanel', () => {
       listTransforms: vi.fn().mockResolvedValue({ local: [], remote: [] }),
       updateAssertion: vi.fn().mockResolvedValue(true),
       deleteAssertion: vi.fn().mockResolvedValue(true)
-    } as any;
+    } as unknown as Window['piBridge'];
     window.prompt = vi.fn();
     window.alert = vi.fn();
   });
@@ -28,9 +28,17 @@ describe('InspectorPanel', () => {
         assertions={[
           {
             id: 'assertion-1',
+            subject_kind: 'entity',
             path: 'identity.name',
             value: { first: 'Alice' },
-            confidence: 'asserted'
+            source_id: 'source-1',
+            confidence: 'asserted',
+            review_state: 'unreviewed',
+            review_note: null,
+            reviewed_by: null,
+            reviewed_at: null,
+            subject_id: 'node-1',
+            created_at: 1
           }
         ]}
         sources={[]}
@@ -58,7 +66,9 @@ describe('InspectorPanel', () => {
     await waitFor(() =>
       expect(window.piBridge.updateAssertion).toHaveBeenCalledWith('assertion-1', {
         confidence: 'verified',
-        value: { first: 'Alicia' }
+        value: { first: 'Alicia' },
+        review_state: 'unreviewed',
+        review_note: null
       })
     );
     expect(window.prompt).not.toHaveBeenCalled();
@@ -78,9 +88,17 @@ describe('InspectorPanel', () => {
         assertions={[
           {
             id: 'assertion-1',
+            subject_kind: 'entity',
             path: 'identity.name',
             value: { first: 'Alice' },
-            confidence: 'asserted'
+            source_id: 'source-1',
+            confidence: 'asserted',
+            review_state: 'unreviewed',
+            review_note: null,
+            reviewed_by: null,
+            reviewed_at: null,
+            subject_id: 'node-1',
+            created_at: 1
           }
         ]}
         sources={[]}
@@ -121,7 +139,7 @@ describe('InspectorPanel', () => {
       }),
       updateAssertion: vi.fn().mockResolvedValue(true),
       deleteAssertion: vi.fn().mockResolvedValue(true)
-    } as any;
+    } as unknown as Window['piBridge'];
 
     render(
       <InspectorPanel
@@ -149,6 +167,7 @@ describe('InspectorPanel', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
     await waitFor(() => expect(screen.getByText('WHOIS Lookup')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Request' }));
 
@@ -156,5 +175,136 @@ describe('InspectorPanel', () => {
       expect.objectContaining({ id: 'whois.lookup' }),
       { domain: 'evil.example' }
     );
+  });
+
+  it('promotes a mapped field into an assertion when a linked source exists', async () => {
+    window.piBridge = {
+      listAllSourcesWithUsage: vi.fn().mockResolvedValue([]),
+      listTransforms: vi.fn().mockResolvedValue({ local: [], remote: [] }),
+      createAssertion: vi.fn().mockResolvedValue('assertion-new'),
+      updateAssertion: vi.fn().mockResolvedValue(true),
+      deleteAssertion: vi.fn().mockResolvedValue(true)
+    } as unknown as Window['piBridge'];
+
+    render(
+      <InspectorPanel
+        nodeTypes={nodeTypes}
+        iconPack="default"
+        graphNodes={[{ id: 'node-1', type: 'person', label: 'Alice', properties: { firstName: 'Alice', lastName: 'Doe' } }]}
+        graphEdges={[]}
+        selectedNodeId="node-1"
+        selectedNodeIds={['node-1']}
+        selectedEdgeId={null}
+        assertions={[]}
+        sources={[
+          {
+            id: 'source-1',
+            kind: 'document',
+            locator: '/tmp/source.pdf',
+            title: 'Case note',
+            added_at: 10,
+            hash: null,
+            mime: 'application/pdf'
+          }
+        ]}
+        onAddAssertion={vi.fn()}
+        onAddSource={vi.fn()}
+        onDeleteNode={vi.fn()}
+        onDeleteNodes={vi.fn()}
+        onDeleteEdge={vi.fn()}
+        onUpdateLabel={vi.fn()}
+        onUpdateProperty={vi.fn().mockResolvedValue(undefined)}
+        onUpdateEdgeProperty={vi.fn()}
+        onRequestRemoteTransform={vi.fn()}
+        onAlignLeft={vi.fn()}
+        onAlignTop={vi.fn()}
+        searchFocus={null}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Facts' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Create fact' }));
+
+    await waitFor(() =>
+      expect(window.piBridge.createAssertion).toHaveBeenCalledWith({
+        subject_kind: 'entity',
+        subject_id: 'node-1',
+        path: 'identity.first_name',
+        value: { value: 'Alice' },
+        source_id: 'source-1',
+        confidence: 'asserted'
+      })
+    );
+  });
+
+  it('uses the field prompt modal before auto-creating a fact in prompt mode', async () => {
+    window.piBridge = {
+      listAllSourcesWithUsage: vi.fn().mockResolvedValue([]),
+      listTransforms: vi.fn().mockResolvedValue({ local: [], remote: [] }),
+      createAssertion: vi.fn().mockResolvedValue('assertion-new'),
+      updateAssertion: vi.fn().mockResolvedValue(true),
+      deleteAssertion: vi.fn().mockResolvedValue(true)
+    } as unknown as Window['piBridge'];
+
+    render(
+      <InspectorPanel
+        nodeTypes={nodeTypes}
+        iconPack="default"
+        graphNodes={[{ id: 'node-1', type: 'person', label: 'Alice', properties: { firstName: 'Alice' } }]}
+        graphEdges={[]}
+        selectedNodeId="node-1"
+        selectedNodeIds={['node-1']}
+        selectedEdgeId={null}
+        assertions={[]}
+        sources={[
+          {
+            id: 'source-1',
+            kind: 'document',
+            locator: '/tmp/source.pdf',
+            title: 'Case note',
+            added_at: 10,
+            hash: null,
+            mime: 'application/pdf'
+          }
+        ]}
+        onAddAssertion={vi.fn()}
+        onAddSource={vi.fn()}
+        onDeleteNode={vi.fn()}
+        onDeleteNodes={vi.fn()}
+        onDeleteEdge={vi.fn()}
+        onUpdateLabel={vi.fn()}
+        onUpdateProperty={vi.fn().mockResolvedValue(undefined)}
+        onUpdateEdgeProperty={vi.fn()}
+        onRequestRemoteTransform={vi.fn()}
+        onAlignLeft={vi.fn()}
+        onAlignTop={vi.fn()}
+        searchFocus={null}
+        assertionFieldAutomation="prompt"
+      />
+    );
+
+    const firstNameInput = screen.getByPlaceholderText('Jane');
+    fireEvent.change(firstNameInput, { target: { value: 'Alicia' } });
+    fireEvent.blur(firstNameInput, { target: { value: 'Alicia' } });
+
+    expect(window.piBridge.createAssertion).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('This field changed. Create a source-backed fact now, or keep the summary field as-is for the moment.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Case note')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Create fact' }).at(-1)!);
+
+    await waitFor(() =>
+      expect(window.piBridge.createAssertion).toHaveBeenCalledWith({
+        subject_kind: 'entity',
+        subject_id: 'node-1',
+        path: 'identity.first_name',
+        value: { value: 'Alicia' },
+        source_id: 'source-1',
+        confidence: 'asserted'
+      })
+    );
+    expect(window.prompt).not.toHaveBeenCalled();
   });
 });

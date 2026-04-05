@@ -29,7 +29,7 @@ export function normalizeSavedViews(value: unknown): SavedView[] {
     .map((item) => {
       const id = typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : null;
       const name = typeof item.name === 'string' && item.name.trim().length > 0 ? item.name.trim() : null;
-      const view = item.view === 'timeline' ? 'timeline' : 'graph';
+      const view = item.view === 'timeline' ? 'timeline' : item.view === 'review' ? 'review' : 'graph';
       const sidebarTab = item.sidebarTab === 'ai' ? 'ai' : 'nodes';
       const createdAt = typeof item.createdAt === 'number' && Number.isFinite(item.createdAt) ? item.createdAt : Date.now();
       const updatedAt = typeof item.updatedAt === 'number' && Number.isFinite(item.updatedAt) ? item.updatedAt : createdAt;

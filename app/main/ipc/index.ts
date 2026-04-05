@@ -15,6 +15,7 @@ import type {
 } from '../../../shared/types';
 import type {
   AssertionRecord,
+  AssertionReviewState,
   AuditRecord,
   EntityRecord,
   EdgeRecord,
@@ -31,6 +32,15 @@ import type { OllamaManager } from '../services/ollama';
 import { openAIService } from '../services/openai';
 import { normalizePersonalizationTheme, type PersonalizationTheme } from '../../renderer/src/features/personalization/theme';
 
+/**
+ * Central IPC registration for the Electron main process.
+ *
+ * This file is intentionally broad: it wires the renderer-facing bridge to the
+ * current project, device-local services, reporting/AI flows, transform
+ * execution, and small shell helpers. The handlers below are grouped by domain
+ * so future extraction into narrower modules can happen without changing the
+ * preload contract.
+ */
 let currentInstallChild: ChildProcess | null = null;
 
 type LocalAISetupStage =
@@ -114,11 +124,19 @@ interface AssertionPayload {
   value: Record<string, unknown>;
   source_id: string;
   confidence: AssertionRecord['confidence'];
+  review_state?: AssertionReviewState;
+  review_note?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: number | null;
 }
 
 interface UpdateAssertionPayload {
   value?: Record<string, unknown>;
   confidence?: AssertionRecord['confidence'];
+  review_state?: AssertionReviewState;
+  review_note?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: number | null;
 }
 
 interface UpdateSourcePayload {
@@ -132,6 +150,9 @@ interface UpdateSourcePayload {
   file_size?: number | null;
   modified_at?: number | null;
 }
+
+// Normalized parsed record shapes are used by the renderer so it can work with
+// plain JSON objects instead of SQL-layer serialized blobs.
 
 interface CreateEdgePayload {
   src_id: string;
@@ -341,6 +362,8 @@ export function registerIpcHandlers(
   ollamaManager: OllamaManager,
   mainWindow: BrowserWindow | null
 ) {
+  // Native shell helpers keep Electron-specific behavior behind the bridge so
+  // renderer components can stay focused on workflow/UI state.
   ipcMain.handle('app:openExternal', async (_e, url: string) => {
     await shell.openExternal(url);
     return true;
@@ -381,6 +404,8 @@ export function registerIpcHandlers(
     return win ? win.isMaximized() : false;
   });
 
+  // AI/report handlers live together because local setup, credential storage,
+  // generation progress, and export fallbacks all share the same renderer flow.
   ipcMain.handle('ai:ollama:download', async () => {
     try {
       const userData = app.getPath('userData');
@@ -481,7 +506,7 @@ export function registerIpcHandlers(
     });
   });
 
-  ipcMain.handle('ai:ollama:status', async (_e) => {
+  ipcMain.handle('ai:ollama:status', async () => {
     try {
       const db = projectManager.getDatabase();
       return await buildOllamaStatus(db, ollamaManager);
@@ -499,7 +524,7 @@ export function registerIpcHandlers(
     }
   });
 
-  ipcMain.handle('ai:ollama:start', async (_e) => {
+  ipcMain.handle('ai:ollama:start', async () => {
     try {
       const db = projectManager.getDatabase();
       const { endpoint } = await readOllamaConfig(db);
@@ -521,7 +546,7 @@ export function registerIpcHandlers(
     }
   });
 
-  ipcMain.handle('ai:ollama:pull', async (_e) => {
+  ipcMain.handle('ai:ollama:pull', async () => {
     try {
       const db = projectManager.getDatabase();
       const { endpoint, model } = await readOllamaConfig(db);
@@ -530,7 +555,11 @@ export function registerIpcHandlers(
       
       // Try HTTP API first
       try {
-        const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/pull`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: model, stream: false }) } as any);
+        const res = await fetch(`${endpoint.replace(/\/$/, '')}/api/pull`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: model, stream: false })
+        });
         if (res.ok) {
           // Wait a bit for pull to start, then return
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -558,7 +587,7 @@ export function registerIpcHandlers(
     }
   });
 
-  ipcMain.handle('ai:ollama:self-test', async (_e) => {
+  ipcMain.handle('ai:ollama:self-test', async () => {
     try {
       const db = projectManager.getDatabase();
       const { endpoint, model } = await readOllamaConfig(db);
@@ -592,7 +621,11 @@ export function registerIpcHandlers(
   });
 
   ipcMain.handle('ai:ollama:stop', async () => {
-    try { ollamaManager.stop(); } catch {}
+    try {
+      ollamaManager.stop();
+    } catch {
+      // Ignore shutdown failures during explicit stop requests.
+    }
     return { ok: true };
   });
 
@@ -907,8 +940,13 @@ export function registerIpcHandlers(
       const now = Math.floor(Date.now() / 1000);
       const id = randomUUID();
       db.prepare(
-        `INSERT INTO assertion (id, subject_kind, subject_id, path, value_json, source_id, confidence, created_at)
-         VALUES (@id, @subject_kind, @subject_id, @path, @value_json, @source_id, @confidence, @created_at)`
+        `INSERT INTO assertion (
+          id, subject_kind, subject_id, path, value_json, source_id, confidence,
+          review_state, review_note, reviewed_by, reviewed_at, created_at
+        ) VALUES (
+          @id, @subject_kind, @subject_id, @path, @value_json, @source_id, @confidence,
+          @review_state, @review_note, @reviewed_by, @reviewed_at, @created_at
+        )`
       ).run({
         id,
         subject_kind: payload.subject_kind,
@@ -917,6 +955,12 @@ export function registerIpcHandlers(
         value_json: JSON.stringify(payload.value ?? {}),
         source_id: payload.source_id,
         confidence: payload.confidence,
+        review_state: payload.review_state ?? 'unreviewed',
+        review_note: payload.review_note ?? null,
+        reviewed_by:
+          payload.reviewed_by ?? ((payload.review_state ?? 'unreviewed') === 'unreviewed' ? null : 'Analyst'),
+        reviewed_at:
+          payload.reviewed_at ?? ((payload.review_state ?? 'unreviewed') === 'unreviewed' ? null : now),
         created_at: now
       });
       return id;
@@ -937,6 +981,33 @@ export function registerIpcHandlers(
       if (updates.confidence !== undefined) {
         updatesList.push('confidence = @confidence');
         params.confidence = updates.confidence;
+      }
+
+      if (updates.review_state !== undefined) {
+        updatesList.push('review_state = @review_state');
+        params.review_state = updates.review_state;
+        if (updates.review_state === 'unreviewed') {
+          updatesList.push('reviewed_at = NULL', 'reviewed_by = NULL');
+        } else {
+          updatesList.push('reviewed_at = @reviewed_at', 'reviewed_by = @reviewed_by');
+          params.reviewed_at = updates.reviewed_at ?? Math.floor(Date.now() / 1000);
+          params.reviewed_by = updates.reviewed_by ?? 'Analyst';
+        }
+      }
+
+      if (updates.review_note !== undefined) {
+        updatesList.push('review_note = @review_note');
+        params.review_note = updates.review_note;
+      }
+
+      if (updates.reviewed_by !== undefined && updates.review_state === undefined) {
+        updatesList.push('reviewed_by = @reviewed_by');
+        params.reviewed_by = updates.reviewed_by;
+      }
+
+      if (updates.reviewed_at !== undefined && updates.review_state === undefined) {
+        updatesList.push('reviewed_at = @reviewed_at');
+        params.reviewed_at = updates.reviewed_at;
       }
 
       if (updatesList.length === 0) {
@@ -1041,6 +1112,8 @@ export function registerIpcHandlers(
     })
   );
 
+  // Transform execution records both the enrichment result and the consent
+  // context that allowed the request to leave the local case.
   ipcMain.handle('transforms:list', () => transformRegistry);
 
   ipcMain.handle(
@@ -1758,7 +1831,12 @@ export function registerIpcHandlers(
 
         const birth = personAssertions.find(a => a.path.toLowerCase().includes('birth') || a.path.toLowerCase() === 'dob');
         let birthDate = '';
-        try { const val = birth ? JSON.parse(birth.value_json || '{}') : null; birthDate = typeof val?.date === 'string' ? val.date : (typeof val === 'string' ? val : ''); } catch {}
+        try {
+          const val = birth ? JSON.parse(birth.value_json || '{}') : null;
+          birthDate = typeof val?.date === 'string' ? val.date : (typeof val === 'string' ? val : '');
+        } catch {
+          // Leave birthDate empty when the assertion payload is malformed.
+        }
 
         // Heuristic narrative base
         const narrativeLines: string[] = [];
@@ -1766,12 +1844,31 @@ export function registerIpcHandlers(
         if (birthDate) narrativeLines.push(`${personName} was born on ${birthDate}.`);
         const edgesByType = new Map<string, EdgeRecord[]>();
         for (const ed of neighborsEdges) { const list = edgesByType.get(ed.type) || []; list.push(ed); edgesByType.set(ed.type, list); }
-        const dateOf = (ed: EdgeRecord) => { try { const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>; const d = typeof p.date === 'string' ? p.date : ''; return d; } catch { return ''; } };
+        const dateOf = (ed: EdgeRecord) => {
+          try {
+            const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>;
+            return typeof p.date === 'string' ? p.date : '';
+          } catch {
+            return '';
+          }
+        };
         const otherLabel = (ed: EdgeRecord) => { const otherId = ed.src_id === person.id ? ed.dst_id : ed.src_id; const n = neighbors.find(nn => nn.id === otherId); return (n?.label || otherId).toString(); };
         const parental = (edgesByType.get('parent_of') || []).concat(edgesByType.get('child_of') || []);
         for (const ed of parental) { const d = dateOf(ed); const other = otherLabel(ed); const isParent = ed.type === 'parent_of' ? (ed.src_id === person.id) : (ed.dst_id === person.id); if (isParent) narrativeLines.push(`${personName} is a parent of ${other}${d ? ` (since ${d})` : ''}.`); else narrativeLines.push(`${personName} is a child of ${other}${d ? ` (since ${d})` : ''}.`); }
         const ownershipLike = (edgesByType.get('ownership') || []).concat(edgesByType.get('owns') || []);
-        for (const ed of ownershipLike) { const d = dateOf(ed); const other = otherLabel(ed); let subtype = ''; try { const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>; subtype = (p.subtype as string) || ''; } catch {} const verb = subtype === 'leases' ? 'leases' : subtype === 'borrowed' ? 'borrowed' : subtype === 'assigned_to' ? 'is assigned' : 'owns'; narrativeLines.push(`${personName} ${verb} ${other}${d ? ` (as of ${d})` : ''}.`); }
+        for (const ed of ownershipLike) {
+          const d = dateOf(ed);
+          const other = otherLabel(ed);
+          let subtype = '';
+          try {
+            const p = JSON.parse(ed.properties_json || '{}') as Record<string, unknown>;
+            subtype = (p.subtype as string) || '';
+          } catch {
+            // Keep the generic ownership verb when properties are malformed.
+          }
+          const verb = subtype === 'leases' ? 'leases' : subtype === 'borrowed' ? 'borrowed' : subtype === 'assigned_to' ? 'is assigned' : 'owns';
+          narrativeLines.push(`${personName} ${verb} ${other}${d ? ` (as of ${d})` : ''}.`);
+        }
         for (const ed of edgesByType.get('employed_by') || []) { const d = dateOf(ed); const other = otherLabel(ed); narrativeLines.push(`${personName} is employed by ${other}${d ? ` (since ${d})` : ''}.`); }
         const comms = (edgesByType.get('communicated_with') || []).slice(0, 10);
         if (comms.length > 0) { const who = Array.from(new Set(comms.map(otherLabel))).join(', '); narrativeLines.push(`${personName} has communicated with ${who}.`); }
@@ -1892,7 +1989,7 @@ export function registerIpcHandlers(
     <table>
       <thead><tr><th>Path</th><th>Value</th><th>Source</th></tr></thead>
       <tbody>
-        ${personAssertions.map(a => { let v: unknown; try { v = JSON.parse(a.value_json || '{}'); } catch { v = {}; } const s = personSources.get(a.source_id); return `<tr><td>${escapeHtml(a.path)}</td><td class=\"small\"><pre>${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v, null, 2))}</pre></td><td class=\"small\">${s ? `${escapeHtml(s.title || s.locator)}${s.hash ? `<br/><code>${s.hash}</code>` : ''}` : ''}</td></tr>`; }).join('')}
+        ${personAssertions.map(a => { let v: unknown; try { v = JSON.parse(a.value_json || '{}'); } catch { v = {}; } const s = personSources.get(a.source_id); return `<tr><td>${escapeHtml(a.path)}</td><td class="small"><pre>${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v, null, 2))}</pre></td><td class="small">${s ? `${escapeHtml(s.title || s.locator)}${s.hash ? `<br/><code>${s.hash}</code>` : ''}` : ''}</td></tr>`; }).join('')}
       </tbody>
     </table>
   </div>
@@ -1931,7 +2028,9 @@ export function registerIpcHandlers(
           if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
             events.push({ date, label: `${ed.type} between ${ed.src_id} → ${ed.dst_id}` });
           }
-        } catch {}
+        } catch {
+          // Skip malformed edge property blobs when building the timeline view.
+        }
       }
       for (const asrt of assertions2) {
         if (asrt.path.toLowerCase().includes('birth') || asrt.path.toLowerCase() === 'dob') {
@@ -1941,7 +2040,9 @@ export function registerIpcHandlers(
             if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
               events.push({ date, label: `Birth of ${asrt.subject_id}` });
             }
-          } catch {}
+          } catch {
+            // Skip malformed assertion payloads when building the timeline view.
+          }
         }
       }
       events.sort((a,b) => a.date.localeCompare(b.date));
@@ -2069,6 +2170,8 @@ export function registerIpcHandlers(
     }
   );
 
+  // Project and media handlers mostly proxy to ProjectManager so the renderer
+  // never touches on-disk case structure directly.
   ipcMain.handle('project:new', async (_event, projectName?: string) => {
     const baseName = sanitizeProjectName(projectName || 'New Case');
     const res = await dialog.showSaveDialog({
@@ -3068,7 +3171,7 @@ async function pullOllamaModel(endpoint: string, model: string, ollamaManager: O
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: model, stream: false })
-    } as any);
+    });
     if (res.ok) {
       return { ok: true };
     }
@@ -3243,7 +3346,11 @@ function escapeHtml(s: string) {
 }
 
 async function copyDir(src: string, dest: string) {
-  try { await fsp.mkdir(dest, { recursive: true }); } catch {}
+  try {
+    await fsp.mkdir(dest, { recursive: true });
+  } catch {
+    // Continue copying even if the destination already exists.
+  }
   const entries = await fsp.readdir(src, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
   for (const entry of entries) {
     const s = path.join(src, entry.name);
@@ -3268,7 +3375,7 @@ async function ollamaGenerate(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, prompt, stream: true }),
       signal: controller.signal
-    } as any);
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     if (!res.body) {
       throw new Error('No response body from local AI.');
@@ -3280,7 +3387,7 @@ async function ollamaGenerate(
     let responseText = '';
     let lastPreviewAt = 0;
 
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -3349,7 +3456,7 @@ async function runOllamaSelfTest(endpoint: string, model: string, timeoutMs = 90
         stream: true
       }),
       signal: controller.signal
-    } as any);
+    });
     if (!res.ok) {
       return { ok: false, message: `Local AI self-test failed with HTTP ${res.status}.`, elapsedMs: Date.now() - startedAt, firstTokenMs, preview };
     }
@@ -3361,7 +3468,7 @@ async function runOllamaSelfTest(endpoint: string, model: string, timeoutMs = 90
     let buffer = '';
     let responseText = '';
 
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });

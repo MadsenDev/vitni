@@ -69,6 +69,10 @@ describe('search index', () => {
           path: 'identity.alias',
           source_id: 'source-1',
           confidence: 'verified',
+          review_state: 'unreviewed',
+          review_note: null,
+          reviewed_by: null,
+          reviewed_at: null,
           created_at: 0,
           value: { alias: 'Red Fox' }
         }

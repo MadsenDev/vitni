@@ -8,9 +8,10 @@ interface Props {
 const fieldClass = 'w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
 
 type PersonItem = { id: string; label: string };
+type ReportTemplate = 'full' | 'selection' | 'timeline' | 'person';
 
 export function ExportReportModal({ isOpen, onClose }: Props) {
-  const [template, setTemplate] = useState<'full' | 'selection' | 'timeline' | 'person'>('full');
+  const [template, setTemplate] = useState<ReportTemplate>('full');
   const [includeAttachments, setIncludeAttachments] = useState(true);
   const [running, setRunning] = useState(false);
   const [resultPath, setResultPath] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function ExportReportModal({ isOpen, onClose }: Props) {
           defaultAIProvider,
           graph
         ] = await Promise.all([
-          window.piBridge.getProjectSetting<'full' | 'selection' | 'timeline' | 'person'>('report_default_template'),
+          window.piBridge.getProjectSetting<ReportTemplate>('report_default_template'),
           window.piBridge.getProjectSetting<boolean>('report_default_include_attachments'),
           window.piBridge.getProjectSetting<boolean>('report_default_use_ai'),
           window.piBridge.getProjectSetting<'ollama' | 'openai'>('report_default_ai_provider'),
@@ -156,7 +157,11 @@ export function ExportReportModal({ isOpen, onClose }: Props) {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm text-slate-300">Template</label>
-                <select className={fieldClass} value={template} onChange={e => setTemplate(e.target.value as any)}>
+                <select
+                  className={fieldClass}
+                  value={template}
+                  onChange={(event) => setTemplate(event.target.value as ReportTemplate)}
+                >
                   <option value="full">Full Report</option>
                   <option value="selection">Selection</option>
                   <option value="timeline">Timeline</option>

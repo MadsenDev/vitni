@@ -32,7 +32,7 @@ describe('WelcomeScreen', () => {
       }),
       projectOpenExample: vi.fn().mockResolvedValue({ ok: true }),
       revealPath: vi.fn().mockResolvedValue(true)
-    } as any;
+    } as unknown as Window['piBridge'];
   });
 
   it('renders launch actions and opens the most recent and example project', async () => {

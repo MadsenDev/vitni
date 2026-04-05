@@ -1,5 +1,6 @@
 import type {
   AssertionRecord,
+  AssertionReviewState,
   AuditRecord,
   AttachmentResult,
   EntityRecord,
@@ -12,7 +13,7 @@ import type {
   TransformRegistry,
   TransformRunRecord
 } from '@shared/types';
-import type { GraphNodeSnapshot, GraphEdgeSnapshot, GraphSnapshot } from './types/graph';
+import type { GraphNodeSnapshot, GraphSnapshot } from './types/graph';
 import type { PersonalizationTheme } from './features/personalization/theme';
 
 interface ParsedAssertionRecord extends Omit<AssertionRecord, 'value_json'> {
@@ -142,7 +143,14 @@ interface PiBridge {
   revealPath: (targetPath: string) => Promise<boolean>;
   updateAssertion: (
     assertionId: string,
-    updates: { value?: Record<string, unknown>; confidence?: AssertionRecord['confidence'] }
+    updates: {
+      value?: Record<string, unknown>;
+      confidence?: AssertionRecord['confidence'];
+      review_state?: AssertionReviewState;
+      review_note?: string | null;
+      reviewed_by?: string | null;
+      reviewed_at?: number | null;
+    }
   ) => Promise<boolean>;
   deleteAssertion: (assertionId: string) => Promise<boolean>;
   updateSource: (

@@ -12,7 +12,7 @@ export class OllamaManager {
   async isAvailable(endpoint: string): Promise<boolean> {
     for (const candidate of this.endpointCandidates(endpoint)) {
       try {
-        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' });
         if (res.ok) return true;
       } catch {
         // try next candidate
@@ -24,9 +24,9 @@ export class OllamaManager {
   async listModelNames(endpoint: string): Promise<string[]> {
     for (const candidate of this.endpointCandidates(endpoint)) {
       try {
-        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' });
         if (!res.ok) continue;
-        const data = await res.json() as { models?: Array<{ name: string }> };
+        const data = (await res.json()) as { models?: Array<{ name: string }> };
         return (data.models || []).map((item) => item.name || '').filter(Boolean);
       } catch {
         // try next candidate
@@ -38,7 +38,7 @@ export class OllamaManager {
   async resolveReachableEndpoint(endpoint: string): Promise<string | null> {
     for (const candidate of this.endpointCandidates(endpoint)) {
       try {
-        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' } as any);
+        const res = await fetch(`${candidate.replace(/\/$/, '')}/api/tags`, { method: 'GET' });
         if (res.ok) return candidate;
       } catch {
         // try next candidate
@@ -59,7 +59,9 @@ export class OllamaManager {
         try {
           fs.chmodSync(bin, 0o755);
           return bin;
-        } catch {}
+        } catch {
+          // If chmod fails we can still fall back to another resolved binary.
+        }
       }
     }
     return null;
@@ -92,7 +94,9 @@ export class OllamaManager {
           const resolved = this.findInPath(c);
           if (resolved) return resolved;
         }
-      } catch {}
+      } catch {
+        // Ignore malformed candidates and continue resolving the executable.
+      }
     }
     return null;
   }
@@ -112,7 +116,7 @@ export class OllamaManager {
           fs.accessSync(candidate, fs.constants.X_OK);
           return candidate;
         } catch {
-          // ignore
+          // Ignore missing or non-executable PATH entries.
         }
       }
     }
@@ -127,7 +131,7 @@ export class OllamaManager {
           fs.accessSync(candidate, fs.constants.X_OK);
           return candidate;
         } catch {
-          // ignore
+          // Ignore optional fallback locations that are not present.
         }
       }
     }
@@ -163,7 +167,11 @@ export class OllamaManager {
       });
       this.proc.on('error', () => {
         this.lastStartError = stderr || `Failed to launch Ollama from ${bin}`;
-        try { this.proc && !this.proc.killed && this.proc.kill('SIGTERM'); } catch {}
+        try {
+          this.proc && !this.proc.killed && this.proc.kill('SIGTERM');
+        } catch {
+          // Ignore cleanup failures while surfacing the launch error.
+        }
         this.proc = null;
       });
       this.proc.on('exit', (code) => {
@@ -243,7 +251,7 @@ export class OllamaManager {
         this.proc.kill('SIGTERM');
       }
     } catch {
-      // ignore
+      // Ignore stop failures during shutdown cleanup.
     } finally {
       this.proc = null;
     }

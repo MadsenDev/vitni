@@ -2,6 +2,7 @@ import type { SourceRecord } from '@shared/types';
 import type { InvestigationProfile } from '@renderer/features/profiles/investigationProfiles';
 import type { RelationshipType } from '@renderer/lib/relationshipTypes';
 import type {
+  AssertionFieldAutomationMode,
   MediaLibrarySortPreference,
   MediaLibraryViewPreference,
   MotionPreference,
@@ -69,7 +70,7 @@ export type LoadingStage = 'settings' | 'graph' | 'complete';
 
 export type SidebarTab = 'nodes' | 'ai';
 
-export type WorkspaceView = 'graph' | 'timeline';
+export type WorkspaceView = 'graph' | 'timeline' | 'review';
 
 export type SearchResultKind = 'node' | 'relationship' | 'assertion' | 'source';
 
@@ -142,6 +143,7 @@ export type AppStateSnapshot = {
   showNodeImages: boolean;
   autoLayoutPreset: 'off' | GraphLayoutPresetId;
   defaultRelationshipConfidence: 'unverified' | 'asserted' | 'verified';
+  assertionFieldAutomation: AssertionFieldAutomationMode;
   defaultWorkspaceView: WorkspaceDefaultView;
   restoreSavedViewOnOpen: boolean;
   defaultSidebarTab: SidebarTabPreference;

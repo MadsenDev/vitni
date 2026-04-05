@@ -9,10 +9,12 @@ import {
 } from '@renderer/features/personalization/theme';
 import {
   ACTIVE_SAVED_VIEW_ID_SETTING_KEY,
+  ASSERTION_FIELD_AUTOMATION_SETTING_KEY,
   AUTO_HIDE_INSPECTOR_WHEN_IDLE_SETTING_KEY,
   AUTO_LAYOUT_ON_CREATE_SETTING_KEY,
   AUTO_LAYOUT_PRESET_SETTING_KEY,
   DEFAULT_AUTO_HIDE_INSPECTOR_WHEN_IDLE,
+  DEFAULT_ASSERTION_FIELD_AUTOMATION,
   DEFAULT_MEDIA_LIBRARY_SHOW_FOLDERS,
   DEFAULT_MEDIA_LIBRARY_SORT,
   DEFAULT_MEDIA_LIBRARY_VIEW,
@@ -47,6 +49,7 @@ import {
   SHOW_NODE_LABELS_SETTING_KEY
 } from '@renderer/lib/settings';
 import type {
+  AssertionFieldAutomationMode,
   MediaLibrarySortPreference,
   MediaLibraryViewPreference,
   MotionPreference,
@@ -75,6 +78,14 @@ import type {
 } from '@renderer/types/app';
 import type { GraphSnapshot } from '@renderer/types/graph';
 
+/**
+ * Zustand store for renderer session state plus persistence helpers.
+ *
+ * The store intentionally owns both volatile workspace state (selection,
+ * modals, current graph snapshot) and the actions that persist project/device
+ * settings so components can call one place for "read + mutate + persist"
+ * behavior.
+ */
 const EMPTY_GRAPH: GraphSnapshot = { nodes: [], edges: [] };
 const INITIAL_ACTIVE_TYPE_IDS = new Set(nodeTypes.map((nodeType) => nodeType.id));
 
@@ -100,6 +111,7 @@ type AppStore = AppStateSnapshot & {
   setSettingsModalOpen: (value: boolean) => void;
   setInvestigationProfile: (value: InvestigationProfile) => void;
   setDefaultWorkspaceView: (value: AppStateSnapshot['defaultWorkspaceView']) => void;
+  setAssertionFieldAutomation: (value: AppStateSnapshot['assertionFieldAutomation']) => void;
   setRestoreSavedViewOnOpen: (value: boolean) => void;
   setDefaultSidebarTab: (value: AppStateSnapshot['defaultSidebarTab']) => void;
   setAutoHideInspectorWhenIdle: (value: boolean) => void;
@@ -144,6 +156,7 @@ type AppStore = AppStateSnapshot & {
   persistShowNodeImages: (value: boolean) => Promise<void>;
   persistAutoLayoutPreset: (value: 'off' | GraphLayoutPresetId) => Promise<void>;
   persistDefaultRelationshipConfidence: (value: 'unverified' | 'asserted' | 'verified') => Promise<void>;
+  persistAssertionFieldAutomation: (value: AssertionFieldAutomationMode) => Promise<void>;
   persistInvestigationProfile: (value: InvestigationProfile) => Promise<void>;
   persistDefaultWorkspaceView: (value: AppStateSnapshot['defaultWorkspaceView']) => Promise<void>;
   persistRestoreSavedViewOnOpen: (value: boolean) => Promise<void>;
@@ -187,6 +200,8 @@ type AppStore = AppStateSnapshot & {
   deleteSavedView: (viewId: string) => Promise<void>;
 };
 
+// This snapshot is the renderer's "safe empty project" baseline before boot
+// hydrates settings, graph content, and recent project state from the bridge.
 const initialState: AppStateSnapshot = {
   showWelcome: true,
   graph: EMPTY_GRAPH,
@@ -212,6 +227,7 @@ const initialState: AppStateSnapshot = {
   showNodeImages: false,
   autoLayoutPreset: 'off',
   defaultRelationshipConfidence: 'unverified',
+  assertionFieldAutomation: DEFAULT_ASSERTION_FIELD_AUTOMATION,
   defaultWorkspaceView: DEFAULT_WORKSPACE_VIEW,
   restoreSavedViewOnOpen: true,
   defaultSidebarTab: DEFAULT_SIDEBAR_TAB,
@@ -282,6 +298,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setSettingsModalOpen: (settingsModalOpen) => set(() => ({ settingsModalOpen })),
   setInvestigationProfile: (investigationProfile) => set(() => ({ investigationProfile })),
   setDefaultWorkspaceView: (defaultWorkspaceView) => set(() => ({ defaultWorkspaceView })),
+  setAssertionFieldAutomation: (assertionFieldAutomation) => set(() => ({ assertionFieldAutomation })),
   setRestoreSavedViewOnOpen: (restoreSavedViewOnOpen) => set(() => ({ restoreSavedViewOnOpen })),
   setDefaultSidebarTab: (defaultSidebarTab) => set(() => ({ defaultSidebarTab })),
   setAutoHideInspectorWhenIdle: (autoHideInspectorWhenIdle) => set(() => ({ autoHideInspectorWhenIdle })),
@@ -313,7 +330,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setProjectInfoOpen: (projectInfoOpen) => set(() => ({ projectInfoOpen })),
   setExportReportOpen: (exportReportOpen) => set(() => ({ exportReportOpen })),
   setPendingSavedViewRestore: (pendingSavedViewRestore) => set(() => ({ pendingSavedViewRestore })),
-  loadSettings: async () => {
+    // Settings hydration pulls from both project-scoped keys and device-local
+    // preferences, then normalizes them into one renderer snapshot.
+    loadSettings: async () => {
     set(() => ({ isLocalAILoading: true, loadingStage: 'settings' }));
     try {
       const [
@@ -324,6 +343,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         autoLayoutPresetValue,
         autoLayoutLegacyValue,
         defaultConfidence,
+        assertionFieldAutomationValue,
         savedViewsValue,
         activeSavedViewIdValue,
         defaultWorkspaceViewValue,
@@ -349,6 +369,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         piBridge.getProjectSetting<'off' | GraphLayoutPresetId>(AUTO_LAYOUT_PRESET_SETTING_KEY),
         piBridge.getProjectSetting<boolean>(AUTO_LAYOUT_ON_CREATE_SETTING_KEY),
         piBridge.getProjectSetting(DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY),
+        piBridge.getProjectSetting<AssertionFieldAutomationMode>(ASSERTION_FIELD_AUTOMATION_SETTING_KEY),
         piBridge.getProjectSetting(SAVED_VIEWS_SETTING_KEY),
         piBridge.getProjectSetting<string>(ACTIVE_SAVED_VIEW_ID_SETTING_KEY),
         piBridge.getProjectSetting<WorkspaceDefaultView>(DEFAULT_WORKSPACE_VIEW_SETTING_KEY),
@@ -375,7 +396,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
           : null;
       const activeSavedView = activeSavedViewId ? savedViews.find((savedView) => savedView.id === activeSavedViewId) ?? null : null;
       const restoreSavedViewOnOpen = typeof restoreSavedViewOnOpenValue === 'boolean' ? restoreSavedViewOnOpenValue : true;
-      const defaultWorkspaceView = defaultWorkspaceViewValue === 'timeline' ? 'timeline' : DEFAULT_WORKSPACE_VIEW;
+      const defaultWorkspaceView =
+        defaultWorkspaceViewValue === 'timeline' || defaultWorkspaceViewValue === 'review'
+          ? defaultWorkspaceViewValue
+          : DEFAULT_WORKSPACE_VIEW;
       const defaultSidebarTab = defaultSidebarTabValue === 'ai' ? 'ai' : DEFAULT_SIDEBAR_TAB;
       set((state) => ({
         localAIEnabled: Boolean(localAI),
@@ -387,6 +411,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
         showNodeImages: showImages === null ? false : Boolean(showImages),
         autoLayoutPreset,
         defaultRelationshipConfidence: (defaultConfidence as AppStateSnapshot['defaultRelationshipConfidence']) || 'unverified',
+        assertionFieldAutomation:
+          assertionFieldAutomationValue === 'prompt' || assertionFieldAutomationValue === 'manual'
+            ? assertionFieldAutomationValue
+            : DEFAULT_ASSERTION_FIELD_AUTOMATION,
         defaultWorkspaceView,
         restoreSavedViewOnOpen,
         defaultSidebarTab,
@@ -449,7 +477,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set(() => ({ isLocalAILoading: false }));
     }
   },
-  boot: async () => {
+    // Boot intentionally serializes the initial app load so the welcome screen,
+    // splash state, graph snapshot, and persisted settings all agree on the
+    // same current project before the main workspace renders.
+    boot: async () => {
     set(() => ({ loadingStage: 'graph' }));
     await Promise.all([get().loadSettings(), loadGraphIntoStore(set)]);
     set(() => ({ loadingStage: 'complete' }));
@@ -604,6 +635,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set(() => ({ defaultRelationshipConfidence: value }));
     } catch (error) {
       console.error('[AppStore] Failed to persist default relationship confidence', error);
+    }
+  },
+  persistAssertionFieldAutomation: async (value) => {
+    set(() => ({ assertionFieldAutomation: value }));
+    try {
+      await piBridge.setProjectSetting(ASSERTION_FIELD_AUTOMATION_SETTING_KEY, value);
+    } catch (error) {
+      console.error('[AppStore] Failed to persist assertion field automation', error);
     }
   },
   persistInvestigationProfile: async (value) => {

@@ -73,7 +73,7 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
         if (row.type === 'number') v = Number(row.value);
         if (row.type === 'boolean') v = row.value === 'true';
         if (row.type === 'date') v = row.value; // store as ISO date string
-        (parsedValue as any)[k] = v;
+        parsedValue[k] = v;
       }
       if (Object.keys(parsedValue).length === 0) {
         setError('Please add at least one key/value');

@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS assertion (
   value_json TEXT NOT NULL,
   source_id TEXT NOT NULL,
   confidence TEXT NOT NULL,
+  review_state TEXT NOT NULL DEFAULT 'unreviewed',
+  review_note TEXT,
+  reviewed_by TEXT,
+  reviewed_at INTEGER,
   created_at INTEGER NOT NULL,
   FOREIGN KEY(subject_id) REFERENCES entity(id),
   FOREIGN KEY(source_id) REFERENCES source(id)
@@ -101,6 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_edge_src ON edge(src_id);
 CREATE INDEX IF NOT EXISTS idx_edge_dst ON edge(dst_id);
 CREATE INDEX IF NOT EXISTS idx_assertion_subject ON assertion(subject_id);
 CREATE INDEX IF NOT EXISTS idx_assertion_source ON assertion(source_id);
+CREATE INDEX IF NOT EXISTS idx_assertion_review_state ON assertion(review_state);
 CREATE INDEX IF NOT EXISTS idx_source_hash ON source(hash);
 CREATE INDEX IF NOT EXISTS idx_source_folder_path ON source(folder_path);
 
@@ -109,7 +114,8 @@ INSERT INTO migration (id, name, applied_at) VALUES
   (2, '002_add_entity_position.sql', 1775001600),
   (3, '003_add_project_settings.sql', 1775001600),
   (4, '004_add_source_file_fields.sql', 1775001600),
-  (5, '005_add_media_library_fields.sql', 1775001600);
+  (5, '005_add_media_library_fields.sql', 1775001600),
+  (6, '006_add_assertion_review_fields.sql', 1775001600);
 
 INSERT INTO entity (id, type, label, properties_json, created_at, updated_at, pos_x, pos_y) VALUES
   ('ent-case-circuit-ledger', 'case', 'Operation Circuit Ledger', '{"caseNumber":"NRR-2026-014","title":"Operation Circuit Ledger","caseType":"Compliance","status":"Active","priority":"Critical","assignedTo":"Dana Mercer","openedDate":"2026-03-21","description":"Suspected settlement diversion through a lookalike vendor portal and shell payout path.","notes":"Synthetic showcase case seeded for repo demos."}', 1774051200000, 1775001600000, 90, 220),

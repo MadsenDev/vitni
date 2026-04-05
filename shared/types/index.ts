@@ -25,6 +25,7 @@ export type EntityType =
   | 'case';
 
 export type Confidence = 'asserted' | 'unverified' | 'verified';
+export type AssertionReviewState = 'unreviewed' | 'accepted' | 'disputed' | 'rejected';
 
 export interface EntityRecord {
   id: string;
@@ -93,6 +94,10 @@ export interface AssertionRecord {
   value_json: string;
   source_id: string;
   confidence: Confidence;
+  review_state: AssertionReviewState;
+  review_note?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: number | null;
   created_at: number;
 }
 

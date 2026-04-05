@@ -5,10 +5,10 @@ import type { SavedView } from '@renderer/types/app';
 import { GRAPH_LAYOUT_PRESETS, type GraphLayoutPresetId } from '@renderer/features/graph/layoutPresets';
 
 interface TopToolbarProps {
-  view: 'graph' | 'timeline';
+  view: 'graph' | 'timeline' | 'review';
   relationshipTool: {
     isActive: boolean;
-    selectedType: any | null; // kept for compatibility but unused
+    selectedType: unknown | null; // kept for compatibility but unused
     sourceNode: { id: string; label: string; type: string } | null;
     targetNode: { id: string; label: string; type: string } | null;
   };
@@ -25,7 +25,7 @@ interface TopToolbarProps {
   onFitScreen: () => void;
   onCenterSelection: () => void;
   onToggleFilters: (anchor: DOMRect | null) => void;
-  onSwitchWorkspace: (view: 'graph' | 'timeline') => void;
+  onSwitchWorkspace: (view: 'graph' | 'timeline' | 'review') => void;
   savedViews: SavedView[];
   activeSavedViewId: string | null;
   onApplySavedView: (viewId: string) => void;
@@ -117,8 +117,16 @@ export function TopToolbar({
           >
             Timeline
           </button>
+          <button
+            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${view === 'review' ? 'bg-slate-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => onSwitchWorkspace('review')}
+            title="Switch to Review"
+          >
+            Review
+          </button>
         </div>
-        <div className="h-6 w-px bg-slate-700/80"></div>
+        {view === 'graph' ? <div className="h-6 w-px bg-slate-700/80"></div> : null}
+        {view === 'graph' ? (
         <div className="flex items-center space-x-2">
           <span className="mr-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">Tools</span>
           <button
@@ -215,8 +223,10 @@ export function TopToolbar({
             <FaRetweet className="w-4 h-4" />
           </button>
         </div>
+        ) : null}
       </div>
       <div className="flex items-center space-x-4">
+        {view === 'graph' ? (
         <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-2 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
           <label htmlFor="saved-view-select" className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
             View
@@ -263,7 +273,8 @@ export function TopToolbar({
             <FaTrash className="w-4 h-4" />
           </button>
         </div>
-        {relationshipTool.isActive && (
+        ) : null}
+        {view === 'graph' && relationshipTool.isActive && (
           <div className="animate-enter-rise flex items-center space-x-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-sm">
             <span className="text-slate-300">Relationship mode</span>
             {relationshipTool.sourceNode && (
@@ -280,7 +291,13 @@ export function TopToolbar({
             )}
           </div>
         )}
-        <div className="text-sm text-slate-500">Drag nodes • Relationship: drag A → B • Select to inspect</div>
+        <div className="text-sm text-slate-500">
+          {view === 'graph'
+            ? 'Drag nodes • Relationship: drag A → B • Select to inspect'
+            : view === 'timeline'
+              ? 'Review the chronology and supporting dates.'
+              : 'Process assertions, close evidence gaps, and move the case forward.'}
+        </div>
       </div>
       {layoutPanelOpen && layoutAnchor
         ? createPortal(

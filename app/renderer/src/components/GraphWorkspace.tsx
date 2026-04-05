@@ -1,9 +1,12 @@
-import type { SourceRecord, TransformManifest } from '@shared/types';
+import type { SourceRecord, SourceWithUsage, TransformManifest } from '@shared/types';
+import type { ElementDefinition } from 'cytoscape';
 import type { GraphLayoutPresetId } from '@renderer/features/graph/layoutPresets';
 import type { InvestigationProfile } from '@renderer/features/profiles/investigationProfiles';
 import type { PersonalizationTheme } from '@renderer/features/personalization/theme';
+import type { DerivedReviewAssertion, ReviewFilters } from '@renderer/features/review/reviewModel';
 import { nodeTypes, type NodeType } from '@renderer/lib/nodeTypes';
 import {
+  type AssertionFieldAutomationMode,
   DEVICE_LEFT_SIDEBAR_COLLAPSED_SETTING_KEY,
   DEVICE_LEFT_SIDEBAR_WIDTH_SETTING_KEY,
   DEVICE_RIGHT_SIDEBAR_COLLAPSED_SETTING_KEY,
@@ -18,6 +21,7 @@ import { GraphCanvas } from './GraphCanvas';
 import { GraphSidebar } from './GraphSidebar';
 import { InspectorPanel } from './InspectorPanel';
 import { SearchPalette } from './SearchPalette';
+import { ReviewWorkspace } from './ReviewWorkspace';
 import { TimelineWorkspace } from './TimelineWorkspace';
 import { TopToolbar } from './TopToolbar';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -25,8 +29,8 @@ import React from 'react';
 
 interface GraphWorkspaceProps {
   graph: GraphSnapshot;
-  filteredElements: any[];
-  view: 'graph' | 'timeline';
+  filteredElements: ElementDefinition[];
+  view: 'graph' | 'timeline' | 'review';
   relationshipTool: RelationshipToolState;
   lastLayoutPreset: GraphLayoutPresetId | null;
   boxSelectEnabled: boolean;
@@ -49,7 +53,12 @@ interface GraphWorkspaceProps {
   selectedEdgeId: string | null;
   assertions: AssertionView[];
   sources: SourceRecord[];
-  defaultRelationshipConfidence: 'unverified' | 'asserted' | 'verified';
+  reviewSources: SourceWithUsage[];
+  reviewItems: DerivedReviewAssertion[];
+  filteredReviewItems: DerivedReviewAssertion[];
+  reviewFilters: ReviewFilters;
+  activeReviewAssertionId: string | null;
+  assertionFieldAutomation: AssertionFieldAutomationMode;
   autoHideInspectorWhenIdle: boolean;
   savedViews: SavedView[];
   activeSavedViewId: string | null;
@@ -57,12 +66,16 @@ interface GraphWorkspaceProps {
   onGraphDrop: (event: React.DragEvent) => void;
   onGraphDragOver: (event: React.DragEvent) => void;
   onToggleFilters: (anchor: DOMRect | null) => void;
-  onSwitchWorkspace: (view: 'graph' | 'timeline') => void;
+  onSwitchWorkspace: (view: 'graph' | 'timeline' | 'review') => void;
   onRelationshipToolActivate: () => void;
   onRelationshipToolDeactivate: () => void;
   onToggleBoxSelect: () => void;
   onRunLayoutPreset: (preset: GraphLayoutPresetId) => void;
   onSidebarTabChange: (tab: 'nodes' | 'ai') => void;
+  onReviewFiltersChange: React.Dispatch<React.SetStateAction<ReviewFilters>>;
+  onSelectReviewAssertion: (assertionId: string) => void;
+  onAdvanceReview: (direction: 'previous' | 'next') => void;
+  onNextUnreviewedReview: () => void;
   onToggleType: (id: string) => void;
   onShowAllTypes: () => void;
   onToggleHasSources: (value: boolean) => void;
@@ -90,6 +103,8 @@ interface GraphWorkspaceProps {
   onSaveViewAs: () => void;
   onDeleteSavedView: () => void;
   onNodeCreate: (nodeType: NodeType) => void;
+  onOpenReviewAssertionInInvestigation: (assertionId: string) => void;
+  onOpenAssertionInReview: (assertionId: string) => void;
 }
 
 export function GraphWorkspace({
@@ -118,7 +133,12 @@ export function GraphWorkspace({
   selectedEdgeId,
   assertions,
   sources,
-  defaultRelationshipConfidence,
+  reviewSources,
+  reviewItems,
+  filteredReviewItems,
+  reviewFilters,
+  activeReviewAssertionId,
+  assertionFieldAutomation,
   autoHideInspectorWhenIdle,
   savedViews,
   activeSavedViewId,
@@ -132,6 +152,10 @@ export function GraphWorkspace({
   onToggleBoxSelect,
   onRunLayoutPreset,
   onSidebarTabChange,
+  onReviewFiltersChange,
+  onSelectReviewAssertion,
+  onAdvanceReview,
+  onNextUnreviewedReview,
   onToggleType,
   onShowAllTypes,
   onToggleHasSources,
@@ -158,7 +182,9 @@ export function GraphWorkspace({
   onSaveView,
   onSaveViewAs,
   onDeleteSavedView,
-  onNodeCreate
+  onNodeCreate,
+  onOpenReviewAssertionInInvestigation,
+  onOpenAssertionInReview
 }: GraphWorkspaceProps) {
   const LEFT_MIN = 280;
   const LEFT_MAX = 440;
@@ -436,7 +462,7 @@ export function GraphWorkspace({
                           void onUpdateLabel(nodeId, label);
                         }}
                         onUpdateProperty={(nodeId, key, value) => {
-                          void onUpdateProperty(nodeId, key, value);
+                          return onUpdateProperty(nodeId, key, value);
                         }}
                         onUpdateEdgeProperty={(edgeId, key, value) => {
                           void onUpdateEdgeProperty(edgeId, key, value);
@@ -444,15 +470,35 @@ export function GraphWorkspace({
                         onRequestRemoteTransform={onRequestRemoteTransform}
                         onAlignLeft={() => graphApiRef.current?.alignSelected('left')}
                         onAlignTop={() => graphApiRef.current?.alignSelected('top')}
+                        reviewItems={reviewItems}
+                        onOpenAssertionInReview={onOpenAssertionInReview}
+                        onNextUnreviewedReview={onNextUnreviewedReview}
                         searchFocus={searchFocus}
+                        assertionFieldAutomation={assertionFieldAutomation}
                       />
                     </div>
                   </div>
                 ) : null}
               </>
-            ) : (
+            ) : view === 'timeline' ? (
               <div className="flex-1">
                 <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0">
+                <ReviewWorkspace
+                  graph={graph}
+                  reviewItems={reviewItems}
+                  filteredReviewItems={filteredReviewItems}
+                  reviewFilters={reviewFilters}
+                  activeReviewAssertionId={activeReviewAssertionId}
+                  reviewSources={reviewSources}
+                  onReviewFiltersChange={onReviewFiltersChange}
+                  onSelectReviewAssertion={onSelectReviewAssertion}
+                  onAdvanceReview={onAdvanceReview}
+                  onNextUnreviewedReview={onNextUnreviewedReview}
+                  onOpenInInvestigation={onOpenReviewAssertionInInvestigation}
+                />
               </div>
             )}
           </div>

@@ -3,8 +3,9 @@ import type { GraphLayoutPresetId } from '@renderer/features/graph/layoutPresets
 import type { PersonalizationTheme } from '@renderer/features/personalization/theme';
 import type { InvestigationProfile } from '@renderer/features/profiles/investigationProfiles';
 import type { NodeType } from '@renderer/lib/nodeTypes';
+import type { SourceRecord } from '@shared/types';
 import type { GraphSnapshot } from '@renderer/types/graph';
-import type { AssertionView, ConsentState, DeletionModalState, EdgeDeletionModalState, MediaLibraryState, RelationshipToolState } from '@renderer/types/app';
+import type { ConsentState, DeletionModalState, EdgeDeletionModalState, MediaLibraryState, RelationshipToolState } from '@renderer/types/app';
 import { ConsentModal } from './ConsentModal';
 import { NodeCreationModal } from './NodeCreationModal';
 import { NodeDeletionModal } from './NodeDeletionModal';
@@ -27,10 +28,11 @@ interface AppModalLayerProps {
   relationshipModalOpen: boolean;
   relationshipTool: RelationshipToolState;
   defaultRelationshipConfidence: 'unverified' | 'asserted' | 'verified';
+  assertionFieldAutomation: 'auto' | 'prompt' | 'manual';
   settingsModalOpen: boolean;
   localAIEnabled: boolean;
   investigationProfile: InvestigationProfile;
-  defaultWorkspaceView: 'graph' | 'timeline';
+  defaultWorkspaceView: 'graph' | 'timeline' | 'review';
   restoreSavedViewOnOpen: boolean;
   defaultSidebarTab: 'nodes' | 'ai';
   autoHideInspectorWhenIdle: boolean;
@@ -71,7 +73,7 @@ interface AppModalLayerProps {
   onCloseSettings: () => void;
   onToggleLocalAI: () => Promise<void>;
   onInvestigationProfileChange: (value: InvestigationProfile) => Promise<void>;
-  onDefaultWorkspaceViewChange: (value: 'graph' | 'timeline') => Promise<void>;
+  onDefaultWorkspaceViewChange: (value: 'graph' | 'timeline' | 'review') => Promise<void>;
   onRestoreSavedViewOnOpenChange: (value: boolean) => Promise<void>;
   onDefaultSidebarTabChange: (value: 'nodes' | 'ai') => Promise<void>;
   onAutoHideInspectorWhenIdleChange: (value: boolean) => Promise<void>;
@@ -79,6 +81,7 @@ interface AppModalLayerProps {
   onShowNodeImagesChange: (value: boolean) => Promise<void>;
   onAutoLayoutPresetChange: (value: 'off' | GraphLayoutPresetId) => Promise<void>;
   onDefaultRelationshipConfidenceChange: (value: 'unverified' | 'asserted' | 'verified') => Promise<void>;
+  onAssertionFieldAutomationChange: (value: 'auto' | 'prompt' | 'manual') => Promise<void>;
   onDefaultReportTemplateChange: (value: 'full' | 'selection' | 'timeline' | 'person') => Promise<void>;
   onDefaultReportIncludeAttachmentsChange: (value: boolean) => Promise<void>;
   onDefaultReportUseAIChange: (value: boolean) => Promise<void>;
@@ -98,7 +101,7 @@ interface AppModalLayerProps {
   onAssertionCreated: () => void;
   onCloseSourceModal: () => void;
   onSourceCreated: () => void;
-  onOpenMediaLibrary: (onSelect: (source: any) => void) => void;
+  onOpenMediaLibrary: (onSelect: (source: SourceRecord) => void) => void;
   onCloseMediaLibrary: () => void;
   onCloseTerminology: () => void;
   onCloseProjectInfo: () => void;
@@ -113,6 +116,7 @@ export function AppModalLayer({
   relationshipModalOpen,
   relationshipTool,
   defaultRelationshipConfidence,
+  assertionFieldAutomation,
   settingsModalOpen,
   localAIEnabled,
   investigationProfile,
@@ -160,6 +164,7 @@ export function AppModalLayer({
   onShowNodeImagesChange,
   onAutoLayoutPresetChange,
   onDefaultRelationshipConfidenceChange,
+  onAssertionFieldAutomationChange,
   onDefaultReportTemplateChange,
   onDefaultReportIncludeAttachmentsChange,
   onDefaultReportUseAIChange,
@@ -257,6 +262,10 @@ export function AppModalLayer({
             defaultRelationshipConfidence={defaultRelationshipConfidence}
             onDefaultRelationshipConfidenceChange={(value) => {
               void onDefaultRelationshipConfidenceChange(value);
+            }}
+            assertionFieldAutomation={assertionFieldAutomation}
+            onAssertionFieldAutomationChange={(value) => {
+              void onAssertionFieldAutomationChange(value);
             }}
             defaultReportTemplate={defaultReportTemplate}
             defaultReportIncludeAttachments={defaultReportIncludeAttachments}

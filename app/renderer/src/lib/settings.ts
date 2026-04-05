@@ -4,6 +4,7 @@ export const SHOW_NODE_IMAGES_SETTING_KEY = 'show_node_images';
 export const AUTO_LAYOUT_ON_CREATE_SETTING_KEY = 'auto_layout_on_create';
 export const AUTO_LAYOUT_PRESET_SETTING_KEY = 'auto_layout_preset';
 export const DEFAULT_RELATIONSHIP_CONFIDENCE_SETTING_KEY = 'default_relationship_confidence';
+export const ASSERTION_FIELD_AUTOMATION_SETTING_KEY = 'assertion_field_automation';
 export const INVESTIGATION_PROFILE_SETTING_KEY = 'investigation_profile';
 export const SAVED_VIEWS_SETTING_KEY = 'saved_views';
 export const ACTIVE_SAVED_VIEW_ID_SETTING_KEY = 'active_saved_view_id';
@@ -32,7 +33,8 @@ export const DEVICE_OLLAMA_MODEL_SETTING_KEY = 'ai:ollama:model';
 export const DEVICE_OLLAMA_KEEP_ALIVE_SETTING_KEY = 'ai:ollama:keepAlive';
 
 export type SidebarTabPreference = 'nodes' | 'ai';
-export type WorkspaceDefaultView = 'graph' | 'timeline';
+export type WorkspaceDefaultView = 'graph' | 'timeline' | 'review';
+export type AssertionFieldAutomationMode = 'auto' | 'prompt' | 'manual';
 export type ReportTemplatePreference = 'full' | 'selection' | 'timeline' | 'person';
 export type ReportAIProviderPreference = 'ollama' | 'openai';
 export type MediaLibraryViewPreference = 'grid' | 'list';
@@ -41,6 +43,7 @@ export type UIDensityPreference = 'comfortable' | 'compact';
 export type MotionPreference = 'reduced' | 'standard' | 'enhanced';
 
 export const DEFAULT_WORKSPACE_VIEW: WorkspaceDefaultView = 'graph';
+export const DEFAULT_ASSERTION_FIELD_AUTOMATION: AssertionFieldAutomationMode = 'auto';
 export const DEFAULT_RESTORE_SAVED_VIEW_ON_OPEN = true;
 export const DEFAULT_SIDEBAR_TAB: SidebarTabPreference = 'nodes';
 export const DEFAULT_AUTO_HIDE_INSPECTOR_WHEN_IDLE = true;

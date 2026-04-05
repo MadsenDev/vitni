@@ -1,13 +1,23 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ElementDefinition } from 'cytoscape';
 import type { SourceWithUsage } from '@shared/types';
 import { FaCrosshairs, FaLink, FaSearchPlus, FaTrash, FaUserEdit } from 'react-icons/fa';
 import { TitleBar } from './components/TitleBar';
 import { ContextMenu, type ContextMenuItem } from './components/ContextMenu';
 import { GraphWorkspace } from './components/GraphWorkspace';
+import { ImportCsvModal } from './components/ImportCsvModal';
 import { ProjectCreationModal } from './components/ProjectCreationModal';
 import { ToastViewport } from './components/ToastViewport';
-import { DEFAULT_MANUAL_LAYOUT_PRESET, getGraphLayoutPreset, type GraphLayoutPresetId } from './features/graph/layoutPresets';
+import { getGraphLayoutPreset, type GraphLayoutPresetId } from './features/graph/layoutPresets';
 import { applyPersonalizationTheme } from './features/personalization/theme';
+import {
+  buildDerivedReviewAssertions,
+  DEFAULT_REVIEW_FILTERS,
+  filterReviewAssertions,
+  getAdjacentReviewAssertionId,
+  getNextUnreviewedAssertionId,
+  type ReviewFilters
+} from './features/review/reviewModel';
 import { buildSearchResults } from './features/search/searchIndex';
 import { nodeTypes } from './lib/nodeTypes';
 import { emitToast } from './lib/toast';
@@ -18,11 +28,35 @@ import { useAppStore } from './store/appStore';
 import type { GraphCanvasApi } from './types/graphCanvasApi';
 import type { SearchFocusState, SearchResult } from './types/app';
 
+/**
+ * App is the renderer orchestration layer.
+ *
+ * It binds the persisted store to the current workspace shell, lazily-loaded
+ * modal surfaces, graph canvas helpers, and menu/command wiring. Domain
+ * rendering still lives in child components; this file mainly coordinates
+ * transitions between them.
+ */
 const WelcomeScreen = lazy(() => import('./components/WelcomeScreen').then((module) => ({ default: module.WelcomeScreen })));
 const SplashOverlay = lazy(() => import('./components/SplashOverlay').then((module) => ({ default: module.SplashOverlay })));
 const AppModalLayer = lazy(() => import('./components/AppModalLayer').then((module) => ({ default: module.AppModalLayer })));
 
+interface GraphElementData {
+  id: string;
+  source?: string;
+  target?: string;
+}
+
+function getElementData(element: ElementDefinition): GraphElementData | null {
+  const { data } = element;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return null;
+  }
+  return data as GraphElementData;
+}
+
 export default function App() {
+  // Imperative graph actions stay behind a ref so menus, toolbar actions, and
+  // review/search handoffs all drive the same canvas instance.
   const graphApiRef = useRef<GraphCanvasApi | null>(null);
   const filterRef = useRef<HTMLDivElement | null>(null);
   const [searchAssertions, setSearchAssertions] = useState<ParsedAssertionRecord[]>([]);
@@ -30,6 +64,9 @@ export default function App() {
   const [searchFocus, setSearchFocus] = useState<SearchFocusState>(null);
   const [lastLayoutPreset, setLastLayoutPreset] = useState<GraphLayoutPresetId | null>(null);
   const [projectCreationOpen, setProjectCreationOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
+  const [reviewFilters, setReviewFilters] = useState<ReviewFilters>(DEFAULT_REVIEW_FILTERS);
+  const [activeReviewAssertionId, setActiveReviewAssertionId] = useState<string | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{
     nodeId: string;
     label: string;
@@ -62,6 +99,7 @@ export default function App() {
     showNodeImages,
     autoLayoutPreset,
     defaultRelationshipConfidence,
+    assertionFieldAutomation,
     defaultWorkspaceView,
     restoreSavedViewOnOpen,
     defaultSidebarTab,
@@ -105,6 +143,7 @@ export default function App() {
     persistShowNodeImages,
     persistAutoLayoutPreset,
     persistDefaultRelationshipConfidence,
+    persistAssertionFieldAutomation,
     persistInvestigationProfile,
     persistDefaultWorkspaceView,
     persistRestoreSavedViewOnOpen,
@@ -167,6 +206,16 @@ export default function App() {
   } = useAppStore();
 
   const imagePreviews = usePersonNodeImagePreviews(graph, showNodeImages);
+  // Review mode is derived here so the dedicated workspace and the graph view
+  // can share one filtered assertion set and one "current item" cursor.
+  const reviewItems = useMemo(
+    () => buildDerivedReviewAssertions(searchAssertions, searchSources, graph),
+    [graph, searchAssertions, searchSources]
+  );
+  const filteredReviewItems = useMemo(
+    () => filterReviewAssertions(reviewItems, reviewFilters),
+    [reviewFilters, reviewItems]
+  );
 
   const refreshSearchData = useCallback(async () => {
     try {
@@ -266,10 +315,21 @@ export default function App() {
     if (!graphLoaded) {
       setSearchAssertions([]);
       setSearchSources([]);
+      setActiveReviewAssertionId(null);
       return;
     }
     void refreshSearchData();
   }, [graphLoaded, refreshSearchData]);
+
+  useEffect(() => {
+    if (filteredReviewItems.length === 0) {
+      setActiveReviewAssertionId(null);
+      return;
+    }
+    if (!activeReviewAssertionId || !filteredReviewItems.some((item) => item.id === activeReviewAssertionId)) {
+      setActiveReviewAssertionId(filteredReviewItems[0].id);
+    }
+  }, [activeReviewAssertionId, filteredReviewItems]);
 
   useEffect(() => {
     const refreshHandler = () => {
@@ -425,9 +485,12 @@ export default function App() {
         .map((node) => node.id)
     );
 
-    const nodes = elements.filter((element) => (element as any).data?.source == null && visibleNodeIds.has((element as any).data?.id));
+    const nodes = elements.filter((element) => {
+      const data = getElementData(element);
+      return !!data && data.source == null && visibleNodeIds.has(data.id);
+    });
     const edges = elements.filter((element) => {
-      const data = (element as any).data;
+      const data = getElementData(element);
       if (!data?.source || !data?.target) return false;
       return visibleNodeIds.has(data.source) && visibleNodeIds.has(data.target);
     });
@@ -630,6 +693,7 @@ export default function App() {
     onProjectOpen: () => {
       void openProject();
     },
+    onProjectImportCsv: () => setImportCsvOpen(true),
     onProjectClose: closeProject,
     onProjectSaveAs: () => {
       void piBridge.projectSaveAs();
@@ -641,6 +705,7 @@ export default function App() {
     onMediaGallery: () => setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null }),
     onViewShowGraph: () => setView('graph'),
     onViewShowTimeline: () => setView('timeline'),
+    onViewShowReview: () => setView('review'),
     onViewToggleFilters: () => {
       setFilterAnchor(null);
       setFiltersOpen(!filtersOpen);
@@ -677,6 +742,46 @@ export default function App() {
       graphApiRef.current?.selectElements([nodeId], []);
     });
   }, [setSelectedEdgeId, setSelectedNodeId, setSelectedNodeIds]);
+
+  const focusGraphSelection = useCallback((nodeIds: string[], edgeIds: string[]) => {
+    window.requestAnimationFrame(() => {
+      graphApiRef.current?.selectElements(nodeIds, edgeIds);
+      graphApiRef.current?.zoomToSelection();
+    });
+  }, []);
+
+  const handleSelectReviewAssertion = useCallback((assertionId: string) => {
+    const reviewItem = reviewItems.find((item) => item.id === assertionId);
+    if (!reviewItem) return;
+    setActiveReviewAssertionId(assertionId);
+    setSearchFocus({ assertionId, sourceId: reviewItem.source_id || null, edgeId: null });
+    setSelectedEdgeId(null);
+    setSelectedNodeId(reviewItem.subject_id);
+    setSelectedNodeIds([reviewItem.subject_id]);
+  }, [reviewItems, setSelectedEdgeId, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleOpenReviewAssertionInInvestigation = useCallback((assertionId: string) => {
+    const reviewItem = reviewItems.find((item) => item.id === assertionId);
+    if (!reviewItem) return;
+    handleSelectReviewAssertion(assertionId);
+    setView('graph');
+    focusGraphSelection([reviewItem.subject_id], []);
+  }, [focusGraphSelection, handleSelectReviewAssertion, reviewItems, setView]);
+
+  const handleOpenAssertionInReview = useCallback((assertionId: string) => {
+    handleSelectReviewAssertion(assertionId);
+    setView('review');
+  }, [handleSelectReviewAssertion, setView]);
+
+  const handleAdvanceReview = useCallback((direction: 'previous' | 'next') => {
+    const nextAssertionId = getAdjacentReviewAssertionId(filteredReviewItems, activeReviewAssertionId, direction);
+    if (nextAssertionId) handleSelectReviewAssertion(nextAssertionId);
+  }, [activeReviewAssertionId, filteredReviewItems, handleSelectReviewAssertion]);
+
+  const handleNextUnreviewedReview = useCallback(() => {
+    const nextAssertionId = getNextUnreviewedAssertionId(filteredReviewItems, activeReviewAssertionId);
+    if (nextAssertionId) handleSelectReviewAssertion(nextAssertionId);
+  }, [activeReviewAssertionId, filteredReviewItems, handleSelectReviewAssertion]);
 
   const handleOpenNodeContextMenu = useCallback((payload: { nodeId: string; x: number; y: number }) => {
     const node = graph.nodes.find((item) => item.id === payload.nodeId);
@@ -779,13 +884,6 @@ export default function App() {
       ]
     : [];
 
-  const focusGraphSelection = useCallback((nodeIds: string[], edgeIds: string[]) => {
-    window.requestAnimationFrame(() => {
-      graphApiRef.current?.selectElements(nodeIds, edgeIds);
-      graphApiRef.current?.zoomToSelection();
-    });
-  }, []);
-
   const handleSearchSelect = useCallback((result: SearchResult) => {
     if (result.kind === 'relationship' && result.edgeId) {
       setSearchFocus({ edgeId: result.edgeId });
@@ -844,6 +942,15 @@ export default function App() {
             void createProject(projectName);
           }}
         />
+        <ImportCsvModal
+          isOpen={importCsvOpen}
+          graph={graph}
+          assertions={searchAssertions}
+          onClose={() => setImportCsvOpen(false)}
+          onImported={async () => {
+            await Promise.all([refreshGraph(), refreshSearchData()]);
+          }}
+        />
         <div className="flex-1 overflow-auto pt-9">
           <Suspense fallback={<div className="h-full bg-slate-950" />}>
             <SplashOverlay showing={false} />
@@ -877,6 +984,15 @@ export default function App() {
           void createProject(projectName);
         }}
       />
+      <ImportCsvModal
+        isOpen={importCsvOpen}
+        graph={graph}
+        assertions={searchAssertions}
+        onClose={() => setImportCsvOpen(false)}
+        onImported={async () => {
+          await Promise.all([refreshGraph(), refreshSearchData()]);
+        }}
+      />
       <ToastViewport />
       <div className="flex-1 flex flex-col overflow-hidden pt-9">
         <GraphWorkspace
@@ -905,7 +1021,12 @@ export default function App() {
           selectedEdgeId={selectedEdgeId}
           assertions={assertions}
           sources={sources}
-          defaultRelationshipConfidence={defaultRelationshipConfidence}
+          reviewSources={searchSources}
+          reviewItems={reviewItems}
+          filteredReviewItems={filteredReviewItems}
+          reviewFilters={reviewFilters}
+          activeReviewAssertionId={activeReviewAssertionId}
+          assertionFieldAutomation={assertionFieldAutomation}
           autoHideInspectorWhenIdle={autoHideInspectorWhenIdle}
           savedViews={savedViews}
           activeSavedViewId={activeSavedViewId}
@@ -934,6 +1055,12 @@ export default function App() {
           }}
           onRunLayoutPreset={handleRunLayoutPreset}
           onSidebarTabChange={setSidebarTab}
+          onReviewFiltersChange={setReviewFilters}
+          onSelectReviewAssertion={handleSelectReviewAssertion}
+          onAdvanceReview={handleAdvanceReview}
+          onNextUnreviewedReview={handleNextUnreviewedReview}
+          onOpenReviewAssertionInInvestigation={handleOpenReviewAssertionInInvestigation}
+          onOpenAssertionInReview={handleOpenAssertionInReview}
           onToggleType={(id) =>
             setActiveTypeIds((prev) => {
               const next = new Set(prev);
@@ -1006,6 +1133,7 @@ export default function App() {
           relationshipModalOpen={relationshipModal.isOpen}
           relationshipTool={relationshipTool}
           defaultRelationshipConfidence={defaultRelationshipConfidence}
+          assertionFieldAutomation={assertionFieldAutomation}
           settingsModalOpen={settingsModalOpen}
           localAIEnabled={localAIEnabled}
           investigationProfile={investigationProfile}
@@ -1087,6 +1215,7 @@ export default function App() {
           onShowNodeImagesChange={persistShowNodeImages}
           onAutoLayoutPresetChange={persistAutoLayoutPreset}
           onDefaultRelationshipConfidenceChange={persistDefaultRelationshipConfidence}
+          onAssertionFieldAutomationChange={persistAssertionFieldAutomation}
           onDefaultReportTemplateChange={persistDefaultReportTemplate}
           onDefaultReportIncludeAttachmentsChange={persistDefaultReportIncludeAttachments}
           onDefaultReportUseAIChange={persistDefaultReportUseAI}

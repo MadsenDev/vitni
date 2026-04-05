@@ -4,7 +4,6 @@ import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import fcose from 'cytoscape-fcose';
 import type { ElementDefinition } from 'cytoscape';
-import type { GraphViewport } from '@renderer/types/app';
 import { getGraphLayoutPreset, type GraphEdgeStyleMode, type GraphLayoutPresetId } from '@renderer/features/graph/layoutPresets';
 import { buildCanvasImageStyle, type PersonalizationTheme } from '@renderer/features/personalization/theme';
 import type { GraphCanvasApi } from '@renderer/types/graphCanvasApi';
@@ -36,6 +35,28 @@ interface GraphCanvasProps {
 const PREVIEW_NODE_ID = '__pi_preview_node__';
 const PREVIEW_EDGE_ID = '__pi_preview_edge__';
 
+type SelectionMode = 'additive' | 'single';
+
+type ExtendedCyCore = cytoscape.Core & {
+  selectionType?: (mode: SelectionMode) => void;
+};
+
+interface GraphElementData {
+  id?: string;
+  source?: string;
+  target?: string;
+  label?: string;
+  hasImage?: string;
+  imageUrl?: string;
+}
+
+function getElementData(element: ElementDefinition): GraphElementData {
+  if (!element.data || typeof element.data !== 'object' || Array.isArray(element.data)) {
+    return {};
+  }
+  return element.data as GraphElementData;
+}
+
 function getHighestDegreeNodeId(nodes: cytoscape.NodeCollection): string | undefined {
   let winnerId: string | undefined;
   let winnerDegree = -1;
@@ -61,8 +82,8 @@ function runLayoutPreset(
   const visibleEdges = cy.edges(':visible').filter((edge) => edge.id() !== PREVIEW_EDGE_ID);
   const useSelectionScope = selectedNodes.length >= 2;
   const scopedNodes = useSelectionScope ? selectedNodes : visibleNodes;
-  const selectedNodeIds = new Set(selectedNodes.map((node) => node.id()) as unknown as string[]);
-  const scopedNodeIds = new Set(scopedNodes.map((node) => node.id()) as unknown as string[]);
+  const selectedNodeIds = new Set(selectedNodes.toArray().map((node) => node.id()));
+  const scopedNodeIds = new Set(scopedNodes.toArray().map((node) => node.id()));
   const scopedEdges = useSelectionScope
     ? visibleEdges.filter((edge) => {
         const graphEdge = edge as cytoscape.EdgeSingular;
@@ -186,7 +207,7 @@ function runLayoutPreset(
   const layout = cy.layout({
     ...layoutOptions,
     eles: scopedElements
-  } as any);
+  } as unknown as cytoscape.LayoutOptions);
 
   const cleanup = () => {
     applyViewportOffset(cy, resolvedInsets);
@@ -302,26 +323,54 @@ export function GraphCanvas({
     boxSelectRef.current = enabled;
     cy.boxSelectionEnabled(enabled);
     cy.autounselectify(false);
-    try { cy.selectionType((enabled ? 'additive' : 'single') as any); } catch {}
+    try {
+      (cy as ExtendedCyCore).selectionType?.(enabled ? 'additive' : 'single');
+    } catch {
+      // Older Cytoscape builds may not expose selectionType.
+    }
 
     // Manage panning/zoom so box selection takes precedence when enabled
     if (enabled) {
-      if (prevUserPanningRef.current === null) prevUserPanningRef.current = Boolean((cy as any).userPanningEnabled());
-      if (prevPanningRef.current === null) prevPanningRef.current = Boolean((cy as any).panningEnabled());
-      if (prevZoomingRef.current === null) prevZoomingRef.current = Boolean((cy as any).zoomingEnabled());
-      try { cy.userPanningEnabled(false); } catch {}
-      try { cy.panningEnabled(false); } catch {}
-      try { cy.zoomingEnabled(false); } catch {}
+      if (prevUserPanningRef.current === null) prevUserPanningRef.current = Boolean(cy.userPanningEnabled());
+      if (prevPanningRef.current === null) prevPanningRef.current = Boolean(cy.panningEnabled());
+      if (prevZoomingRef.current === null) prevZoomingRef.current = Boolean(cy.zoomingEnabled());
+      try {
+        cy.userPanningEnabled(false);
+      } catch {
+        // Ignore unsupported panning toggles.
+      }
+      try {
+        cy.panningEnabled(false);
+      } catch {
+        // Ignore unsupported panning toggles.
+      }
+      try {
+        cy.zoomingEnabled(false);
+      } catch {
+        // Ignore unsupported zoom toggles.
+      }
     } else {
-      try { cy.userPanningEnabled(prevUserPanningRef.current ?? true); } catch {}
-      try { cy.panningEnabled(prevPanningRef.current ?? true); } catch {}
-      try { cy.zoomingEnabled(prevZoomingRef.current ?? true); } catch {}
+      try {
+        cy.userPanningEnabled(prevUserPanningRef.current ?? true);
+      } catch {
+        // Ignore unsupported panning toggles.
+      }
+      try {
+        cy.panningEnabled(prevPanningRef.current ?? true);
+      } catch {
+        // Ignore unsupported panning toggles.
+      }
+      try {
+        cy.zoomingEnabled(prevZoomingRef.current ?? true);
+      } catch {
+        // Ignore unsupported zoom toggles.
+      }
       prevUserPanningRef.current = null;
       prevPanningRef.current = null;
       prevZoomingRef.current = null;
     }
 
-    const container = (cy as any).container?.() as HTMLElement | undefined;
+    const container = cy.container();
     if (container) {
       if (enabled) container.classList.add('pi-box-select');
       else container.classList.remove('pi-box-select');
@@ -356,8 +405,8 @@ export function GraphCanvas({
 
     const emitSelection = () => {
       if (!onSelectionChange) return;
-      const nodeIds = cy.nodes(':selected').map((n: any) => n.id()) as unknown as string[];
-      const edgeIds = cy.edges(':selected').map((e: any) => e.id()) as unknown as string[];
+      const nodeIds = cy.nodes(':selected').toArray().map((node) => node.id());
+      const edgeIds = cy.edges(':selected').toArray().map((edge) => edge.id());
       onSelectionChange(nodeIds, edgeIds);
     };
 
@@ -450,9 +499,21 @@ export function GraphCanvas({
       cy.off('select unselect', 'edge', emitSelection);
       // Ensure box select is disabled on cleanup to avoid stuck state
       applyBoxSelectState(cy, false);
-      try { cy.userPanningEnabled(true); } catch {}
-      try { cy.panningEnabled(true); } catch {}
-      try { cy.zoomingEnabled(true); } catch {}
+      try {
+        cy.userPanningEnabled(true);
+      } catch {
+        // Ignore unsupported panning toggles during cleanup.
+      }
+      try {
+        cy.panningEnabled(true);
+      } catch {
+        // Ignore unsupported panning toggles during cleanup.
+      }
+      try {
+        cy.zoomingEnabled(true);
+      } catch {
+        // Ignore unsupported zoom toggles during cleanup.
+      }
     };
   }, [isRelationshipMode, onOpenNodeContextMenu, onRequestCreateEdge, onSelectionChange]);
 
@@ -483,13 +544,13 @@ export function GraphCanvas({
             const sel = cy.nodes(':selected');
             if (sel.nonempty()) {
               if (kind === 'left') {
-                const xs = sel.map((n: any) => n.position('x') as number) as unknown as number[];
+                const xs = sel.toArray().map((node) => node.position('x'));
                 const minX = Math.min(...xs);
-                sel.positions((_, n: any) => ({ x: minX, y: n.position('y') }));
+                sel.positions((node) => ({ x: minX, y: node.position('y') }));
               } else if (kind === 'top') {
-                const ys = sel.map((n: any) => n.position('y') as number) as unknown as number[];
+                const ys = sel.toArray().map((node) => node.position('y'));
                 const minY = Math.min(...ys);
-                sel.positions((_, n: any) => ({ x: n.position('x'), y: minY }));
+                sel.positions((node) => ({ x: node.position('x'), y: minY }));
               }
             }
           },
@@ -540,7 +601,7 @@ export function GraphCanvas({
             }
           },
           containerToGraph: (clientX: number, clientY: number) => {
-            const container = (cy as any).container() as HTMLElement;
+            const container = cy.container();
             if (!container) return null;
             const rect = container.getBoundingClientRect();
             const zoom = cy.zoom();
@@ -557,8 +618,8 @@ export function GraphCanvas({
             });
             return map;
           },
-          getSelectedNodeIds: () => cy.nodes(':selected').map((n: any) => n.id()) as unknown as string[],
-          getSelectedEdgeIds: () => cy.edges(':selected').map((e: any) => e.id()) as unknown as string[],
+          getSelectedNodeIds: () => cy.nodes(':selected').toArray().map((node) => node.id()),
+          getSelectedEdgeIds: () => cy.edges(':selected').toArray().map((edge) => edge.id()),
           clearSelection: () => {
             cy.elements(':selected').unselect();
           },
@@ -617,15 +678,17 @@ export function GraphCanvas({
     // Small delay to ensure graph is fully initialized
     const timeoutId = setTimeout(() => {
       // Find nodes with images and apply styles directly
-      const imageNodes = elements.filter((el: any) => {
-        const hasImage = el.data?.hasImage === 'true';
-        const imageUrl = el.data?.imageUrl;
+      const imageNodes = elements.filter((element) => {
+        const data = getElementData(element);
+        const hasImage = data.hasImage === 'true';
+        const imageUrl = data.imageUrl;
         return showNodeImages && hasImage && imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && imageUrl.startsWith('blob:');
       });
 
-      imageNodes.forEach((el: any) => {
-        const nodeId = el.data?.id;
-        const imageUrl = el.data?.imageUrl;
+      imageNodes.forEach((element) => {
+        const data = getElementData(element);
+        const nodeId = data.id;
+        const imageUrl = data.imageUrl;
 
         if (!nodeId || !imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('blob:')) {
           return;
@@ -681,17 +744,17 @@ export function GraphCanvas({
             // Ensure text wraps nicely and doesn't overflow
             node.style('text-wrap', 'wrap');
             node.style('text-max-width', `${minWidth - 20}px`);
-          } catch (e) {
-            // Silently fail - image display is optional
+          } catch {
+            // Ignore image styling failures and keep the graph usable.
           }
-        } catch (error) {
-          // Silently fail - image display is optional
+        } catch {
+          // Ignore optional image-preview failures.
         }
       });
 
       // Reset image styles for nodes that should no longer have them
-      cy.nodes().forEach((node: any) => {
-        const nodeData = node.data();
+      cy.nodes().forEach((node) => {
+        const nodeData = node.data() as GraphElementData;
         const shouldHaveImage =
           showNodeImages &&
           nodeData.hasImage === 'true' &&
@@ -702,8 +765,8 @@ export function GraphCanvas({
         if (!shouldHaveImage) {
           try {
             node.removeStyle(imageStyleKeys);
-          } catch (error) {
-            // Ignore style errors when resetting
+          } catch {
+            // Ignore style reset failures for optional image presentation.
           }
         }
       });
@@ -718,7 +781,7 @@ export function GraphCanvas({
     const edgeStyleMode: GraphEdgeStyleMode = lastLayoutPreset ? getGraphLayoutPreset(lastLayoutPreset).edgeStyleMode : 'smart';
     const hiddenEdgeLabelIds = getSuppressedGenericEdgeLabels(elements);
     const denseGraph = elements.filter((element) => element.group === 'edges').length > Math.max(10, elements.filter((element) => element.group === 'nodes').length * 1.2);
-    const baseStyles: any[] = [
+    const baseStyles: cytoscape.StylesheetStyle[] = [
       {
         selector: 'node',
         style: {
@@ -730,7 +793,7 @@ export function GraphCanvas({
           'text-halign': 'center',
           'color': colors.textPrimary,
           'font-size': '11px',
-          'font-weight': '600',
+          'font-weight': 'bold',
           'text-outline-width': 0,
           'text-wrap': 'wrap',
           'text-max-width': '120px',
@@ -740,7 +803,7 @@ export function GraphCanvas({
           'height': 'label',
           'padding': '10px',
           'shape': 'round-rectangle'
-        }
+        } as unknown as cytoscape.Css.Node
       }
     ];
 
@@ -762,7 +825,7 @@ export function GraphCanvas({
         'color': '#ffffff',
         'text-outline-width': 2,
         'text-outline-color': colors.appBg
-      }
+      } as unknown as cytoscape.Css.Node
     });
 
     // Node hover
@@ -771,7 +834,7 @@ export function GraphCanvas({
       style: {
         'border-color': colors.accentEmerald,
         'border-width': 2
-      }
+      } as unknown as cytoscape.Css.Node
     });
 
     // Node preview
@@ -783,7 +846,7 @@ export function GraphCanvas({
         'height': 1,
         'label': '',
         'events': 'no'
-      }
+      } as unknown as cytoscape.Css.Node
     });
 
     // Edge default
@@ -819,13 +882,13 @@ export function GraphCanvas({
         'text-outline-color': colors.appBgSoft,
         'text-background-color': colors.appBgSoft,
         'text-background-opacity': edgeStyleMode === 'minimal' ? 0.0 : 0.85, // More opaque background
-        'text-background-padding': 4, // More padding around text
+        'text-background-padding': '4px', // More padding around text
         'text-margin-y': edgeStyleMode === 'flow' ? -8 : -5, // Offset label slightly above edge
         'edge-text-rotation': edgeStyleMode === 'flow' ? 'none' : 'autorotate',
         'text-rotation': 'none', // Don't rotate text if possible
         'text-max-width': '100px', // Limit label width
         'text-wrap': 'wrap'
-      }
+      } as unknown as cytoscape.Css.Edge
     });
 
     // Edge preview
@@ -838,7 +901,7 @@ export function GraphCanvas({
         'width': 2,
         'line-style': 'dashed',
         'events': 'no'
-      }
+      } as unknown as cytoscape.Css.Edge
     });
 
     // Edge selected
@@ -848,7 +911,7 @@ export function GraphCanvas({
         'line-color': colors.accentSky,
         'target-arrow-color': colors.accentSky,
         'width': 3.5
-      }
+      } as unknown as cytoscape.Css.Edge
     });
 
     return baseStyles;
@@ -867,7 +930,7 @@ export function GraphCanvas({
         stylesheet={stylesheet}
         cy={(cyInstance: cytoscape.Core) => {
           cyRef.current = cyInstance;
-          const container = (cyInstance as any).container?.() as HTMLElement | undefined;
+          const container = cyInstance.container();
           container?.addEventListener('contextmenu', (event) => event.preventDefault());
           applyBoxSelectState(cyInstance, boxSelectEnabled);
           cyInstance.on('select', 'node', (event) => onSelectNode(event.target.id()));

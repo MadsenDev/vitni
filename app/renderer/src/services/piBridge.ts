@@ -1,5 +1,6 @@
 import type {
   AssertionRecord,
+  AssertionReviewState,
   EntityRecord,
   MediaFolderNode,
   MediaLibraryItem,
@@ -21,6 +22,25 @@ export const piBridge = {
   },
   createEntity(payload: { type: EntityRecord['type']; label: string; properties: Record<string, unknown> }): Promise<string> {
     return window.piBridge.createEntity(payload);
+  },
+  createSource(payload: {
+    kind: string;
+    locator: string;
+    title?: string;
+    hash?: string | null;
+    mime?: string | null;
+  }): Promise<string> {
+    return window.piBridge.createSource(payload);
+  },
+  createAssertion(payload: {
+    subject_kind: string;
+    subject_id: string;
+    path: string;
+    value: Record<string, unknown>;
+    source_id: string;
+    confidence: AssertionRecord['confidence'];
+  }): Promise<string> {
+    return window.piBridge.createAssertion(payload);
   },
   updateEntity(entityId: string, updates: { label?: string; properties?: Record<string, unknown> }): Promise<boolean> {
     return window.piBridge.updateEntity(entityId, updates);
@@ -48,7 +68,14 @@ export const piBridge = {
   },
   updateAssertion(
     assertionId: string,
-    updates: { value?: Record<string, unknown>; confidence?: AssertionRecord['confidence'] }
+    updates: {
+      value?: Record<string, unknown>;
+      confidence?: AssertionRecord['confidence'];
+      review_state?: AssertionReviewState;
+      review_note?: string | null;
+      reviewed_by?: string | null;
+      reviewed_at?: number | null;
+    }
   ): Promise<boolean> {
     return window.piBridge.updateAssertion(assertionId, updates);
   },

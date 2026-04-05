@@ -7,7 +7,7 @@ describe('SourcesList', () => {
     window.piBridge = {
       updateSource: vi.fn().mockResolvedValue(true),
       deleteSource: vi.fn().mockResolvedValue(true)
-    } as any;
+    } as unknown as Window['piBridge'];
     window.prompt = vi.fn();
   });
 

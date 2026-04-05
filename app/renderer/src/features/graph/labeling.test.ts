@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { ElementDefinition } from 'cytoscape';
 import { displayNameForNode, getDeviceSecondaryLabel, inferEntityLabel, mapGraphElements } from './labeling';
 import type { GraphSnapshot } from '@renderer/types/graph';
+
+function getElementData(element: ElementDefinition): Record<string, unknown> {
+  if (!element.data || typeof element.data !== 'object' || Array.isArray(element.data)) {
+    throw new Error('Element is missing data');
+  }
+  return element.data as Record<string, unknown>;
+}
 
 describe('graph labeling', () => {
   it('ignores placeholder device names and falls back to model', () => {
@@ -34,8 +42,9 @@ describe('graph labeling', () => {
     };
 
     const [nodeElement] = mapGraphElements(graph, true, false, new Map());
-    expect((nodeElement as any).data.label).toContain('Galaxy S24+');
-    expect((nodeElement as any).data.label).toContain('SN: ABC123');
+    const data = getElementData(nodeElement);
+    expect(data.label).toContain('Galaxy S24+');
+    expect(data.label).toContain('SN: ABC123');
   });
 
   it('prefers structured person names over raw labels', () => {
@@ -80,10 +89,13 @@ describe('graph labeling', () => {
     };
 
     const elements = mapGraphElements(graph, true, false, new Map());
-    const spouseEdge = elements.find((element) => (element as any).data?.id === 'edge-1') as any;
-    const genericEdge = elements.find((element) => (element as any).data?.id === 'edge-2') as any;
+    const spouseEdge = elements.find((element) => getElementData(element).id === 'edge-1');
+    const genericEdge = elements.find((element) => getElementData(element).id === 'edge-2');
 
-    expect(spouseEdge.data.label).toContain('Spouse Of');
-    expect(genericEdge.data.label).toBe('');
+    expect(spouseEdge).toBeDefined();
+    expect(genericEdge).toBeDefined();
+
+    expect(getElementData(spouseEdge!).label).toContain('Spouse Of');
+    expect(getElementData(genericEdge!).label).toBe('');
   });
 });

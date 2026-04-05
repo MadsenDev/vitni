@@ -2,10 +2,22 @@ import { ConfidenceBadge } from './ConfidenceBadge';
 import { LocationMapPicker } from './LocationMapPicker';
 import { SourcesList } from './SourcesList';
 import { MediaLibraryModal } from './MediaLibraryModal';
+import type { EntityType } from '@shared/types';
 import type { SourceRecord, TransformManifest, TransformRegistry } from '@shared/types';
+import type { DerivedReviewAssertion } from '@renderer/features/review/reviewModel';
+import {
+  buildFieldAssertionValue,
+  deriveFieldAssertionState,
+  getAssertionFieldMapping,
+  getAssertionFieldMappings,
+  getFieldAssertionPrimitiveValue,
+  type AssertionFieldMapping,
+  type DerivedFieldAssertionState
+} from '@renderer/features/assertions/assertionFieldMappings';
 import { resolveNodeTypeIcon } from '@renderer/features/personalization/iconPacks';
 import type { IconPackId } from '@renderer/features/personalization/theme';
 import { piBridge } from '@renderer/services/piBridge';
+import type { ParsedAssertionRecord } from '@renderer/services/piBridge';
 import { emitToast } from '@renderer/lib/toast';
 import type { SearchFocusState } from '@renderer/types/app';
 import type { NodeType } from '../lib/nodeTypes/index';
@@ -15,6 +27,18 @@ import { extractDomain } from '../lib/fetchWebsiteMetadata';
 import React from 'react';
 import { createPortal } from 'react-dom';
 
+/**
+ * InspectorPanel is the main detail surface for selected graph entities.
+ *
+ * It combines three different responsibilities:
+ * - summary/property editing for regular nodes and edges
+ * - specialized artifact/location views for richer node types
+ * - assertion/fact helpers that keep summary fields aligned with evidence
+ *
+ * The file is intentionally large because those flows still share a lot of UI
+ * state. Comments below mark the higher-level sections so later extraction into
+ * focused inspector modules is straightforward.
+ */
 interface ParsedNode {
   id: string;
   type: string;
@@ -30,12 +54,7 @@ interface ParsedEdge {
   properties?: Record<string, unknown>;
 }
 
-interface AssertionView {
-  id: string;
-  path: string;
-  value: Record<string, unknown>;
-  confidence: 'asserted' | 'unverified' | 'verified';
-}
+type AssertionView = ParsedAssertionRecord;
 
 function parseCoordinate(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -80,6 +99,26 @@ function formatNodeDate(value: unknown) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString();
+}
+
+function isEmptyFieldValue(value: unknown) {
+  if (value == null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}
+
+function fieldValueEquals(left: unknown, right: unknown) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function summarizeFieldValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === 'string') return value.trim() || null;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map((entry) => summarizeFieldValue(entry)).filter(Boolean).join(', ') || null;
+  const serialized = JSON.stringify(value);
+  return serialized.length > 120 ? `${serialized.slice(0, 117)}...` : serialized;
 }
 
 function formatSourceTimestamp(value: number | null | undefined) {
@@ -142,6 +181,8 @@ function resolvePrimaryArtifactSource(
   return null;
 }
 
+// Shared artifact helpers keep preview-first node types readable without
+// forcing the main render body to re-implement file/source heuristics.
 function buildArtifactExternalUrl(node: ParsedNode, source: SourceRecord | null) {
   const nodeUrl =
     typeof node.properties.url === 'string'
@@ -161,6 +202,237 @@ function ArtifactDetailRow({ label, value }: { label: string; value: string | nu
       <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
       <div className="mt-1 text-sm text-slate-100">{value}</div>
     </div>
+  );
+}
+
+function FieldFactComposerModal({
+  open,
+  fieldLabel,
+  assertionPath,
+  valuePreview,
+  sources,
+  onClose,
+  onSubmit
+}: {
+  open: boolean;
+  fieldLabel: string;
+  assertionPath: string;
+  valuePreview: string | null;
+  sources: SourceRecord[];
+  onClose: () => void;
+  onSubmit: (payload: {
+    sourceId?: string | null;
+    sourceKind?: string;
+    sourceLocator?: string;
+    sourceTitle?: string;
+    confidence: AssertionView['confidence'];
+  }) => Promise<void>;
+}) {
+  const [sourceMode, setSourceMode] = React.useState<'existing' | 'new'>(sources.length > 0 ? 'existing' : 'new');
+  const [sourceId, setSourceId] = React.useState<string>(sources[0]?.id ?? '');
+  const [sourceKind, setSourceKind] = React.useState('document');
+  const [sourceLocator, setSourceLocator] = React.useState('');
+  const [sourceTitle, setSourceTitle] = React.useState('');
+  const [confidence, setConfidence] = React.useState<AssertionView['confidence']>('asserted');
+  const [error, setError] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setSourceMode(sources.length > 0 ? 'existing' : 'new');
+    setSourceId(sources[0]?.id ?? '');
+    setSourceKind('document');
+    setSourceLocator('');
+    setSourceTitle('');
+    setConfidence('asserted');
+    setError(null);
+    setIsSaving(false);
+  }, [open, sources]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-md" onClick={onClose}>
+      <div
+        className="panel-elevated w-[min(92vw,680px)] rounded-[28px] border border-slate-800/80 bg-slate-950/96 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.45)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Create fact</p>
+            <h3 className="mt-1 text-lg font-semibold text-white">{fieldLabel}</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Create a source-backed assertion for <span className="text-slate-200">{assertionPath}</span>.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:bg-slate-800"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-2xl border border-slate-800/80 bg-slate-900/45 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Fact value</div>
+          <div className="mt-1 text-sm text-slate-100">{valuePreview || 'Empty value'}</div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Source</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`rounded-xl border px-3 py-1.5 text-xs transition-colors ${
+                    sourceMode === 'existing'
+                      ? 'border-sky-500/40 bg-sky-500/10 text-sky-200'
+                      : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:bg-slate-800'
+                  }`}
+                  onClick={() => setSourceMode('existing')}
+                  disabled={sources.length === 0}
+                >
+                  Use linked source
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-xl border px-3 py-1.5 text-xs transition-colors ${
+                    sourceMode === 'new'
+                      ? 'border-sky-500/40 bg-sky-500/10 text-sky-200'
+                      : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:bg-slate-800'
+                  }`}
+                  onClick={() => setSourceMode('new')}
+                >
+                  Create source
+                </button>
+              </div>
+            </div>
+
+            {sourceMode === 'existing' ? (
+              <div>
+                {sources.length > 0 ? (
+                  <select
+                    value={sourceId}
+                    onChange={(event) => setSourceId(event.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    {sources.map((source) => (
+                      <option key={source.id} value={source.id}>
+                        {source.title || source.display_name || source.file_name || source.locator}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/45 px-4 py-5 text-sm text-slate-500">
+                    No linked sources yet. Switch to <span className="text-slate-300">Create source</span> to add one now.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <input
+                  value={sourceKind}
+                  onChange={(event) => setSourceKind(event.target.value)}
+                  placeholder="Source kind"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <input
+                  value={sourceLocator}
+                  onChange={(event) => setSourceLocator(event.target.value)}
+                  placeholder="/path/to/file.pdf or https://example.test"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <input
+                  value={sourceTitle}
+                  onChange={(event) => setSourceTitle(event.target.value)}
+                  placeholder="Source title"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Confidence</div>
+              <select
+                value={confidence}
+                onChange={(event) => setConfidence(event.target.value as AssertionView['confidence'])}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="asserted">Asserted</option>
+                <option value="verified">Verified</option>
+                <option value="unverified">Unverified</option>
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/35 px-4 py-3 text-xs text-slate-400">
+              The summary field remains editable, but the assertion becomes the evidence-backed fact used for review and reporting.
+            </div>
+          </div>
+        </div>
+
+        {error ? <div className="mt-4 text-sm text-rose-300">{error}</div> : null}
+
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800"
+            onClick={onClose}
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSaving}
+            onClick={() => {
+              void (async () => {
+                setError(null);
+                if (sourceMode === 'existing' && !sourceId) {
+                  setError('Choose a linked source first.');
+                  return;
+                }
+                if (sourceMode === 'new' && (!sourceKind.trim() || !sourceLocator.trim())) {
+                  setError('Source kind and locator are required.');
+                  return;
+                }
+                setIsSaving(true);
+                try {
+                  await onSubmit({
+                    sourceId: sourceMode === 'existing' ? sourceId : null,
+                    sourceKind: sourceMode === 'new' ? sourceKind.trim() : undefined,
+                    sourceLocator: sourceMode === 'new' ? sourceLocator.trim() : undefined,
+                    sourceTitle: sourceMode === 'new' ? sourceTitle.trim() : undefined,
+                    confidence
+                  });
+                  onClose();
+                } catch (error) {
+                  setError(error instanceof Error ? error.message : 'Failed to create fact.');
+                } finally {
+                  setIsSaving(false);
+                }
+              })();
+            }}
+          >
+            {isSaving ? 'Creating…' : 'Create fact'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -449,11 +721,166 @@ function LocationMapCard({
   );
 }
 
-function AssertionCard({ assertion, highlighted = false }: { assertion: AssertionView; highlighted?: boolean }) {
+function FieldAssertionPromptModal({
+  open,
+  fieldLabel,
+  valuePreview,
+  sourceLabel,
+  onClose,
+  onConfirm
+}: {
+  open: boolean;
+  fieldLabel: string;
+  valuePreview: string | null;
+  sourceLabel: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  // Fact creation is intentionally modal so field rows stay quiet by default
+  // and only expand into source/confidence details when the user asks for it.
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-[28px] border border-slate-800/80 bg-slate-950/95 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.48)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Create fact</p>
+          <h3 className="mt-2 text-lg font-semibold text-white">{fieldLabel}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            This field changed. Create a source-backed fact now, or keep the summary field as-is for the moment.
+          </p>
+        </div>
+        <div className="mt-4 space-y-3">
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/55 px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Value</div>
+            <div className="mt-2 text-sm text-slate-100">{valuePreview || 'Empty value'}</div>
+          </div>
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/55 px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supporting source</div>
+            <div className="mt-2 text-sm text-slate-100">{sourceLabel}</div>
+          </div>
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800"
+            onClick={onClose}
+          >
+            Skip for now
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 py-2 text-sm text-sky-200 transition-colors hover:bg-sky-500/20"
+            onClick={onConfirm}
+          >
+            Create fact
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function FieldFactsPopover({
+  open,
+  anchorRect,
+  title,
+  children,
+  onClose
+}: {
+  open: boolean;
+  anchorRect: DOMRect | null;
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  const popoverRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!popoverRef.current) return;
+      if (popoverRef.current.contains(event.target as Node)) return;
+      onClose();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    const handleDismiss = () => onClose();
+
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleDismiss);
+    window.addEventListener('scroll', handleDismiss, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, true);
+    };
+  }, [onClose, open]);
+
+  if (!open || !anchorRect || typeof document === 'undefined') return null;
+
+  const width = 380;
+  const left = Math.min(Math.max(16, anchorRect.right - width), window.innerWidth - width - 16);
+  const top = Math.min(anchorRect.bottom + 8, window.innerHeight - 120);
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="fixed z-[135] w-[380px] rounded-[24px] border border-slate-800/80 bg-slate-950/95 p-3 shadow-[0_28px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl"
+      style={{ left, top, maxHeight: Math.max(260, window.innerHeight - top - 24) }}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Facts</p>
+          <h4 className="mt-1 truncate text-sm font-semibold text-slate-100">{title}</h4>
+        </div>
+        <button
+          type="button"
+          className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+      <div className="max-h-[min(70vh,540px)] overflow-y-auto pr-1">{children}</div>
+    </div>,
+    document.body
+  );
+}
+
+function AssertionCard({
+  assertion,
+  highlighted = false,
+  derivedReview,
+  onOpenInReview,
+  onNextUnreviewed
+}: {
+  assertion: AssertionView;
+  highlighted?: boolean;
+  derivedReview?: DerivedReviewAssertion | null;
+  onOpenInReview?: (() => void) | null;
+  onNextUnreviewed?: (() => void) | null;
+}) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [jsonValue, setJsonValue] = React.useState(JSON.stringify(assertion.value, null, 2));
   const [confidence, setConfidence] = React.useState<AssertionView['confidence']>(assertion.confidence);
+  const [reviewState, setReviewState] = React.useState<AssertionView['review_state']>(assertion.review_state);
+  const [reviewNote, setReviewNote] = React.useState(assertion.review_note ?? '');
   const [jsonError, setJsonError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isRemoving, setIsRemoving] = React.useState(false);
@@ -461,10 +888,53 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
   React.useEffect(() => {
     setJsonValue(JSON.stringify(assertion.value, null, 2));
     setConfidence(assertion.confidence);
+    setReviewState(assertion.review_state);
+    setReviewNote(assertion.review_note ?? '');
     setJsonError(null);
     setIsEditing(false);
     setIsDeleting(false);
-  }, [assertion.confidence, assertion.id, assertion.value]);
+  }, [assertion.confidence, assertion.id, assertion.review_note, assertion.review_state, assertion.value]);
+
+  const reviewToneClass =
+    assertion.review_state === 'accepted'
+      ? 'bg-emerald-500/15 text-emerald-200'
+      : assertion.review_state === 'disputed'
+        ? 'bg-amber-500/15 text-amber-200'
+        : assertion.review_state === 'rejected'
+          ? 'bg-rose-500/15 text-rose-200'
+          : 'bg-slate-800/80 text-slate-300';
+
+  const reviewLabel =
+    assertion.review_state === 'accepted'
+      ? 'Accepted'
+      : assertion.review_state === 'disputed'
+        ? 'Disputed'
+        : assertion.review_state === 'rejected'
+          ? 'Rejected'
+          : 'Unreviewed';
+
+  const persistReviewState = async (nextReviewState: AssertionView['review_state']) => {
+    setIsSaving(true);
+    try {
+      const ok = await piBridge.updateAssertion(assertion.id, {
+        review_state: nextReviewState,
+        review_note: reviewNote.trim() || null
+      });
+      if (!ok) {
+        throw new Error('Assertion review update was not applied.');
+      }
+      emitToast({ tone: 'success', title: 'Assertion review updated' });
+      window.dispatchEvent(new CustomEvent('pi:refresh'));
+    } catch (error) {
+      emitToast({
+        tone: 'error',
+        title: 'Assertion review failed',
+        description: error instanceof Error ? error.message : 'Unexpected renderer error.'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     let parsedValue: Record<string, unknown>;
@@ -486,7 +956,9 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
     try {
       const ok = await piBridge.updateAssertion(assertion.id, {
         confidence,
-        value: parsedValue
+        value: parsedValue,
+        review_state: reviewState,
+        review_note: reviewNote.trim() || null
       });
       if (!ok) {
         throw new Error('Assertion update was not applied.');
@@ -534,22 +1006,52 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
       className={
         `${highlighted ? 'ring-2 ring-sky-500/70 shadow-[0_0_0_1px_rgba(14,165,233,0.15)]' : ''} ${
           assertion.confidence === 'unverified'
-            ? 'rounded-2xl border border-dashed border-unverified/70 bg-slate-900/40 p-3'
-            : 'rounded-2xl border border-slate-800 bg-slate-900/40 p-3'
+            ? 'rounded-3xl border border-dashed border-unverified/70 bg-slate-900/40 p-4'
+            : 'rounded-3xl border border-slate-800/80 bg-slate-900/40 p-4'
         }`
       }
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="space-y-4">
         <div className="min-w-0">
-          <span className="text-sm font-medium text-slate-100">{assertion.path}</span>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Assertion path</div>
+          <div className="mt-1 break-words text-sm font-semibold leading-6 text-slate-100">{assertion.path}</div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {!isEditing ? <ConfidenceBadge confidence={assertion.confidence} /> : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <ConfidenceBadge confidence={assertion.confidence} />
+          <span className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${reviewToneClass}`}>{reviewLabel}</span>
+          {derivedReview ? (
+            <>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                  derivedReview.evidenceStatus === 'none'
+                    ? 'bg-rose-500/15 text-rose-200'
+                    : derivedReview.evidenceStatus === 'single'
+                      ? 'bg-sky-500/15 text-sky-200'
+                      : 'bg-emerald-500/15 text-emerald-200'
+                }`}
+              >
+                {derivedReview.evidenceStatus === 'none'
+                  ? 'No source'
+                  : derivedReview.evidenceStatus === 'single'
+                    ? 'Single source'
+                    : `${derivedReview.supportingSourceCount} sources`}
+              </span>
+              {derivedReview.conflictStatus === 'conflict' ? (
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-200">
+                  Conflict candidate
+                </span>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           {isEditing ? (
             <>
               <button
                 type="button"
-                className="rounded-xl bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-700"
+                className="rounded-xl bg-sky-600 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-700"
                 onClick={handleSave}
                 disabled={isSaving}
               >
@@ -557,10 +1059,12 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
               </button>
               <button
                 type="button"
-                className="rounded-xl border border-slate-700 bg-slate-900/50 px-2.5 py-1 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
                 onClick={() => {
                   setJsonValue(JSON.stringify(assertion.value, null, 2));
                   setConfidence(assertion.confidence);
+                  setReviewState(assertion.review_state);
+                  setReviewNote(assertion.review_note ?? '');
                   setJsonError(null);
                   setIsEditing(false);
                 }}
@@ -568,44 +1072,42 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
                 Cancel
               </button>
             </>
-          ) : (
+          ) : !isDeleting ? (
             <>
               <button
                 type="button"
-                className="rounded-xl border border-slate-700 bg-slate-900/50 px-2.5 py-1 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
                 title="Edit assertion"
                 onClick={() => setIsEditing(true)}
               >
                 Edit
               </button>
-              {!isDeleting ? (
-                <button
-                  type="button"
-                  className="rounded-xl border border-red-800/40 bg-red-900/20 px-2.5 py-1 text-[11px] text-red-300 transition-colors hover:bg-red-900/40"
-                  title="Delete assertion"
-                  onClick={() => setIsDeleting(true)}
-                >
-                  Delete
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-red-700/50 bg-red-800/40 px-2.5 py-1 text-[11px] font-medium text-red-100 transition-colors hover:bg-red-700/60 disabled:cursor-not-allowed"
-                    onClick={handleDelete}
-                    disabled={isRemoving}
-                  >
-                    {isRemoving ? 'Deleting...' : 'Confirm'}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-slate-700 bg-slate-900/50 px-2.5 py-1 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
-                    onClick={() => setIsDeleting(false)}
-                  >
-                    Keep
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="rounded-xl border border-red-800/40 bg-red-900/20 px-3 py-1.5 text-[11px] text-red-300 transition-colors hover:bg-red-900/40"
+                title="Delete assertion"
+                onClick={() => setIsDeleting(true)}
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="rounded-xl border border-red-700/50 bg-red-800/40 px-3 py-1.5 text-[11px] font-medium text-red-100 transition-colors hover:bg-red-700/60 disabled:cursor-not-allowed"
+                onClick={handleDelete}
+                disabled={isRemoving}
+              >
+                {isRemoving ? 'Deleting...' : 'Confirm delete'}
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                onClick={() => setIsDeleting(false)}
+              >
+                Keep
+              </button>
             </>
           )}
         </div>
@@ -626,6 +1128,30 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
             </select>
           </div>
           <div>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-500">Review state</label>
+            <select
+              value={reviewState}
+              onChange={(event) => setReviewState(event.target.value as AssertionView['review_state'])}
+              aria-label="Review state"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="unreviewed">Unreviewed</option>
+              <option value="accepted">Accepted</option>
+              <option value="disputed">Disputed</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-500">Review note</label>
+            <textarea
+              value={reviewNote}
+              onChange={(event) => setReviewNote(event.target.value)}
+              aria-label="Review note"
+              rows={3}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+          <div>
             <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-500">Assertion JSON</label>
             <textarea
               value={jsonValue}
@@ -638,7 +1164,82 @@ function AssertionCard({ assertion, highlighted = false }: { assertion: Assertio
           </div>
         </div>
       ) : (
-        <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-300">{JSON.stringify(assertion.value, null, 2)}</pre>
+        <>
+          <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/35 px-3 py-3">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Review actions</div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(['accepted', 'disputed', 'rejected'] as const).map((state) => (
+                <button
+                  key={state}
+                  type="button"
+                  className={`rounded-xl border px-3 py-2 text-[11px] transition-colors ${
+                    assertion.review_state === state
+                      ? state === 'accepted'
+                        ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200'
+                        : state === 'disputed'
+                          ? 'border-amber-500/50 bg-amber-500/15 text-amber-200'
+                          : 'border-rose-500/50 bg-rose-500/15 text-rose-200'
+                      : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:bg-slate-800'
+                  }`}
+                  disabled={isSaving}
+                  onClick={() => void persistReviewState(state)}
+                >
+                  {state === 'accepted' ? 'Accept' : state === 'disputed' ? 'Dispute' : 'Reject'}
+                </button>
+              ))}
+            </div>
+            {assertion.review_state !== 'unreviewed' ? (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                  disabled={isSaving}
+                  onClick={() => void persistReviewState('unreviewed')}
+                >
+                  Reset review
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {assertion.review_note ? (
+            <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/45 px-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Review note</div>
+              <div className="mt-1 text-sm leading-6 text-slate-300">{assertion.review_note}</div>
+            </div>
+          ) : null}
+          {assertion.reviewed_at ? (
+            <div className="mt-2 text-[11px] text-slate-500">
+              Reviewed {new Date((assertion.reviewed_at > 1_000_000_000_000 ? assertion.reviewed_at : assertion.reviewed_at * 1000)).toLocaleString()}
+              {assertion.reviewed_by ? ` by ${assertion.reviewed_by}` : ''}
+            </div>
+          ) : null}
+          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/50 px-3 py-3">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Value</div>
+            <pre className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-slate-300">{JSON.stringify(assertion.value, null, 2)}</pre>
+          </div>
+          {derivedReview && (onOpenInReview || onNextUnreviewed) ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {onOpenInReview ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-200 transition-colors hover:bg-sky-500/20"
+                  onClick={onOpenInReview}
+                >
+                  Open in Review mode
+                </button>
+              ) : null}
+              {onNextUnreviewed ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                  onClick={onNextUnreviewed}
+                >
+                  Next unreviewed
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
@@ -660,12 +1261,16 @@ interface InspectorPanelProps {
   onDeleteNodes?: (ids: string[]) => void;
   onDeleteEdge: () => void;
   onUpdateLabel: (nodeId: string, label: string) => void;
-  onUpdateProperty: (nodeId: string, key: string, value: unknown) => void;
+  onUpdateProperty: (nodeId: string, key: string, value: unknown) => Promise<void>;
   onUpdateEdgeProperty?: (edgeId: string, key: string, value: unknown) => void;
   onRequestRemoteTransform?: (transform: TransformManifest, payload: Record<string, unknown>) => void;
   onAlignLeft?: () => void;
   onAlignTop?: () => void;
+  reviewItems?: DerivedReviewAssertion[];
+  onOpenAssertionInReview?: (assertionId: string) => void;
+  onNextUnreviewedReview?: () => void;
   searchFocus?: SearchFocusState;
+  assertionFieldAutomation?: 'auto' | 'prompt' | 'manual';
 }
 
 function buildTransformPayload(transform: TransformManifest, node: ParsedNode): Record<string, unknown> | null {
@@ -711,7 +1316,11 @@ export function InspectorPanel({
   onRequestRemoteTransform,
   onAlignLeft,
   onAlignTop,
-  searchFocus = null
+  reviewItems = [],
+  onOpenAssertionInReview,
+  onNextUnreviewedReview,
+  searchFocus = null,
+  assertionFieldAutomation = 'auto'
 }: InspectorPanelProps) {
   const [tab, setTab] = React.useState<'details' | 'tools' | 'evidence'>('details');
   const [imageModalOpen, setImageModalOpen] = React.useState(false);
@@ -722,9 +1331,44 @@ export function InspectorPanel({
   const [runningTransformId, setRunningTransformId] = React.useState<string | null>(null);
   const [locationMapOpen, setLocationMapOpen] = React.useState(false);
   const [artifactPreviewOpen, setArtifactPreviewOpen] = React.useState(false);
+  const [expandedFieldPath, setExpandedFieldPath] = React.useState<string | null>(null);
+  const [fieldComposerState, setFieldComposerState] = React.useState<{
+    mapping: AssertionFieldMapping;
+    fieldLabel: string;
+    rawValue: unknown;
+  } | null>(null);
+  const [fieldPromptState, setFieldPromptState] = React.useState<{
+    mapping: AssertionFieldMapping;
+    fieldLabel: string;
+    rawValue: unknown;
+    source: SourceRecord;
+  } | null>(null);
   const panelRef = React.useRef<HTMLElement | null>(null);
+  const fieldFactsButtonRefs = React.useRef(new Map<string, HTMLButtonElement | null>());
   const selectedNode = selectedNodeId ? graphNodes.find(n => n.id === selectedNodeId) ?? null : null;
   const multiSelected = (selectedNodeIds ?? []).filter(id => graphNodes.some(n => n.id === id));
+  const nodeTypeDefinition = React.useMemo(
+    () => (selectedNode ? nodeTypes.find((type) => type.id === selectedNode.type) ?? null : null),
+    [nodeTypes, selectedNode]
+  );
+  const fieldMappings = React.useMemo(
+    () => (selectedNode ? getAssertionFieldMappings(selectedNode.type as EntityType) : []),
+    [selectedNode]
+  );
+  const fieldAssertionStates = React.useMemo(() => {
+    const next = new Map<string, DerivedFieldAssertionState>();
+    for (const mapping of fieldMappings) {
+      next.set(mapping.propertyKey, deriveFieldAssertionState(mapping, assertions));
+    }
+    return next;
+  }, [assertions, fieldMappings]);
+  const latestLinkedSource = React.useMemo(
+    () =>
+      [...sources]
+        .sort((left, right) => (right.added_at ?? 0) - (left.added_at ?? 0))
+        .find((source) => Boolean(source.id)) ?? null,
+    [sources]
+  );
   const locationCoordinates = React.useMemo(() => {
     if (!selectedNode || selectedNode.type !== 'location') return null;
     const latitude = parseCoordinate(selectedNode.properties?.latitude);
@@ -732,7 +1376,6 @@ export function InspectorPanel({
     if (latitude === null || longitude === null) return null;
     return { latitude, longitude };
   }, [selectedNode]);
-
   React.useEffect(() => {
     if (searchFocus?.assertionId || searchFocus?.sourceId) {
       setTab('evidence');
@@ -742,6 +1385,8 @@ export function InspectorPanel({
   React.useEffect(() => {
     setArtifactPreviewOpen(false);
     setLocationMapOpen(false);
+    setExpandedFieldPath(null);
+    setFieldComposerState(null);
   }, [selectedNodeId]);
   
   // Load all sources for image previews (including ones referenced in properties)
@@ -774,8 +1419,8 @@ export function InspectorPanel({
   const imageSourceIds = React.useMemo(() => {
     if (!selectedNode) return [];
     const imageProps = Object.entries(selectedNode.properties || {})
-      .filter(([_, value]) => value && typeof value === 'string' && value.length > 0)
-      .map(([_, value]) => String(value));
+      .filter(([, value]) => value && typeof value === 'string' && value.length > 0)
+      .map(([, value]) => String(value));
     return imageProps;
   }, [selectedNode]);
   
@@ -787,6 +1432,34 @@ export function InspectorPanel({
     if (!selectedNode || !['media', 'document', 'identity_document'].includes(selectedNode.type)) return [];
     return buildArtifactSourcePool(sources, imageSources);
   }, [imageSources, selectedNode, sources]);
+  const sourceLabelMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    [...allSources, ...sources, ...imageSources].forEach((source) => {
+      map.set(source.id, source.title || source.display_name || source.file_name || source.locator || source.id);
+    });
+    return map;
+  }, [allSources, imageSources, sources]);
+  const activeFactsProperty = React.useMemo(
+    () =>
+      nodeTypeDefinition?.properties.find((property) => {
+        const mapping = selectedNode ? getAssertionFieldMapping(selectedNode.type as EntityType, property.id) : null;
+        return mapping?.assertionPath === expandedFieldPath;
+      }) ?? null,
+    [expandedFieldPath, nodeTypeDefinition, selectedNode]
+  );
+  const activeFactsMapping = React.useMemo(
+    () => (selectedNode && activeFactsProperty ? getAssertionFieldMapping(selectedNode.type as EntityType, activeFactsProperty.id) : null),
+    [activeFactsProperty, selectedNode]
+  );
+  const activeFactsState = React.useMemo(
+    () => (activeFactsMapping ? fieldAssertionStates.get(activeFactsMapping.propertyKey) ?? null : null),
+    [activeFactsMapping, fieldAssertionStates]
+  );
+  const activeFactsAnchorRect = React.useMemo(() => {
+    if (!expandedFieldPath) return null;
+    const button = fieldFactsButtonRefs.current.get(expandedFieldPath);
+    return button ? button.getBoundingClientRect() : null;
+  }, [expandedFieldPath]);
   
   const availableRemoteTransforms = React.useMemo(() => {
     if (!selectedNode || !transformRegistry) return [];
@@ -832,6 +1505,125 @@ export function InspectorPanel({
     if (!selectedNode) return null;
     return buildArtifactExternalUrl(selectedNode, primaryArtifactSource);
   }, [primaryArtifactSource, selectedNode]);
+
+  const createAssertionFromField = React.useCallback(
+    async ({
+      mapping,
+      rawValue,
+      mode,
+      sourceOverride,
+      confidenceOverride
+    }: {
+      mapping: AssertionFieldMapping;
+      rawValue: unknown;
+      mode: 'explicit' | 'auto';
+      sourceOverride?: SourceRecord | null;
+      confidenceOverride?: AssertionView['confidence'];
+    }) => {
+      if (!selectedNodeId || isEmptyFieldValue(rawValue)) return false;
+      const nextValue = buildFieldAssertionValue(rawValue);
+      const fieldState = fieldAssertionStates.get(mapping.propertyKey) ?? deriveFieldAssertionState(mapping, assertions);
+      const chosenSource = sourceOverride ?? (sources.length === 1 ? sources[0] : latestLinkedSource);
+      const duplicate = fieldState.assertions.some(
+        (assertion) =>
+          assertion.source_id === chosenSource?.id &&
+          fieldValueEquals(assertion.value, nextValue)
+      );
+      if (duplicate) return true;
+
+      if (!chosenSource) {
+        if (mode === 'explicit' || assertionFieldAutomation !== 'manual') {
+          emitToast({
+            tone: 'warning',
+            title: 'Add a source first',
+            description: `Link a source to this node before promoting ${mapping.propertyKey} into an assertion.`
+          });
+        }
+        return false;
+      }
+
+      if (!sourceOverride && sources.length > 1) {
+        emitToast({
+          tone: 'warning',
+          title: 'Choose a source for this fact',
+          description: `Multiple sources are linked to this node. Expand the field and choose the supporting source explicitly.`
+        });
+        setExpandedFieldPath(mapping.assertionPath);
+        return false;
+      }
+
+      if (mode === 'auto' && assertionFieldAutomation === 'manual') return false;
+      if (mode === 'auto' && assertionFieldAutomation === 'prompt') {
+        setFieldPromptState({
+          mapping,
+          fieldLabel: mapping.propertyKey,
+          rawValue,
+          source: chosenSource
+        });
+        return false;
+      }
+
+      await piBridge.createAssertion({
+        subject_kind: 'entity',
+        subject_id: selectedNodeId,
+        path: mapping.assertionPath,
+        value: nextValue,
+        source_id: chosenSource.id,
+        confidence: confidenceOverride ?? 'asserted'
+      });
+      emitToast({
+        tone: 'success',
+        title: mode === 'auto' ? 'Field asserted' : 'Assertion created',
+        description: `${mapping.propertyKey} is now backed by ${chosenSource.title || chosenSource.display_name || chosenSource.locator}.`
+      });
+      window.dispatchEvent(new CustomEvent('pi:refresh'));
+      return true;
+    },
+    [assertionFieldAutomation, assertions, fieldAssertionStates, latestLinkedSource, selectedNodeId, sources]
+  );
+
+  const syncFieldFromStrongestAssertion = React.useCallback(
+    async (mapping: AssertionFieldMapping) => {
+      if (!selectedNode) return;
+      const fieldState = fieldAssertionStates.get(mapping.propertyKey);
+      if (!fieldState?.strongestAssertion) return;
+      const strongestValue = getFieldAssertionPrimitiveValue(fieldState.strongestAssertion);
+      await onUpdateProperty(selectedNode.id, mapping.propertyKey, strongestValue);
+      emitToast({
+        tone: 'success',
+        title: 'Summary field updated',
+        description: `${mapping.propertyKey} now reflects the strongest assertion for this node.`
+      });
+    },
+    [fieldAssertionStates, onUpdateProperty, selectedNode]
+  );
+
+  const syncAllStaleFields = React.useCallback(async () => {
+    if (!selectedNode) return;
+    const staleMappings = fieldMappings.filter((mapping) => {
+      const fieldState = fieldAssertionStates.get(mapping.propertyKey);
+      if (!fieldState?.strongestAssertion || fieldState.displayValue == null) return false;
+      return fieldState.displayValue !== summarizeFieldValue(selectedNode.properties?.[mapping.propertyKey]);
+    });
+    if (staleMappings.length === 0) {
+      emitToast({
+        tone: 'warning',
+        title: 'No stale summary fields',
+        description: 'The mapped summary fields already reflect the strongest available assertions.'
+      });
+      return;
+    }
+    for (const mapping of staleMappings) {
+      const fieldState = fieldAssertionStates.get(mapping.propertyKey);
+      if (!fieldState?.strongestAssertion) continue;
+      await onUpdateProperty(selectedNode.id, mapping.propertyKey, getFieldAssertionPrimitiveValue(fieldState.strongestAssertion));
+    }
+    emitToast({
+      tone: 'success',
+      title: 'Summary fields synced',
+      description: `${staleMappings.length} field${staleMappings.length === 1 ? '' : 's'} now reflect the strongest assertions on this node.`
+    });
+  }, [fieldAssertionStates, fieldMappings, onUpdateProperty, selectedNode]);
 
   React.useEffect(() => {
     if (tab !== 'evidence') return;
@@ -997,9 +1789,53 @@ export function InspectorPanel({
               />
             ) : null}
             <div className="rounded-[24px] border border-slate-800/80 bg-slate-950/30 px-4 py-4">
-            <div className="mb-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Properties</h4>
-              <p className="mt-1 text-xs text-slate-500">Edit the node title and structured details used throughout the case.</p>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Summary fields</h4>
+                <p className="mt-1 text-xs text-slate-500">Edit the node summary while grounding important facts in assertions.</p>
+              </div>
+              {selectedNode && fieldMappings.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 transition-colors hover:bg-emerald-500/20"
+                    onClick={() => {
+                      void syncAllStaleFields();
+                    }}
+                  >
+                    Sync stale fields
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 transition-colors hover:bg-sky-500/20"
+                    onClick={() => {
+                      void (async () => {
+                        const eligibleMappings = fieldMappings.filter((mapping) => !isEmptyFieldValue(selectedNode.properties?.[mapping.propertyKey]));
+                        let createdCount = 0;
+                        for (const mapping of eligibleMappings) {
+                          const created = await createAssertionFromField({
+                            mapping,
+                            rawValue: selectedNode.properties?.[mapping.propertyKey],
+                            mode: 'explicit'
+                          });
+                          if (created) createdCount += 1;
+                        }
+                        if (createdCount === 0) {
+                          emitToast({
+                            tone: 'warning',
+                            title: 'No new assertions created',
+                            description: latestLinkedSource
+                              ? 'The mapped fields were already represented by matching assertions.'
+                              : 'Link a source first, then promote the filled fields.'
+                          });
+                        }
+                      })();
+                    }}
+                  >
+                    Promote all filled fields
+                  </button>
+                </div>
+              ) : null}
             </div>
             {(() => {
               const nodeType = nodeTypes.find(nt => nt.id === selectedNode.type);
@@ -1026,6 +1862,29 @@ export function InspectorPanel({
                 <div className="space-y-3">
                   {nodeType.properties.map((property) => {
                     const currentValue = selectedNode.properties?.[property.id] || '';
+                    const fieldMapping = getAssertionFieldMapping(selectedNode.type as EntityType, property.id);
+                    const fieldState = fieldMapping ? fieldAssertionStates.get(property.id) ?? null : null;
+                    const fieldCurrentSummary = summarizeFieldValue(currentValue);
+                    const strongestSummary = fieldState?.displayValue ?? null;
+                    const summaryState =
+                      !fieldMapping
+                        ? null
+                        : fieldState?.strongestAssertion
+                          ? strongestSummary === fieldCurrentSummary
+                            ? 'derived'
+                            : 'stale'
+                          : fieldState?.assertions.length
+                            ? 'unresolved'
+                            : 'raw';
+                    const compactFieldStatus = !fieldMapping
+                      ? null
+                      : fieldState?.hasConflict
+                        ? 'Conflict'
+                        : summaryState === 'stale'
+                          ? 'Stale summary'
+                          : fieldState?.evidenceStatus === 'none' && (fieldState?.assertions.length ?? 0) > 0
+                            ? 'No source'
+                            : null;
 
                     const renderInput = () => {
                       switch (property.type) {
@@ -1034,6 +1893,10 @@ export function InspectorPanel({
                             <select
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="">Select {property.label}</option>
@@ -1047,6 +1910,10 @@ export function InspectorPanel({
                             <textarea
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               rows={3}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -1058,6 +1925,11 @@ export function InspectorPanel({
                               type="number"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                const nextValue = event.target.value === '' ? '' : Number(event.target.value);
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: nextValue, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
@@ -1068,6 +1940,10 @@ export function InspectorPanel({
                               type="date"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           );
@@ -1077,6 +1953,10 @@ export function InspectorPanel({
                               type="email"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
@@ -1087,6 +1967,10 @@ export function InspectorPanel({
                               type="url"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
@@ -1097,6 +1981,10 @@ export function InspectorPanel({
                               type="tel"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
@@ -1155,6 +2043,10 @@ export function InspectorPanel({
                               type="text"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
+                              onBlur={(event) => {
+                                if (!fieldMapping || !fieldMapping.autoAssert) return;
+                                void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
+                              }}
                               placeholder={property.placeholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
@@ -1163,11 +2055,44 @@ export function InspectorPanel({
                     };
 
                     return (
-                      <div key={property.id} className="space-y-1">
-                        <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
-                          {property.label}
-                          {property.required && <span className="text-red-400 ml-1">*</span>}
-                        </label>
+                      <div key={property.id} className="space-y-2 rounded-2xl border border-slate-800/80 bg-slate-950/35 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
+                                {property.label}
+                                {property.required && <span className="text-red-400 ml-1">*</span>}
+                              </label>
+                              {fieldMapping ? (
+                                <button
+                                  type="button"
+                                  ref={(node) => {
+                                    fieldFactsButtonRefs.current.set(fieldMapping.assertionPath, node);
+                                  }}
+                                  className="shrink-0 text-[11px] font-medium text-slate-400 transition-colors hover:text-slate-200"
+                                  onClick={() =>
+                                    setExpandedFieldPath((current) => (current === fieldMapping.assertionPath ? null : fieldMapping.assertionPath))
+                                  }
+                                >
+                                  {expandedFieldPath === fieldMapping.assertionPath
+                                    ? 'Hide facts'
+                                    : `Facts${fieldState?.assertions.length ? ` (${fieldState.assertions.length})` : ''}`}
+                                </button>
+                              ) : null}
+                            </div>
+                            {compactFieldStatus ? (
+                              <div
+                                className={`mt-2 text-[11px] ${
+                                  compactFieldStatus === 'Conflict' || compactFieldStatus === 'Stale summary'
+                                    ? 'text-amber-300'
+                                    : 'text-slate-500'
+                                }`}
+                              >
+                                {compactFieldStatus}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
                         {renderInput()}
                       </div>
                     );
@@ -1253,13 +2178,19 @@ export function InspectorPanel({
             {assertions.length === 0 && (
               <p className="text-sm text-slate-500">No assertions yet.</p>
             )}
-            {assertions.map((assertion) => (
-              <AssertionCard
-                key={assertion.id}
-                assertion={assertion}
-                highlighted={searchFocus?.assertionId === assertion.id}
-              />
-            ))}
+            {assertions.map((assertion) => {
+              const derivedReview = reviewItems.find((item) => item.id === assertion.id) ?? null;
+              return (
+                <AssertionCard
+                  key={assertion.id}
+                  assertion={assertion}
+                  highlighted={searchFocus?.assertionId === assertion.id}
+                  derivedReview={derivedReview}
+                  onOpenInReview={derivedReview && onOpenAssertionInReview ? () => onOpenAssertionInReview(assertion.id) : null}
+                  onNextUnreviewed={onNextUnreviewedReview ?? null}
+                />
+              );
+            })}
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
@@ -1399,6 +2330,213 @@ export function InspectorPanel({
           onClose={() => setArtifactPreviewOpen(false)}
         />
       ) : null}
+      <FieldFactsPopover
+        open={Boolean(expandedFieldPath && activeFactsMapping && activeFactsProperty && activeFactsAnchorRect)}
+        anchorRect={activeFactsAnchorRect}
+        title={activeFactsProperty?.label ?? 'Field facts'}
+        onClose={() => setExpandedFieldPath(null)}
+      >
+        {activeFactsMapping && activeFactsProperty && selectedNode ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-200 transition-colors hover:bg-sky-500/20"
+                onClick={() => {
+                  if (sources.length !== 1) {
+                    setFieldComposerState({
+                      mapping: activeFactsMapping,
+                      fieldLabel: activeFactsProperty.label,
+                      rawValue: selectedNode.properties?.[activeFactsProperty.id]
+                    });
+                    return;
+                  }
+                  void createAssertionFromField({
+                    mapping: activeFactsMapping,
+                    rawValue: selectedNode.properties?.[activeFactsProperty.id],
+                    mode: 'explicit'
+                  });
+                }}
+              >
+                {activeFactsState?.assertions.length ? 'Create another fact' : 'Create fact'}
+              </button>
+              {activeFactsState?.strongestAssertion &&
+              activeFactsState.displayValue !== null &&
+              activeFactsState.displayValue !== summarizeFieldValue(selectedNode.properties?.[activeFactsProperty.id]) ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-200 transition-colors hover:bg-emerald-500/20"
+                  onClick={() => {
+                    void syncFieldFromStrongestAssertion(activeFactsMapping);
+                  }}
+                >
+                  Use strongest fact
+                </button>
+              ) : null}
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Use linked source</div>
+              {sources.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {sources.map((source) => (
+                    <button
+                      key={source.id}
+                      type="button"
+                      className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                      onClick={() => {
+                        void createAssertionFromField({
+                          mapping: activeFactsMapping,
+                          rawValue: selectedNode.properties?.[activeFactsProperty.id],
+                          mode: 'explicit',
+                          sourceOverride: source
+                        });
+                      }}
+                    >
+                      {source.title || source.display_name || source.file_name || source.locator}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="text-sm text-slate-500">No linked sources yet.</div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-200 transition-colors hover:bg-sky-500/20"
+                    onClick={() => {
+                      setFieldComposerState({
+                        mapping: activeFactsMapping,
+                        fieldLabel: activeFactsProperty.label,
+                        rawValue: selectedNode.properties?.[activeFactsProperty.id]
+                      });
+                    }}
+                  >
+                    Create source and fact
+                  </button>
+                </div>
+              )}
+            </div>
+            {activeFactsState && activeFactsState.assertions.length > 0 ? (
+              <div className="space-y-2">
+                {activeFactsState.assertions.map((assertion, index) => (
+                  <div key={assertion.id} className="rounded-xl border border-slate-800/80 bg-slate-900/45 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {index === 0 ? (
+                          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-emerald-200">
+                            Strongest
+                          </span>
+                        ) : null}
+                        <div className="min-w-0 text-xs font-medium text-slate-200">
+                          {summarizeFieldValue(getFieldAssertionPrimitiveValue(assertion)) ?? 'Empty fact'}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                        <span>{assertion.confidence}</span>
+                        <span>{assertion.review_state}</span>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      Source {sourceLabelMap.get(assertion.source_id) || assertion.source_id.slice(0, 8)} •{' '}
+                      {new Date(assertion.created_at * 1000).toLocaleString()}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {!fieldValueEquals(assertion.value, buildFieldAssertionValue(selectedNode.properties?.[activeFactsProperty.id])) ? (
+                        <button
+                          type="button"
+                          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-200 transition-colors hover:bg-emerald-500/20"
+                          onClick={() => {
+                            void onUpdateProperty(
+                              selectedNode.id,
+                              activeFactsProperty.id,
+                              getFieldAssertionPrimitiveValue(assertion)
+                            );
+                          }}
+                        >
+                          Use this fact
+                        </button>
+                      ) : null}
+                      {onOpenAssertionInReview ? (
+                        <button
+                          type="button"
+                          className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
+                          onClick={() => onOpenAssertionInReview(assertion.id)}
+                        >
+                          Open in Review
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-500">No assertions yet for this field.</div>
+            )}
+          </div>
+        ) : null}
+      </FieldFactsPopover>
+      <FieldFactComposerModal
+        open={Boolean(fieldComposerState)}
+        fieldLabel={fieldComposerState?.fieldLabel ?? 'Field'}
+        assertionPath={fieldComposerState?.mapping.assertionPath ?? ''}
+        valuePreview={summarizeFieldValue(fieldComposerState?.rawValue)}
+        sources={sources}
+        onClose={() => setFieldComposerState(null)}
+        onSubmit={async ({ sourceId, sourceKind, sourceLocator, sourceTitle, confidence }) => {
+          if (!fieldComposerState) return;
+          let sourceOverride: SourceRecord | null = null;
+          if (sourceId) {
+            sourceOverride = sources.find((source) => source.id === sourceId) ?? null;
+          } else if (sourceKind && sourceLocator) {
+            const createdSourceId = await piBridge.createSource({
+              kind: sourceKind,
+              locator: sourceLocator,
+              title: sourceTitle || undefined,
+              hash: null,
+              mime: null
+            });
+            sourceOverride = {
+              id: createdSourceId,
+              kind: sourceKind,
+              locator: sourceLocator,
+              title: sourceTitle || null,
+              added_at: Date.now(),
+              hash: null,
+              mime: null
+            };
+          }
+          await createAssertionFromField({
+            mapping: fieldComposerState.mapping,
+            rawValue: fieldComposerState.rawValue,
+            mode: 'explicit',
+            sourceOverride,
+            confidenceOverride: confidence
+          });
+        }}
+      />
+      <FieldAssertionPromptModal
+        open={Boolean(fieldPromptState)}
+        fieldLabel={fieldPromptState?.fieldLabel ?? 'Field'}
+        valuePreview={summarizeFieldValue(fieldPromptState?.rawValue)}
+        sourceLabel={
+          fieldPromptState?.source.title ||
+          fieldPromptState?.source.display_name ||
+          fieldPromptState?.source.file_name ||
+          fieldPromptState?.source.locator ||
+          'Linked source'
+        }
+        onClose={() => setFieldPromptState(null)}
+        onConfirm={() => {
+          const pendingPrompt = fieldPromptState;
+          if (!pendingPrompt) return;
+          setFieldPromptState(null);
+          void createAssertionFromField({
+            mapping: pendingPrompt.mapping,
+            rawValue: pendingPrompt.rawValue,
+            mode: 'explicit',
+            sourceOverride: pendingPrompt.source
+          });
+        }}
+      />
       
       {/* Image selection modal */}
       <MediaLibraryModal

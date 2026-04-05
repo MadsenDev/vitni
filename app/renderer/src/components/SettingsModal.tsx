@@ -21,6 +21,13 @@ import {
   getInvestigationProfileDefinition
 } from '@renderer/features/profiles/investigationProfiles';
 
+/**
+ * SettingsModal is the main control surface for project defaults and
+ * device-local behavior. The sections intentionally mix "simple preference"
+ * toggles with a few operational flows such as local/cloud AI setup and
+ * personalization asset management, so state is grouped by settings section
+ * rather than by hook type.
+ */
 type LocalAIModelPresetId =
   | 'tinyllama:1.1b'
   | 'llama3.2:1b'
@@ -74,11 +81,11 @@ interface SettingsModalProps {
   onLocalAIToggle: () => Promise<void>;
   investigationProfile: InvestigationProfile;
   onInvestigationProfileChange: (value: InvestigationProfile) => void;
-  defaultWorkspaceView: 'graph' | 'timeline';
+  defaultWorkspaceView: 'graph' | 'timeline' | 'review';
   restoreSavedViewOnOpen: boolean;
   defaultSidebarTab: 'nodes' | 'ai';
   autoHideInspectorWhenIdle: boolean;
-  onDefaultWorkspaceViewChange: (value: 'graph' | 'timeline') => void;
+  onDefaultWorkspaceViewChange: (value: 'graph' | 'timeline' | 'review') => void;
   onRestoreSavedViewOnOpenChange: (value: boolean) => void;
   onDefaultSidebarTabChange: (value: 'nodes' | 'ai') => void;
   onAutoHideInspectorWhenIdleChange: (value: boolean) => void;
@@ -90,6 +97,8 @@ interface SettingsModalProps {
   onAutoLayoutPresetChange: (value: 'off' | GraphLayoutPresetId) => void;
   defaultRelationshipConfidence: 'unverified' | 'asserted' | 'verified';
   onDefaultRelationshipConfidenceChange: (value: 'unverified' | 'asserted' | 'verified') => void;
+  assertionFieldAutomation: 'auto' | 'prompt' | 'manual';
+  onAssertionFieldAutomationChange: (value: 'auto' | 'prompt' | 'manual') => void;
   defaultReportTemplate: 'full' | 'selection' | 'timeline' | 'person';
   defaultReportIncludeAttachments: boolean;
   defaultReportUseAI: boolean;
@@ -137,6 +146,8 @@ export function SettingsModal({
   onAutoLayoutPresetChange,
   defaultRelationshipConfidence,
   onDefaultRelationshipConfidenceChange,
+  assertionFieldAutomation,
+  onAssertionFieldAutomationChange,
   defaultReportTemplate,
   defaultReportIncludeAttachments,
   defaultReportUseAI,
@@ -160,6 +171,8 @@ export function SettingsModal({
   onShowExampleCaseOnWelcomeChange,
   onPersonalizationThemeChange
 }: SettingsModalProps) {
+  // Local AI and OpenAI state is kept here rather than in the app store because
+  // it is operational modal-only UI state, not durable workspace state.
   const [ollamaEndpoint, setOllamaEndpoint] = useState('http://localhost:11434');
   const [ollamaModel, setOllamaModel] = useState('llama3.2:1b');
   const [ollamaModelPresetId, setOllamaModelPresetId] = useState<LocalAIModelPresetId>('llama3.2:1b');
@@ -209,7 +222,9 @@ export function SettingsModal({
         }
         if (typeof keep === 'boolean') setOllamaKeepAlive(keep);
         if (typeof openAIModelSetting === 'string' && openAIModelSetting) setOpenAIModel(openAIModelSetting);
-      } catch {}
+      } catch {
+        // Device settings are optional here; keep the modal usable with defaults.
+      }
       try {
         const st = await window.piBridge.aiStatus();
         setAiStatus(st);
@@ -235,16 +250,28 @@ export function SettingsModal({
 
   const saveEndpoint = async (value: string) => {
     setOllamaEndpoint(value);
-    try { await window.piBridge.setDeviceSetting('ai:ollama:endpoint', value); } catch {}
+    try {
+      await window.piBridge.setDeviceSetting('ai:ollama:endpoint', value);
+    } catch {
+      // Keep the local input responsive even if persistence fails.
+    }
   };
   const saveModel = async (value: string) => {
     setOllamaModel(value);
     setOllamaModelPresetId(getLocalAIModelPresetId(value));
-    try { await window.piBridge.setDeviceSetting('ai:ollama:model', value); } catch {}
+    try {
+      await window.piBridge.setDeviceSetting('ai:ollama:model', value);
+    } catch {
+      // Keep the local input responsive even if persistence fails.
+    }
   };
   const saveKeepAlive = async (value: boolean) => {
     setOllamaKeepAlive(value);
-    try { await window.piBridge.setDeviceSetting('ai:ollama:keepAlive', value); } catch {}
+    try {
+      await window.piBridge.setDeviceSetting('ai:ollama:keepAlive', value);
+    } catch {
+      // Keep the local input responsive even if persistence fails.
+    }
   };
 
   const refreshAi = async () => {
@@ -261,7 +288,11 @@ export function SettingsModal({
     }
   };
   const refreshOpenAI = async () => {
-    try { setOpenAIStatus(await window.piBridge.openAIStatus()); } catch { /* ignore */ }
+    try {
+      setOpenAIStatus(await window.piBridge.openAIStatus());
+    } catch {
+      // OpenAI status is optional while the modal is still usable.
+    }
   };
 
   const handleTest = async () => {
@@ -399,7 +430,11 @@ export function SettingsModal({
 
   const saveOpenAIModel = async (value: string) => {
     setOpenAIModel(value);
-    try { await window.piBridge.setProjectSetting('ai:openai:model', value); } catch {}
+    try {
+      await window.piBridge.setProjectSetting('ai:openai:model', value);
+    } catch {
+      // Keep the local input responsive even if persistence fails.
+    }
   };
 
   const handleSaveOpenAIKey = async () => {
@@ -426,18 +461,6 @@ export function SettingsModal({
     setOpenAINote(result.ok ? 'Stored cloud AI key removed.' : (result.message || 'Failed to clear API key.'));
     await refreshOpenAI();
     setOpenAIBusy(null);
-  };
-
-  const copyInstallCommand = async () => {
-    const command = process.platform === 'win32'
-      ? 'winget install Ollama.Ollama'
-      : 'curl -fsSL https://ollama.com/install.sh | sh';
-    try {
-      await navigator.clipboard.writeText(command);
-      setSetupNote('Copied manual Ollama install command.');
-    } catch {
-      setSetupNote('Could not copy the manual install command.');
-    }
   };
 
   const showSetupRecovery =
@@ -541,6 +564,7 @@ export function SettingsModal({
       case 'investigation':
         onInvestigationProfileChange(DEFAULT_INVESTIGATION_PROFILE);
         onDefaultRelationshipConfidenceChange('unverified');
+        onAssertionFieldAutomationChange('auto');
         break;
       case 'display':
         onShowNodeLabelsChange(true);
@@ -645,9 +669,10 @@ export function SettingsModal({
                   <SettingsCard title="Startup defaults" description="Choose how this project should open when you resume work.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="Default workspace" description="Used when no saved view is restored.">
-                        <select value={defaultWorkspaceView} onChange={(event) => onDefaultWorkspaceViewChange(event.target.value as 'graph' | 'timeline')} className={selectClass}>
+                        <select value={defaultWorkspaceView} onChange={(event) => onDefaultWorkspaceViewChange(event.target.value as 'graph' | 'timeline' | 'review')} className={selectClass}>
                           <option value="graph">Graph</option>
                           <option value="timeline">Timeline</option>
+                          <option value="review">Review</option>
                         </select>
                       </FieldBlock>
                       <FieldBlock label="Default sidebar tab" description="Fallback when the project opens without a saved view.">
@@ -708,17 +733,30 @@ export function SettingsModal({
                     </div>
                   </SettingsCard>
                   <SettingsCard title="Relationship defaults" description="Used when you create new relationships.">
-                    <FieldBlock label="Default confidence" description="Initial confidence for newly created relationships.">
-                      <select
-                        value={defaultRelationshipConfidence}
-                        onChange={(event) => onDefaultRelationshipConfidenceChange(event.target.value as 'unverified' | 'asserted' | 'verified')}
-                        className={selectClass}
-                      >
-                        <option value="unverified">Unverified</option>
-                        <option value="asserted">Asserted</option>
-                        <option value="verified">Verified</option>
-                      </select>
-                    </FieldBlock>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FieldBlock label="Default confidence" description="Initial confidence for newly created relationships.">
+                        <select
+                          value={defaultRelationshipConfidence}
+                          onChange={(event) => onDefaultRelationshipConfidenceChange(event.target.value as 'unverified' | 'asserted' | 'verified')}
+                          className={selectClass}
+                        >
+                          <option value="unverified">Unverified</option>
+                          <option value="asserted">Asserted</option>
+                          <option value="verified">Verified</option>
+                        </select>
+                      </FieldBlock>
+                      <FieldBlock label="Field-to-assertion behavior" description="How factual field edits should become source-backed assertions.">
+                        <select
+                          value={assertionFieldAutomation}
+                          onChange={(event) => onAssertionFieldAutomationChange(event.target.value as 'auto' | 'prompt' | 'manual')}
+                          className={selectClass}
+                        >
+                          <option value="auto">Auto-create when a source is linked</option>
+                          <option value="prompt">Prompt before creating assertions</option>
+                          <option value="manual">Manual only</option>
+                        </select>
+                      </FieldBlock>
+                    </div>
                   </SettingsCard>
                 </>
               )}
@@ -1496,7 +1534,13 @@ function InstallFailsafe() {
   };
 
   const copy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); setNote('Copied command'); setTimeout(() => setNote(null), 1200); } catch {}
+    try {
+      await navigator.clipboard.writeText(text);
+      setNote('Copied command');
+      setTimeout(() => setNote(null), 1200);
+    } catch {
+      setNote('Could not copy the command.');
+    }
   };
 
   return (

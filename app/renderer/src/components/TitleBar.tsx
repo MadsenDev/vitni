@@ -10,6 +10,7 @@ interface TitleBarProps {
   context: ViewContext;
   onProjectNew: () => void;
   onProjectOpen: () => void;
+  onProjectImportCsv?: () => void;
   onProjectClose?: () => void;
   onProjectSaveAs: () => void;
   onExportReport: () => void;
@@ -23,6 +24,7 @@ interface TitleBarProps {
   onViewRunLayoutPreset: (preset: GraphLayoutPresetId) => void;
   onViewShowGraph: () => void;
   onViewShowTimeline: () => void;
+  onViewShowReview: () => void;
   onViewToggleFilters: () => void;
   onToolsToggleRelationshipMode: () => void;
   onToolsToggleBoxSelect: () => void;
@@ -46,6 +48,7 @@ export function TitleBar({
   context,
   onProjectNew,
   onProjectOpen,
+  onProjectImportCsv,
   onProjectClose,
   onProjectSaveAs,
   onExportReport,
@@ -59,6 +62,7 @@ export function TitleBar({
   onViewRunLayoutPreset,
   onViewShowGraph,
   onViewShowTimeline,
+  onViewShowReview,
   onViewToggleFilters,
   onToolsToggleRelationshipMode,
   onToolsToggleBoxSelect,
@@ -148,6 +152,7 @@ export function TitleBar({
         { label: 'New Project', accelerator: 'Ctrl+N', action: onProjectNew },
         { label: 'Open Project…', accelerator: 'Ctrl+O', action: onProjectOpen },
         ...(context === 'main' ? [
+          { label: 'Import CSV…', accelerator: 'Ctrl+Alt+I', action: onProjectImportCsv },
           { label: 'Save Project As…', accelerator: 'Ctrl+Shift+S', action: onProjectSaveAs },
           { separator: true },
           { label: 'Export Report…', accelerator: 'Ctrl+E', action: onExportReport },
@@ -169,6 +174,7 @@ export function TitleBar({
       View: context === 'main' ? [
         { label: 'Investigation', accelerator: 'Alt+1', action: onViewShowGraph },
         { label: 'Timeline', accelerator: 'Alt+2', action: onViewShowTimeline },
+        { label: 'Review', accelerator: 'Alt+3', action: onViewShowReview },
         { label: 'Filters…', accelerator: 'Ctrl+Shift+L', action: onViewToggleFilters },
         ...(savedViews.length > 0
           ? [
@@ -216,12 +222,13 @@ export function TitleBar({
 
     // Filter out empty menus
     return Object.fromEntries(
-      Object.entries(allMenus).filter(([_, items]) => items.length > 0)
+      Object.entries(allMenus).filter(([, items]) => items.length > 0)
     );
   }, [
     context,
     onProjectNew,
     onProjectOpen,
+    onProjectImportCsv,
     onProjectClose,
     onProjectSaveAs,
     onExportReport,
@@ -235,6 +242,7 @@ export function TitleBar({
     onViewRunLayoutPreset,
     onViewShowGraph,
     onViewShowTimeline,
+    onViewShowReview,
     onViewToggleFilters,
     onToolsToggleRelationshipMode,
     onToolsToggleBoxSelect,

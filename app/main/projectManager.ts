@@ -8,6 +8,12 @@ import type { DatabaseProviderOptions } from './persistence/database';
 import { ensureMigrations } from './persistence/migrations';
 import type { AttachmentResult, MediaFolderNode, MediaLibraryItem, SourceRecord } from '../../shared/types';
 
+/**
+ * ProjectManager owns the on-disk case layout and the currently-open project.
+ *
+ * The rest of the main process talks to this service instead of reaching into
+ * manifests, SQLite files, or attachment/media folders directly.
+ */
 const PROJECT_EXTENSION = '.vitni';
 const SUBDIRECTORIES = [
   'db',
@@ -88,6 +94,8 @@ export class ProjectManager {
   }
 
   async initialize(): Promise<void> {
+    // Boot always leaves the app with a live project so the renderer can load
+    // against a stable root without special "no project yet" branches.
     await fsp.mkdir(this.baseDir, { recursive: true });
     await this.ensureRecentProjectsFile();
 
@@ -165,6 +173,8 @@ export class ProjectManager {
   }
 
   async openProject(rootPath: string, encryptionKey?: string | null, manifestOverride?: ProjectManifest) {
+    // Swapping the current project happens in one place so DB access,
+    // attachment helpers, and recent-project bookkeeping stay consistent.
     await this.closeProject();
 
     const manifestPath = path.join(rootPath, 'manifest.json');
@@ -1061,7 +1071,7 @@ async function ensureUniqueFileName(directory: string, desiredFileName: string):
   const stem = path.basename(desiredFileName, ext);
   let attempt = 0;
 
-  while (true) {
+  for (;;) {
     const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
     const candidate = `${stem}${suffix}${ext}`;
     try {

@@ -13,10 +13,8 @@ interface TimelineOverlayProps {
 type TimelineEvent = { id: string; date: string; sortKey: number; text: string };
 
 function formatDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) return d.toLocaleDateString();
-  } catch {}
+  const d = new Date(dateStr);
+  if (!Number.isNaN(d.getTime())) return d.toLocaleDateString();
   return dateStr;
 }
 
@@ -193,5 +191,4 @@ export function TimelineOverlay({ open, onClose, nodes, edges }: TimelineOverlay
     </div>
   );
 }
-
 
