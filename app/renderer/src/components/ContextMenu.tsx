@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ThemedPanel } from '@renderer/features/personalization/primitives';
 
 export type ContextMenuItem = {
   id: string;
@@ -102,26 +103,27 @@ export function ContextMenu({ open, position, items, onClose, onAction }: Contex
   const top = Math.min(position.y, viewportHeight - estimatedHeight - 16);
 
   return createPortal(
-    <div
+    <ThemedPanel
       ref={menuRef}
       role="menu"
       tabIndex={-1}
-      className="fixed z-[120] min-w-[280px] overflow-hidden rounded-2xl border border-slate-700/80 bg-[linear-gradient(180deg,rgba(18,26,45,0.96),rgba(8,12,24,0.98))] p-1.5 shadow-[0_28px_100px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-      style={{ left, top }}
+      elevated
+      className="fixed z-[120] min-w-[280px] overflow-hidden rounded-2xl p-1.5 backdrop-blur-xl"
+      style={{ left, top, boxShadow: '0 28px 100px rgba(0,0,0,0.55)' }}
     >
       {items.map((item, index) => {
         if (item.separator) {
-          return <div key={`${item.id}-${index}`} className="my-1 h-px bg-slate-700/80" />;
+          return <div key={`${item.id}-${index}`} className="my-1 h-px" style={{ background: 'var(--border-subtle)' }} />;
         }
 
         const active = index === activeIndex;
         const tone = item.destructive
           ? active
-            ? 'bg-red-500/12 text-red-100'
-            : 'text-red-200/90'
+            ? { background: 'var(--status-danger-bg)', color: 'var(--status-danger-text)' }
+            : { color: 'var(--status-danger-text)' }
           : active
-            ? 'bg-sky-500/12 text-white'
-            : 'text-slate-200';
+            ? { background: 'var(--status-accent-bg)', color: 'var(--text-primary)' }
+            : { color: 'var(--text-primary)' };
 
         return (
           <button
@@ -134,22 +136,20 @@ export function ContextMenu({ open, position, items, onClose, onAction }: Contex
               if (item.disabled) return;
               onAction(item.id);
             }}
-            className={[
-              'flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-              item.disabled ? 'cursor-not-allowed text-slate-500 opacity-60' : tone
-            ].join(' ')}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+            style={item.disabled ? { color: 'var(--text-dim)', opacity: 0.6 } : tone}
           >
-            <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.04]">
+            <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-base)' }}>
               {item.icon}
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-mono text-sm font-medium">{item.label}</div>
-              {item.description ? <div className="mt-0.5 text-xs text-slate-400">{item.description}</div> : null}
+              {item.description ? <div className="mt-0.5 text-xs" style={{ color: 'var(--text-dim)' }}>{item.description}</div> : null}
             </div>
           </button>
         );
       })}
-    </div>,
+    </ThemedPanel>,
     document.body
   );
 }

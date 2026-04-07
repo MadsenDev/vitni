@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { relationshipTypes, isRelationshipAllowed, type RelationshipType } from '../lib/relationshipTypes';
+import { ThemedButton, ThemedCard, ThemedInput, ThemedPanel, ThemedSelect, ThemedTextarea } from '@renderer/features/personalization/primitives';
 
 interface RelationshipCreationModalProps {
   isOpen: boolean;
@@ -92,25 +93,25 @@ export function RelationshipCreationModal({
   if (!isOpen || !sourceNode || !targetNode) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-md mx-4 rounded-[28px] p-6">
         <div className="flex items-center space-x-3 mb-4">
           <div className={`w-10 h-10 rounded-full ${selectedType?.color ?? 'bg-slate-600'} flex items-center justify-center text-white text-lg`}>
             {selectedType?.icon && <selectedType.icon className="w-5 h-5" />}
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white">Create Relationship</h2>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Create Relationship</h2>
             <div className="mt-2">
-              <label className="block text-sm text-slate-300 mb-1">Relationship Type</label>
-              <select
+              <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Relationship Type</label>
+              <ThemedSelect
                 value={selectedTypeId}
                 onChange={(e) => setSelectedTypeId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-md"
               >
                 {availableTypes.map((t) => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
             {availableTypes.length === 0 && (
               <p className="mt-3 text-sm text-amber-300">
@@ -119,116 +120,108 @@ export function RelationshipCreationModal({
             )}
             {availableSubtypes.length > 0 && (
               <div className="mt-3">
-                <label className="block text-sm text-slate-300 mb-1">Subtype</label>
-                <select
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Subtype</label>
+                <ThemedSelect
                   value={selectedSubtypeId}
                   onChange={(e) => setSelectedSubtypeId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md"
                 >
                   {availableSubtypes.map((s) => (
                     <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
             )}
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-slate-800/50 border border-slate-700 rounded-md">
+        <ThemedCard className="mb-4 rounded-2xl p-3">
           <div className="flex items-center justify-between text-sm">
-            <div className="text-slate-300 font-medium">{sourceNode.label}</div>
+            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{sourceNode.label}</div>
             <div className="flex items-center space-x-2">
               <div className={`w-6 h-6 rounded-full ${selectedType?.color ?? 'bg-slate-600'} flex items-center justify-center text-white text-xs`}>
                 {selectedType?.icon && <selectedType.icon className="w-3 h-3" />}
               </div>
-              <span className="text-slate-400">{selectedType?.bidirectional ? '↔' : '→'}</span>
+              <span style={{ color: 'var(--text-dim)' }}>{selectedType?.bidirectional ? '↔' : '→'}</span>
             </div>
-            <div className="text-slate-300 font-medium">{targetNode.label}</div>
+            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{targetNode.label}</div>
           </div>
-        </div>
+        </ThemedCard>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="confidence" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="confidence" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
               Confidence Level
             </label>
-            <select
+            <ThemedSelect
               id="confidence"
               value={confidence}
               onChange={(e) => setConfidence(e.target.value as typeof confidence)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md"
             >
               <option value="unverified">Unverified</option>
               <option value="asserted">Asserted</option>
               <option value="verified">Verified</option>
-            </select>
+            </ThemedSelect>
           </div>
 
           {selectedType?.supportsStrength !== false && (
           <div>
-            <label htmlFor="strength" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="strength" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
               Relationship Strength
             </label>
-            <select
+            <ThemedSelect
               id="strength"
               value={strength}
               onChange={(e) => setStrength(e.target.value as typeof strength)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md"
             >
               <option value="weak">Weak</option>
               <option value="moderate">Moderate</option>
               <option value="strong">Strong</option>
-            </select>
+            </ThemedSelect>
           </div>
           )}
 
           {selectedType?.supportsDate !== false && (
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="date" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
               Date (optional)
             </label>
-            <input
+            <ThemedInput
               id="date"
               type="date"
               value={dateStr}
               onChange={(e) => setDateStr(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md"
             />
           </div>
           )}
 
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="notes" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
               Notes
             </label>
-            <textarea
+            <ThemedTextarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any relevant details about this relationship..."
               rows={3}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full rounded-md resize-none"
             />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
+            <ThemedButton type="button" onClick={onClose} variant="quiet">
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-              disabled={!selectedTypeId || availableTypes.length === 0}
-            >
+            </ThemedButton>
+            <ThemedButton type="submit" variant="accent" disabled={!selectedTypeId || availableTypes.length === 0}>
               Create Relationship
-            </button>
+            </ThemedButton>
           </div>
         </form>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

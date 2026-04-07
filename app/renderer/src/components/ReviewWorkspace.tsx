@@ -4,7 +4,18 @@ import type { DerivedReviewAssertion, ReviewFilters } from '@renderer/features/r
 import type { GraphSnapshot } from '@renderer/types/graph';
 import { piBridge } from '@renderer/services/piBridge';
 import { emitToast } from '@renderer/lib/toast';
+import { AnimatePresence, motion } from 'framer-motion';
 import React from 'react';
+import {
+  ThemedBadge,
+  ThemedButton,
+  ThemedCard,
+  ThemedInput,
+  ThemedPanel,
+  ThemedSection,
+  ThemedSelect,
+  ThemedTextarea
+} from '@renderer/features/personalization/primitives';
 
 type ReviewSectionId =
   | 'needs-review'
@@ -29,16 +40,16 @@ interface ReviewWorkspaceProps {
 }
 
 function reviewTone(state: DerivedReviewAssertion['review_state']) {
-  if (state === 'accepted') return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200';
-  if (state === 'disputed') return 'border-amber-500/20 bg-amber-500/10 text-amber-200';
-  if (state === 'rejected') return 'border-rose-500/20 bg-rose-500/10 text-rose-200';
-  return 'border-slate-700/80 bg-slate-900/70 text-slate-300';
+  if (state === 'accepted') return 'success' as const;
+  if (state === 'disputed') return 'warning' as const;
+  if (state === 'rejected') return 'danger' as const;
+  return 'default' as const;
 }
 
 function evidenceTone(status: DerivedReviewAssertion['evidenceStatus']) {
-  if (status === 'multiple') return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200';
-  if (status === 'single') return 'border-sky-500/20 bg-sky-500/10 text-sky-200';
-  return 'border-rose-500/20 bg-rose-500/10 text-rose-200';
+  if (status === 'multiple') return 'success' as const;
+  if (status === 'single') return 'accent' as const;
+  return 'danger' as const;
 }
 
 function evidenceLabel(status: DerivedReviewAssertion['evidenceStatus']) {
@@ -88,23 +99,20 @@ function ReviewSectionButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <ThemedButton
       type="button"
       onClick={onClick}
-      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
-        active
-          ? 'border-sky-500/40 bg-sky-500/10 text-white shadow-[0_18px_40px_rgba(14,165,233,0.08)]'
-          : 'border-slate-800/80 bg-slate-950/35 text-slate-300 hover:border-slate-700 hover:bg-slate-900/55'
-      }`}
+      variant={active ? 'accent' : 'default'}
+      className="w-full rounded-2xl px-3 py-3 text-left shadow-none"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="font-medium">{title}</span>
-        <span className="rounded-full border border-slate-700/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-400">
+        <ThemedBadge className="px-2 py-0.5" style={{ color: 'var(--text-muted)' }}>
           {count}
-        </span>
+        </ThemedBadge>
       </div>
-      <p className="mt-1 text-xs text-slate-500">{description}</p>
-    </button>
+      <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{description}</p>
+    </ThemedButton>
   );
 }
 
@@ -121,7 +129,8 @@ export function ReviewWorkspace({
   onNextUnreviewedReview,
   onOpenInInvestigation
 }: ReviewWorkspaceProps) {
-  const [activeSection, setActiveSection] = React.useState<ReviewSectionId>('needs-review');
+  const [activeSection, setActiveSection] = React.useState<ReviewSectionId | null>(null);
+  const [navDirection, setNavDirection] = React.useState<'forward' | 'back'>('forward');
   const [reviewStateDraft, setReviewStateDraft] = React.useState<DerivedReviewAssertion['review_state']>('unreviewed');
   const [reviewNoteDraft, setReviewNoteDraft] = React.useState('');
   const [reviewBusy, setReviewBusy] = React.useState(false);
@@ -131,7 +140,7 @@ export function ReviewWorkspace({
       {
         id: 'needs-review' as const,
         title: 'Needs review',
-        description: 'Assertions still waiting for an explicit decision.',
+        description: 'Facts still waiting for an explicit decision.',
         rows: filteredReviewItems.filter((item) => item.review_state === 'unreviewed')
       },
       {
@@ -143,25 +152,25 @@ export function ReviewWorkspace({
       {
         id: 'rejected' as const,
         title: 'Rejected',
-        description: 'Assertions removed from the defensible case narrative.',
+        description: 'Facts removed from the defensible case narrative.',
         rows: filteredReviewItems.filter((item) => item.review_state === 'rejected')
       },
       {
         id: 'weakly-supported' as const,
         title: 'Weakly supported',
-        description: 'Assertions with no source or only one supporting source.',
+        description: 'Facts with no source or only one supporting source.',
         rows: filteredReviewItems.filter((item) => item.evidenceStatus !== 'multiple')
       },
       {
         id: 'no-sources' as const,
         title: 'No sources',
-        description: 'Assertions that have no supporting source at all.',
+        description: 'Facts that have no supporting source at all.',
         rows: filteredReviewItems.filter((item) => item.evidenceStatus === 'none')
       },
       {
         id: 'recently-reviewed' as const,
         title: 'Recently reviewed',
-        description: 'Accepted, disputed, or rejected assertions ordered by review time.',
+        description: 'Accepted, disputed, or rejected facts ordered by review time.',
         rows: filteredReviewItems
           .filter((item) => item.reviewed_at)
           .sort((a, b) => (b.reviewed_at ?? 0) - (a.reviewed_at ?? 0))
@@ -171,8 +180,8 @@ export function ReviewWorkspace({
   );
 
   const activeRows = React.useMemo(
-    () => sections.find((section) => section.id === activeSection)?.rows ?? filteredReviewItems,
-    [activeSection, filteredReviewItems, sections]
+    () => (activeSection ? sections.find((section) => section.id === activeSection)?.rows ?? [] : []),
+    [activeSection, sections]
   );
 
   const activeItem = React.useMemo(
@@ -181,9 +190,10 @@ export function ReviewWorkspace({
   );
 
   React.useEffect(() => {
+    if (!activeSection) return;
     if (!activeRows.length) return;
     if (!activeItem) onSelectReviewAssertion(activeRows[0].id);
-  }, [activeItem, activeRows, onSelectReviewAssertion]);
+  }, [activeItem, activeRows, activeSection, onSelectReviewAssertion]);
 
   React.useEffect(() => {
     if (!activeItem) {
@@ -270,241 +280,270 @@ export function ReviewWorkspace({
     }
   }, [activeItem, reviewNoteDraft]);
 
+  const activeSectionMeta = React.useMemo(
+    () => (activeSection ? sections.find((section) => section.id === activeSection) ?? null : null),
+    [activeSection, sections]
+  );
+
+  const queueTransition = React.useMemo(
+    () => ({
+      initial: { opacity: 0, x: navDirection === 'forward' ? 28 : -28 },
+      animate: { opacity: 1, x: 0 },
+      exit: { opacity: 0, x: navDirection === 'forward' ? -28 : 28 }
+    }),
+    [navDirection]
+  );
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[rgba(7,11,23,0.94)]">
-      <div className="border-b border-slate-800/80 px-6 py-5">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Review workspace</p>
+    <div className="flex h-full min-h-0 flex-col" style={{ background: 'var(--app-bg-soft)' }}>
+      <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-elevated)' }}>
+        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Review workspace</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-white">Review the case deliberately</h2>
-            <p className="mt-2 max-w-3xl text-sm text-slate-400">
-              Work through assertions one at a time, see their evidence context, and decide what belongs in the defensible case narrative.
+            <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Review the case deliberately</h2>
+            <p className="mt-2 max-w-3xl text-sm" style={{ color: 'var(--text-muted)' }}>
+              Work through facts one at a time, see their source context, and decide what belongs in the defensible case narrative.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {[
-              { label: 'Coverage', value: `${reviewCoverage}%`, tone: 'text-slate-100' },
-              { label: 'Unreviewed', value: unreviewedCount, tone: 'text-slate-100' },
-              { label: 'Disputed', value: disputedCount, tone: 'text-amber-200' },
-              { label: 'Rejected', value: rejectedCount, tone: 'text-rose-200' },
-              { label: 'No sources', value: evidenceGapCount, tone: 'text-rose-200' }
+              { label: 'Coverage', value: `${reviewCoverage}%`, color: 'var(--text-primary)' },
+              { label: 'Unreviewed', value: unreviewedCount, color: 'var(--text-primary)' },
+              { label: 'Disputed', value: disputedCount, color: 'var(--status-warning-text)' },
+              { label: 'Rejected', value: rejectedCount, color: 'var(--status-danger-text)' },
+              { label: 'No sources', value: evidenceGapCount, color: 'var(--status-danger-text)' }
             ].map((metric) => (
-              <div key={metric.label} className="rounded-2xl border border-slate-800/80 bg-slate-950/45 px-3 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{metric.label}</div>
-                <div className={`mt-2 text-xl font-semibold ${metric.tone}`}>{metric.value}</div>
-              </div>
+              <ThemedCard key={metric.label} className="px-3 py-3">
+                <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>{metric.label}</div>
+                <div className="mt-2 text-xl font-semibold" style={{ color: metric.color }}>{metric.value}</div>
+              </ThemedCard>
             ))}
           </div>
         </div>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[330px_minmax(0,1fr)_360px]">
-        <aside className="min-h-0 overflow-y-auto border-r border-slate-800/80 bg-slate-950/40 px-4 py-4">
+        <aside className="min-h-0 overflow-y-auto px-4 py-4" style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--surface-base)' }}>
           <div className="space-y-3">
-            <input
+            <ThemedInput
               type="text"
               value={reviewFilters.query}
               onChange={(event) => onReviewFiltersChange((current) => ({ ...current, query: event.target.value }))}
               placeholder="Search subject, path, value, or source…"
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <ThemedSelect
                 value={reviewFilters.reviewState}
                 onChange={(event) => onReviewFiltersChange((current) => ({ ...current, reviewState: event.target.value as ReviewFilters['reviewState'] }))}
-                className="rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="all">All states</option>
                 <option value="unreviewed">Unreviewed</option>
                 <option value="accepted">Accepted</option>
                 <option value="disputed">Disputed</option>
                 <option value="rejected">Rejected</option>
-              </select>
-              <select
+              </ThemedSelect>
+              <ThemedSelect
                 value={reviewFilters.evidence}
                 onChange={(event) => onReviewFiltersChange((current) => ({ ...current, evidence: event.target.value as ReviewFilters['evidence'] }))}
-                className="rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="all">All evidence</option>
                 <option value="none">No sources</option>
                 <option value="weak">Weak support</option>
-              </select>
-              <select
+              </ThemedSelect>
+              <ThemedSelect
                 value={reviewFilters.confidence}
                 onChange={(event) => onReviewFiltersChange((current) => ({ ...current, confidence: event.target.value as ReviewFilters['confidence'] }))}
-                className="rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="all">All confidence</option>
                 <option value="unverified">Unverified</option>
                 <option value="asserted">Asserted</option>
                 <option value="verified">Verified</option>
-              </select>
-              <select
+              </ThemedSelect>
+              <ThemedSelect
                 value={reviewFilters.sort}
                 onChange={(event) => onReviewFiltersChange((current) => ({ ...current, sort: event.target.value as ReviewFilters['sort'] }))}
-                className="rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="unreviewed_first">Unreviewed first</option>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="weakest_evidence">Weakest evidence first</option>
-              </select>
+              </ThemedSelect>
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
-            {sections.map((section) => (
-              <ReviewSectionButton
-                key={section.id}
-                active={activeSection === section.id}
-                title={section.title}
-                count={section.rows.length}
-                description={section.description}
-                onClick={() => setActiveSection(section.id)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-5 space-y-2">
-            {activeRows.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 px-3 py-4 text-sm text-slate-500">
-                No assertions match the current review section and filters.
-              </div>
-            ) : (
-              activeRows.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelectReviewAssertion(item.id)}
-                  className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
-                    activeItem?.id === item.id
-                      ? 'border-sky-500/40 bg-sky-500/10 shadow-[0_14px_30px_rgba(14,165,233,0.08)]'
-                      : 'border-slate-800/80 bg-slate-950/35 hover:border-slate-700 hover:bg-slate-900/55'
-                  }`}
+          <div className="relative mt-4 overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              {activeSectionMeta ? (
+                <motion.div
+                  key={`section-${activeSectionMeta.id}`}
+                  variants={queueTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className="space-y-2"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="truncate text-sm font-semibold text-slate-100">{item.subjectLabel}</div>
-                    <div className="text-[11px] text-slate-500">{formatRelativeTime(item.reviewed_at ?? item.created_at)}</div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <ThemedButton
+                      type="button"
+                      onClick={() => {
+                        setNavDirection('back');
+                        setActiveSection(null);
+                      }}
+                      variant="quiet"
+                      className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]"
+                    >
+                      <span aria-hidden="true">←</span>
+                      Back
+                    </ThemedButton>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{activeSectionMeta.title}</div>
+                      <div className="text-[11px]" style={{ color: 'var(--text-soft)' }}>{activeSectionMeta.rows.length} items</div>
+                    </div>
                   </div>
-                  <div className="mt-1 truncate text-xs uppercase tracking-[0.16em] text-slate-500">{item.path}</div>
-                  <div className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.valueSummary}</div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${reviewTone(item.review_state)}`}>
-                      {item.review_state}
-                    </span>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${evidenceTone(item.evidenceStatus)}`}>
-                      {evidenceLabel(item.evidenceStatus)}
-                    </span>
-                    {item.conflictStatus === 'conflict' ? (
-                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber-200">
-                        Conflict
-                      </span>
-                    ) : null}
-                  </div>
-                </button>
-              ))
-            )}
+
+                  <ThemedCard className="mb-4 px-3 py-3">
+                    <div className="text-xs leading-5" style={{ color: 'var(--text-muted)' }}>{activeSectionMeta.description}</div>
+                  </ThemedCard>
+
+                  {activeRows.length === 0 ? (
+                    <ThemedCard className="border-dashed px-3 py-4 text-sm" style={{ color: 'var(--text-soft)' }}>
+                      No facts match the current review section and filters.
+                    </ThemedCard>
+                  ) : (
+                    activeRows.map((item) => (
+                      <ThemedButton
+                        key={item.id}
+                        type="button"
+                        onClick={() => onSelectReviewAssertion(item.id)}
+                        variant={activeItem?.id === item.id ? 'accent' : 'default'}
+                        className="w-full rounded-2xl px-3 py-3 text-left"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.subjectLabel}</div>
+                          <div className="text-[11px]" style={{ color: 'var(--text-soft)' }}>{formatRelativeTime(item.reviewed_at ?? item.created_at)}</div>
+                        </div>
+                        <div className="mt-1 truncate text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>{item.path}</div>
+                        <div className="mt-2 line-clamp-2 text-xs leading-5" style={{ color: 'var(--text-muted)' }}>{item.valueSummary}</div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <ThemedBadge tone={reviewTone(item.review_state)} className="px-2 py-0.5">
+                            {item.review_state}
+                          </ThemedBadge>
+                          <ThemedBadge tone={evidenceTone(item.evidenceStatus)} className="px-2 py-0.5">
+                            {evidenceLabel(item.evidenceStatus)}
+                          </ThemedBadge>
+                          {item.conflictStatus === 'conflict' ? (
+                            <ThemedBadge tone="warning" className="px-2 py-0.5">
+                              Conflict
+                            </ThemedBadge>
+                          ) : null}
+                        </div>
+                      </ThemedButton>
+                    ))
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="section-list"
+                  variants={queueTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className="space-y-2"
+                >
+                  {sections.map((section) => (
+                    <ReviewSectionButton
+                      key={section.id}
+                      active={false}
+                      title={section.title}
+                      count={section.rows.length}
+                      description={section.description}
+                      onClick={() => {
+                        setNavDirection('forward');
+                        setActiveSection(section.id);
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </aside>
 
         <section className="min-h-0 overflow-y-auto px-6 py-5">
-          {!activeItem ? (
-            <div className="flex h-full items-center justify-center rounded-[28px] border border-dashed border-slate-800 bg-slate-950/30 text-sm text-slate-500">
-              Select an assertion from the review queue to begin.
-            </div>
+          {!activeSectionMeta ? (
+            <ThemedSection className="flex h-full items-center justify-center border-dashed text-sm" style={{ color: 'var(--text-soft)' }}>
+              Choose a review category to open its fact queue.
+            </ThemedSection>
+          ) : !activeItem ? (
+            <ThemedSection className="flex h-full items-center justify-center border-dashed text-sm" style={{ color: 'var(--text-soft)' }}>
+              Select a fact from the review queue to begin.
+            </ThemedSection>
           ) : (
             <div className="space-y-5">
-              <div className="rounded-[28px] border border-slate-800/80 bg-slate-950/35 p-5 shadow-[0_22px_44px_rgba(2,6,23,0.26)]">
+              <ThemedPanel className="rounded-[28px] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{activeItem.subjectLabel}</p>
-                    <h3 className="mt-2 text-2xl font-semibold text-white">{activeItem.path}</h3>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                      Review this assertion in context, verify that its evidence support is strong enough, and decide whether it belongs in the case narrative.
+                    <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>{activeItem.subjectLabel}</p>
+                    <h3 className="mt-2 text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{activeItem.path}</h3>
+                    <p className="mt-2 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
+                      Review this fact in context, verify that its source support is strong enough, and decide whether it belongs in the case narrative.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${reviewTone(activeItem.review_state)}`}>
+                    <ThemedBadge tone={reviewTone(activeItem.review_state)} className="px-3 py-1 text-[11px]">
                       {activeItem.review_state}
-                    </span>
-                    <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${evidenceTone(activeItem.evidenceStatus)}`}>
+                    </ThemedBadge>
+                    <ThemedBadge tone={evidenceTone(activeItem.evidenceStatus)} className="px-3 py-1 text-[11px]">
                       {evidenceLabel(activeItem.evidenceStatus)}
-                    </span>
+                    </ThemedBadge>
                     {activeItem.conflictStatus === 'conflict' ? (
-                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-amber-200">
+                      <ThemedBadge tone="warning" className="px-3 py-1 text-[11px]">
                         Conflict candidate
-                      </span>
+                      </ThemedBadge>
                     ) : null}
                     <ConfidenceBadge confidence={activeItem.confidence} />
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4">
-                  <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">Assertion value</div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-100">{formatValue(activeItem.value)}</pre>
-                </div>
+                <ThemedCard className="mt-5 p-4">
+                  <div className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Fact value</div>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words text-sm leading-6" style={{ color: 'var(--text-primary)' }}>{formatValue(activeItem.value)}</pre>
+                </ThemedCard>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-900/45 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Primary source</div>
-                    <div className="mt-2 text-sm text-slate-100">{activeItem.sourceTitle || 'None linked'}</div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-900/45 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supporting sources</div>
-                    <div className="mt-2 text-sm text-slate-100">{activeItem.supportingSourceCount}</div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-900/45 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Corroboration</div>
-                    <div className="mt-2 text-sm text-slate-100">{activeItem.corroborationCount}</div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-900/45 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Created</div>
-                    <div className="mt-2 text-sm text-slate-100">{formatTimestamp(activeItem.created_at) || 'Unknown'}</div>
-                  </div>
+                  {[
+                    ['Primary source', activeItem.sourceTitle || 'None linked'],
+                    ['Supporting sources', String(activeItem.supportingSourceCount)],
+                    ['Corroboration', String(activeItem.corroborationCount)],
+                    ['Created', formatTimestamp(activeItem.created_at) || 'Unknown']
+                  ].map(([label, value]) => (
+                    <ThemedCard key={label} className="px-4 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>{label}</div>
+                      <div className="mt-2 text-sm" style={{ color: 'var(--text-primary)' }}>{value}</div>
+                    </ThemedCard>
+                  ))}
                 </div>
-              </div>
+              </ThemedPanel>
 
-              <div className="rounded-[28px] border border-slate-800/80 bg-slate-950/35 p-5">
+              <ThemedPanel className="rounded-[28px] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Review decision</h4>
-                    <p className="mt-1 text-xs text-slate-500">Set the review outcome and keep a note explaining why.</p>
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Review decision</h4>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Set the review outcome and keep a note explaining why.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition hover:bg-slate-800"
-                      onClick={() => onAdvanceReview('previous')}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition hover:bg-slate-800"
-                      onClick={onNextUnreviewedReview}
-                    >
-                      Next unreviewed
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition hover:bg-slate-800"
-                      onClick={() => onAdvanceReview('next')}
-                    >
-                      Next
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-200 transition hover:bg-sky-500/20"
-                      onClick={() => onOpenInInvestigation(activeItem.id)}
-                    >
-                      Open in Investigation
-                    </button>
+                    <ThemedButton variant="quiet" className="text-[11px]" onClick={() => onAdvanceReview('previous')}>Previous</ThemedButton>
+                    <ThemedButton variant="quiet" className="text-[11px]" onClick={onNextUnreviewedReview}>Next unreviewed</ThemedButton>
+                    <ThemedButton variant="quiet" className="text-[11px]" onClick={() => onAdvanceReview('next')}>Next</ThemedButton>
+                    <ThemedButton variant="accent" className="text-[11px]" onClick={() => onOpenInInvestigation(activeItem.id)}>Open in Investigation</ThemedButton>
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {(['accepted', 'disputed', 'rejected', 'unreviewed'] as const).map((state) => (
-                    <button
+                    <ThemedButton
                       key={state}
                       type="button"
                       disabled={reviewBusy}
@@ -512,14 +551,11 @@ export function ReviewWorkspace({
                         setReviewStateDraft(state);
                         void persistReview(state);
                       }}
-                      className={`rounded-2xl border px-4 py-3 text-left transition ${
-                        reviewStateDraft === state
-                          ? reviewTone(state)
-                          : 'border-slate-800/80 bg-slate-950/35 text-slate-300 hover:border-slate-700 hover:bg-slate-900/55'
-                      } ${reviewBusy ? 'cursor-wait opacity-70' : ''}`}
+                      variant={reviewStateDraft === state ? reviewTone(state) : 'default'}
+                      className="rounded-2xl px-4 py-3 text-left"
                     >
                       <div className="text-sm font-semibold capitalize">{state === 'unreviewed' ? 'Reset' : state}</div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                         {state === 'accepted'
                           ? 'Keep this claim in the defensible case narrative.'
                           : state === 'disputed'
@@ -528,111 +564,105 @@ export function ReviewWorkspace({
                               ? 'Mark it as unfit for the final narrative.'
                               : 'Return it to the inbox for review later.'}
                       </div>
-                    </button>
+                    </ThemedButton>
                   ))}
                 </div>
 
                 <div className="mt-5">
-                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-slate-500">Review note</label>
-                  <textarea
+                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Review note</label>
+                  <ThemedTextarea
                     value={reviewNoteDraft}
                     onChange={(event) => setReviewNoteDraft(event.target.value)}
                     rows={4}
                     placeholder="Why is this accepted, disputed, or rejected?"
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs" style={{ color: 'var(--text-soft)' }}>
                       {activeItem.reviewed_at ? `Last reviewed ${formatTimestamp(activeItem.reviewed_at)}` : 'Not reviewed yet'}
                     </div>
-                    <button
-                      type="button"
-                      disabled={reviewBusy}
-                      onClick={() => void saveNote()}
-                      className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
-                    >
+                    <ThemedButton type="button" disabled={reviewBusy} onClick={() => void saveNote()}>
                       {reviewBusy ? 'Saving…' : 'Save note'}
-                    </button>
+                    </ThemedButton>
                   </div>
                 </div>
-              </div>
+              </ThemedPanel>
             </div>
           )}
         </section>
 
-        <aside className="min-h-0 overflow-y-auto border-l border-slate-800/80 bg-slate-950/30 px-4 py-5">
-          {!activeItem ? null : (
+        <aside className="min-h-0 overflow-y-auto px-4 py-5" style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--surface-base)' }}>
+          {!activeSectionMeta || !activeItem ? null : (
             <div className="space-y-5">
-              <section className="rounded-[24px] border border-slate-800/80 bg-slate-950/35 p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Supporting sources</h4>
-                <p className="mt-1 text-xs text-slate-500">Everything currently linked to this assertion.</p>
+              <ThemedSection>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Supporting sources</h4>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Everything currently linked to this fact.</p>
                 <div className="mt-4 space-y-2">
                   {activeSourceUsages.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 px-3 py-3 text-sm text-slate-500">
+                    <ThemedCard className="border-dashed px-3 py-3 text-sm" style={{ color: 'var(--text-soft)' }}>
                       No supporting source is linked yet.
-                    </div>
+                    </ThemedCard>
                   ) : (
                     activeSourceUsages.map((source) => (
-                      <div key={source.id} className="rounded-2xl border border-slate-800/80 bg-slate-900/55 px-3 py-3">
-                        <div className="text-sm font-semibold text-slate-100">
+                      <ThemedCard key={source.id} className="px-3 py-3">
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {source.title || source.display_name || source.file_name || source.locator}
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">{source.kind} • {source.mime || 'unknown MIME'}</div>
-                        <div className="mt-2 text-xs text-slate-400 break-all">{source.locator}</div>
-                      </div>
+                        <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{source.kind} • {source.mime || 'unknown MIME'}</div>
+                        <div className="mt-2 break-all text-xs" style={{ color: 'var(--text-muted)' }}>{source.locator}</div>
+                      </ThemedCard>
                     ))
                   )}
                 </div>
-              </section>
+              </ThemedSection>
 
-              <section className="rounded-[24px] border border-slate-800/80 bg-slate-950/35 p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Corroboration</h4>
-                <p className="mt-1 text-xs text-slate-500">Other assertions on the same subject and path.</p>
+              <ThemedSection>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Corroboration</h4>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Other facts on the same subject and path.</p>
                 <div className="mt-4 space-y-2">
                   {relatedAssertions.corroborating.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 px-3 py-3 text-sm text-slate-500">
-                      No corroborating assertions were found.
-                    </div>
+                    <ThemedCard className="border-dashed px-3 py-3 text-sm" style={{ color: 'var(--text-soft)' }}>
+                      No corroborating facts were found.
+                    </ThemedCard>
                   ) : (
                     relatedAssertions.corroborating.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-3">
-                        <div className="text-xs text-emerald-200">{item.valueSummary}</div>
-                        <div className="mt-2 text-[11px] text-slate-500">{item.sourceTitle || 'No direct source'} • {formatRelativeTime(item.created_at)}</div>
-                      </div>
+                      <ThemedCard key={item.id} tone="success" className="px-3 py-3">
+                        <div className="text-xs">{item.valueSummary}</div>
+                        <div className="mt-2 text-[11px]" style={{ color: 'var(--text-soft)' }}>{item.sourceTitle || 'No direct source'} • {formatRelativeTime(item.created_at)}</div>
+                      </ThemedCard>
                     ))
                   )}
                 </div>
-              </section>
+              </ThemedSection>
 
-              <section className="rounded-[24px] border border-slate-800/80 bg-slate-950/35 p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Conflicts</h4>
-                <p className="mt-1 text-xs text-slate-500">Values that disagree with the active assertion.</p>
+              <ThemedSection>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Conflicts</h4>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Values that disagree with the active fact.</p>
                 <div className="mt-4 space-y-2">
                   {relatedAssertions.conflicting.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 px-3 py-3 text-sm text-slate-500">
+                    <ThemedCard className="border-dashed px-3 py-3 text-sm" style={{ color: 'var(--text-soft)' }}>
                       No conflict candidates were detected.
-                    </div>
+                    </ThemedCard>
                   ) : (
                     relatedAssertions.conflicting.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-amber-500/20 bg-amber-500/8 px-3 py-3">
-                        <div className="text-xs text-amber-100">{item.valueSummary}</div>
-                        <div className="mt-2 text-[11px] text-slate-500">{item.sourceTitle || 'No direct source'} • {formatRelativeTime(item.created_at)}</div>
-                      </div>
+                      <ThemedCard key={item.id} tone="warning" className="px-3 py-3">
+                        <div className="text-xs">{item.valueSummary}</div>
+                        <div className="mt-2 text-[11px]" style={{ color: 'var(--text-soft)' }}>{item.sourceTitle || 'No direct source'} • {formatRelativeTime(item.created_at)}</div>
+                      </ThemedCard>
                     ))
                   )}
                 </div>
-              </section>
+              </ThemedSection>
 
-              <section className="rounded-[24px] border border-slate-800/80 bg-slate-950/35 p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Subject context</h4>
-                <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-900/55 px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Entity</div>
-                  <div className="mt-2 text-sm text-slate-100">{activeItem.subjectLabel}</div>
-                  <div className="mt-1 text-xs text-slate-500">
+              <ThemedSection>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Subject context</h4>
+                <ThemedCard className="mt-4 px-3 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Entity</div>
+                  <div className="mt-2 text-sm" style={{ color: 'var(--text-primary)' }}>{activeItem.subjectLabel}</div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>
                     {graph.nodes.find((node) => node.id === activeItem.subject_id)?.type || 'unknown type'}
                   </div>
-                </div>
-              </section>
+                </ThemedCard>
+              </ThemedSection>
             </div>
           )}
         </aside>

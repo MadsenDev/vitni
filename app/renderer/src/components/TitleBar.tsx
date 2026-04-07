@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type CSSProperties } from 'react';
 import { FaMinus, FaSquare, FaWindowRestore, FaTimes, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import vitniLogo from '../assets/vitni_logo.svg';
 import { GRAPH_LAYOUT_PRESETS, type GraphLayoutPresetId } from '@renderer/features/graph/layoutPresets';
@@ -258,7 +258,7 @@ export function TitleBar({
   const renderMenuItems = useCallback((items: MenuItem[], nested = false) => {
     return items.map((item, idx) => {
       if (item.separator) {
-        return <div key={`${nested ? 'nested' : 'root'}-sep-${idx}`} className="my-1 h-px bg-slate-700" />;
+        return <div key={`${nested ? 'nested' : 'root'}-sep-${idx}`} className="my-1 h-px" style={{ background: 'var(--border-subtle)' }} />;
       }
 
       if (item.submenu?.length) {
@@ -266,10 +266,11 @@ export function TitleBar({
           <div key={`${nested ? 'nested' : 'root'}-submenu-${idx}`} className="group relative">
             <button
               type="button"
-              className="flex w-full items-center justify-between px-3 py-2 text-left font-mono text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+              className="flex w-full items-center justify-between px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+              style={{ color: 'var(--text-muted)' }}
             >
               <span>{item.label}</span>
-              <FaChevronRight className="ml-4 text-[10px] text-slate-500 transition group-hover:text-slate-300" />
+              <FaChevronRight className="ml-4 text-[10px] transition" style={{ color: 'var(--text-dim)' }} />
             </button>
             <div className="panel-elevated invisible absolute left-full top-0 z-[70] ml-1 min-w-[220px] rounded-xl py-1 opacity-0 transition group-hover:visible group-hover:opacity-100">
               {renderMenuItems(item.submenu, true)}
@@ -283,21 +284,30 @@ export function TitleBar({
           key={`${nested ? 'nested' : 'root'}-item-${idx}`}
           type="button"
           onClick={() => handleMenuItemClick(item)}
-          className="flex w-full items-center justify-between px-3 py-2 text-left font-mono text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+          className="flex w-full items-center justify-between px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+          style={{ color: 'var(--text-muted)' }}
         >
           <span>{item.label}</span>
-          {item.accelerator && <span className="ml-4 text-xs text-slate-500">{item.accelerator}</span>}
+          {item.accelerator && <span className="ml-4 text-xs" style={{ color: 'var(--text-dim)' }}>{item.accelerator}</span>}
         </button>
       );
     });
   }, [handleMenuItemClick]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex h-9 select-none items-center justify-between border-b border-slate-800/70 bg-[rgba(6,10,22,0.88)] backdrop-blur-xl" style={{ WebkitAppRegion: 'drag', willChange: 'auto' } as React.CSSProperties}>
+    <div
+      className="fixed top-0 left-0 right-0 z-50 flex h-9 select-none items-center justify-between border-b backdrop-blur-xl"
+      style={{
+        WebkitAppRegion: 'drag',
+        willChange: 'auto',
+        borderColor: 'var(--border-subtle)',
+        background: 'color-mix(in srgb, var(--surface-overlay) 82%, transparent)'
+      } as CSSProperties}
+    >
       {/* Left side - Logo and Menu items */}
-      <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
         <img src={vitniLogo} alt="Vitni" className="ml-3 mr-2 h-5 w-auto opacity-90" />
-        <div className="mr-2 h-4 w-px bg-slate-700/80" />
+        <div className="mr-2 h-4 w-px" style={{ background: 'var(--border-subtle)' }} />
         {Object.keys(menus).map((menuName) => (
           <div key={menuName} className="relative">
             <button
@@ -312,11 +322,10 @@ export function TitleBar({
                 // Prevent drag from interfering
                 e.stopPropagation();
               }}
-              className={`flex h-9 items-center gap-1.5 px-3 text-[12px] font-mono uppercase tracking-[0.14em] transition-colors ${
-                activeMenu === menuName
-                  ? 'bg-slate-800/90 text-emerald-300'
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-              }`}
+              className="flex h-9 items-center gap-1.5 px-3 text-[12px] font-mono uppercase tracking-[0.14em] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+              style={activeMenu === menuName
+                ? { background: 'var(--surface-raised)', color: 'var(--status-success-text)' }
+                : { color: 'var(--text-dim)' }}
             >
               {menuName}
               <FaChevronDown className="text-[10px] opacity-60" />
@@ -339,18 +348,18 @@ export function TitleBar({
       </div>
 
       {/* Right side - Window controls */}
-      <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <button onClick={handleMinimize} className="flex h-9 w-11 items-center justify-center text-slate-500 transition-colors hover:bg-slate-800 hover:text-white">
+      <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+        <button onClick={handleMinimize} className="flex h-9 w-11 items-center justify-center transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]" style={{ color: 'var(--text-dim)' }}>
           <FaMinus className="text-xs" />
         </button>
-        <button onClick={handleMaximize} className="flex h-9 w-11 items-center justify-center text-slate-500 transition-colors hover:bg-slate-800 hover:text-white">
+        <button onClick={handleMaximize} className="flex h-9 w-11 items-center justify-center transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]" style={{ color: 'var(--text-dim)' }}>
           {isMaximized ? (
             <FaWindowRestore className="text-xs" />
           ) : (
             <FaSquare className="text-xs" />
           )}
         </button>
-        <button onClick={handleClose} className="flex h-9 w-11 items-center justify-center text-slate-500 transition-colors hover:bg-red-600/20 hover:text-red-400">
+        <button onClick={handleClose} className="flex h-9 w-11 items-center justify-center transition-colors hover:bg-red-600/20 hover:text-red-400" style={{ color: 'var(--text-dim)' }}>
           <FaTimes className="text-xs" />
         </button>
       </div>

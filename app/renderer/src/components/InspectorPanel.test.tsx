@@ -59,7 +59,7 @@ describe('InspectorPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Evidence' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
-    fireEvent.change(screen.getByLabelText('Assertion JSON'), { target: { value: '{"first":"Alicia"}' } });
+    fireEvent.change(screen.getByLabelText('Fact JSON'), { target: { value: '{"first":"Alicia"}' } });
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'verified' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 

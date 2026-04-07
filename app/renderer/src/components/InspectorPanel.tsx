@@ -16,6 +16,16 @@ import {
 } from '@renderer/features/assertions/assertionFieldMappings';
 import { resolveNodeTypeIcon } from '@renderer/features/personalization/iconPacks';
 import type { IconPackId } from '@renderer/features/personalization/theme';
+import {
+  ThemedBadge,
+  ThemedButton,
+  ThemedCard,
+  ThemedInput,
+  ThemedPanel,
+  ThemedSection,
+  ThemedSelect,
+  ThemedTextarea
+} from '@renderer/features/personalization/primitives';
 import { piBridge } from '@renderer/services/piBridge';
 import type { ParsedAssertionRecord } from '@renderer/services/piBridge';
 import { emitToast } from '@renderer/lib/toast';
@@ -140,6 +150,9 @@ function downloadPreviewAsset(url: string, fileName: string) {
 function buildArtifactPreviewTitle(node: ParsedNode) {
   return node.label || String(node.properties.title || node.properties.filename || node.properties.name || 'Artifact');
 }
+
+const inspectorInputClassName = 'w-full';
+const inspectorButtonClassName = 'px-3 py-1.5 text-xs';
 
 function buildArtifactSourcePool(sources: SourceRecord[], imageSources: SourceRecord[]) {
   const map = new Map<string, SourceRecord>();
@@ -271,7 +284,7 @@ function FieldFactComposerModal({
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Create fact</p>
             <h3 className="mt-1 text-lg font-semibold text-white">{fieldLabel}</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Create a source-backed assertion for <span className="text-slate-200">{assertionPath}</span>.
+              Create a source-backed fact for <span className="text-slate-200">{assertionPath}</span>.
             </p>
           </div>
           <button
@@ -378,7 +391,7 @@ function FieldFactComposerModal({
             </div>
 
             <div className="rounded-2xl border border-slate-800/80 bg-slate-900/35 px-4 py-3 text-xs text-slate-400">
-              The summary field remains editable, but the assertion becomes the evidence-backed fact used for review and reporting.
+              The summary field remains editable, but this fact becomes the evidence-backed version used for review and reporting.
             </div>
           </div>
         </div>
@@ -923,12 +936,12 @@ function AssertionCard({
       if (!ok) {
         throw new Error('Assertion review update was not applied.');
       }
-      emitToast({ tone: 'success', title: 'Assertion review updated' });
+      emitToast({ tone: 'success', title: 'Fact review updated' });
       window.dispatchEvent(new CustomEvent('pi:refresh'));
     } catch (error) {
       emitToast({
         tone: 'error',
-        title: 'Assertion review failed',
+        title: 'Fact review failed',
         description: error instanceof Error ? error.message : 'Unexpected renderer error.'
       });
     } finally {
@@ -965,12 +978,12 @@ function AssertionCard({
       }
 
       setIsEditing(false);
-      emitToast({ tone: 'success', title: 'Assertion updated' });
+      emitToast({ tone: 'success', title: 'Fact updated' });
       window.dispatchEvent(new CustomEvent('pi:refresh'));
     } catch (error) {
       emitToast({
         tone: 'error',
-        title: 'Assertion update failed',
+        title: 'Fact update failed',
         description: error instanceof Error ? error.message : 'Unexpected renderer error.'
       });
     } finally {
@@ -986,12 +999,12 @@ function AssertionCard({
         throw new Error('Assertion delete was not applied.');
       }
 
-      emitToast({ tone: 'success', title: 'Assertion deleted' });
+      emitToast({ tone: 'success', title: 'Fact deleted' });
       window.dispatchEvent(new CustomEvent('pi:refresh'));
     } catch (error) {
       emitToast({
         tone: 'error',
-        title: 'Assertion delete failed',
+        title: 'Fact delete failed',
         description: error instanceof Error ? error.message : 'Unexpected renderer error.'
       });
     } finally {
@@ -1013,7 +1026,7 @@ function AssertionCard({
     >
       <div className="space-y-4">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Assertion path</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Fact path</div>
           <div className="mt-1 break-words text-sm font-semibold leading-6 text-slate-100">{assertion.path}</div>
         </div>
 
@@ -1077,7 +1090,7 @@ function AssertionCard({
               <button
                 type="button"
                 className="rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-800"
-                title="Edit assertion"
+                title="Edit fact"
                 onClick={() => setIsEditing(true)}
               >
                 Edit
@@ -1085,7 +1098,7 @@ function AssertionCard({
               <button
                 type="button"
                 className="rounded-xl border border-red-800/40 bg-red-900/20 px-3 py-1.5 text-[11px] text-red-300 transition-colors hover:bg-red-900/40"
-                title="Delete assertion"
+                title="Delete fact"
                 onClick={() => setIsDeleting(true)}
               >
                 Delete
@@ -1152,11 +1165,11 @@ function AssertionCard({
             />
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-500">Assertion JSON</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-500">Fact JSON</label>
             <textarea
               value={jsonValue}
               onChange={(event) => setJsonValue(event.target.value)}
-              aria-label="Assertion JSON"
+              aria-label="Fact JSON"
               rows={7}
               className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 font-mono text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
@@ -1536,7 +1549,7 @@ export function InspectorPanel({
           emitToast({
             tone: 'warning',
             title: 'Add a source first',
-            description: `Link a source to this node before promoting ${mapping.propertyKey} into an assertion.`
+            description: `Link a source to this node before promoting ${mapping.propertyKey} into a fact.`
           });
         }
         return false;
@@ -1573,7 +1586,7 @@ export function InspectorPanel({
       });
       emitToast({
         tone: 'success',
-        title: mode === 'auto' ? 'Field asserted' : 'Assertion created',
+        title: mode === 'auto' ? 'Field grounded' : 'Fact created',
         description: `${mapping.propertyKey} is now backed by ${chosenSource.title || chosenSource.display_name || chosenSource.locator}.`
       });
       window.dispatchEvent(new CustomEvent('pi:refresh'));
@@ -1592,7 +1605,7 @@ export function InspectorPanel({
       emitToast({
         tone: 'success',
         title: 'Summary field updated',
-        description: `${mapping.propertyKey} now reflects the strongest assertion for this node.`
+        description: `${mapping.propertyKey} now reflects the strongest fact for this node.`
       });
     },
     [fieldAssertionStates, onUpdateProperty, selectedNode]
@@ -1609,7 +1622,7 @@ export function InspectorPanel({
       emitToast({
         tone: 'warning',
         title: 'No stale summary fields',
-        description: 'The mapped summary fields already reflect the strongest available assertions.'
+        description: 'The mapped summary fields already reflect the strongest available facts.'
       });
       return;
     }
@@ -1621,7 +1634,7 @@ export function InspectorPanel({
     emitToast({
       tone: 'success',
       title: 'Summary fields synced',
-      description: `${staleMappings.length} field${staleMappings.length === 1 ? '' : 's'} now reflect the strongest assertions on this node.`
+      description: `${staleMappings.length} field${staleMappings.length === 1 ? '' : 's'} now reflect the strongest facts on this node.`
     });
   }, [fieldAssertionStates, fieldMappings, onUpdateProperty, selectedNode]);
 
@@ -1646,28 +1659,67 @@ export function InspectorPanel({
   return (
     <aside
       ref={panelRef}
-      className="h-full w-96 min-w-[280px] max-w-[400px] flex-shrink-0 overflow-y-auto bg-[rgba(7,11,23,0.94)] backdrop-blur-xl"
+      className="h-full w-96 min-w-[280px] max-w-[400px] flex-shrink-0 overflow-y-auto backdrop-blur-xl"
+      style={{
+        background: 'var(--surface-elevated)',
+        borderLeft: '1px solid var(--border-subtle)',
+        boxShadow: 'var(--shadow-float)',
+        color: 'var(--text-primary)'
+      }}
     >
-      <div className="border-b border-slate-800/80 px-6 pt-4">
+      <div className="px-6 pt-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="mb-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Inspector</p>
-          <h2 className="mt-1 text-sm font-semibold text-slate-100">Details, evidence, and editing</h2>
+          <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Inspector</p>
+          <h2 className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Details, evidence, and editing</h2>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/45 p-1">
+        <div
+          className="flex items-center gap-2 rounded-2xl p-1"
+          style={{
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--surface-base)'
+          }}
+        >
         <button
-          className={`flex-1 rounded-xl px-3 py-2 text-sm transition-colors ${tab === 'details' ? 'bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'text-slate-400 hover:text-slate-200'}`}
+          className="flex-1 rounded-xl px-3 py-2 text-sm transition-colors"
+          style={
+            tab === 'details'
+              ? {
+                  background: 'var(--surface-raised)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                }
+              : { color: 'var(--text-muted)' }
+          }
           onClick={() => setTab('details')}
         >
           Details
         </button>
         <button
-          className={`flex-1 rounded-xl px-3 py-2 text-sm transition-colors ${tab === 'tools' ? 'bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'text-slate-400 hover:text-slate-200'}`}
+          className="flex-1 rounded-xl px-3 py-2 text-sm transition-colors"
+          style={
+            tab === 'tools'
+              ? {
+                  background: 'var(--surface-raised)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                }
+              : { color: 'var(--text-muted)' }
+          }
           onClick={() => setTab('tools')}
         >
           Tools
         </button>
         <button
-          className={`flex-1 rounded-xl px-3 py-2 text-sm transition-colors ${tab === 'evidence' ? 'bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'text-slate-400 hover:text-slate-200'}`}
+          className="flex-1 rounded-xl px-3 py-2 text-sm transition-colors"
+          style={
+            tab === 'evidence'
+              ? {
+                  background: 'var(--surface-raised)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                }
+              : { color: 'var(--text-muted)' }
+          }
           onClick={() => setTab('evidence')}
         >
           Evidence
@@ -1678,12 +1730,12 @@ export function InspectorPanel({
       {multiSelected.length > 1 ? (
         <div className="animate-enter-rise">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Multiple selected</h3>
-            <div className="text-sm text-slate-400">{multiSelected.length} items</div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Multiple selected</h3>
+            <div className="text-sm" style={{ color: 'var(--text-muted)' }}>{multiSelected.length} items</div>
           </div>
-          <div className="mb-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
-            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/55 p-3">
-              <div className="text-slate-400">Types</div>
+          <div className="mb-4 grid grid-cols-2 gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+            <ThemedCard className="p-3">
+              <div style={{ color: 'var(--text-muted)' }}>Types</div>
               <ul className="mt-1 list-disc pl-5">
                 {Array.from(new Map(multiSelected.map(id => {
                   const n = graphNodes.find(nn => nn.id === id);
@@ -1692,55 +1744,53 @@ export function InspectorPanel({
                   <li key={t}>{t}</li>
                 ))}
               </ul>
-            </div>
-            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/55 p-3">
-              <div className="text-slate-400">First items</div>
+            </ThemedCard>
+            <ThemedCard className="p-3">
+              <div style={{ color: 'var(--text-muted)' }}>First items</div>
               <ul className="mt-1 space-y-1">
                 {multiSelected.slice(0, 5).map(id => {
                   const n = graphNodes.find(nn => nn.id === id);
                   return <li key={id} className="truncate">{n?.label || id}</li>;
                 })}
               </ul>
-            </div>
+            </ThemedCard>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="control-chip rounded-xl px-3 py-1.5 text-xs text-slate-200"
-              onClick={() => onAlignLeft && onAlignLeft()}
-            >
+            <ThemedButton className={inspectorButtonClassName} onClick={() => onAlignLeft && onAlignLeft()}>
               Align left
-            </button>
-            <button
-              className="control-chip rounded-xl px-3 py-1.5 text-xs text-slate-200"
-              onClick={() => onAlignTop && onAlignTop()}
-            >
+            </ThemedButton>
+            <ThemedButton className={inspectorButtonClassName} onClick={() => onAlignTop && onAlignTop()}>
               Align top
-            </button>
-            <button
-              className="rounded-xl border border-red-800/40 bg-red-900/20 px-3 py-1.5 text-xs text-red-300 transition-colors hover:bg-red-900/40"
-              onClick={() => onDeleteNodes && onDeleteNodes(multiSelected)}
-            >
+            </ThemedButton>
+            <ThemedButton variant="danger" className={inspectorButtonClassName} onClick={() => onDeleteNodes && onDeleteNodes(multiSelected)}>
               Delete selected
-            </button>
+            </ThemedButton>
           </div>
         </div>
       ) : selectedNode ? (
         <div className="animate-enter-rise">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Node Inspector</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Node Inspector</h3>
             <div className="flex items-center space-x-2">
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-400">Selected</span>
-              <button
+              <ThemedBadge className="px-2 py-1 text-xs">Selected</ThemedBadge>
+              <ThemedButton
+                variant="danger"
                 onClick={onDeleteNode}
-                className="rounded-full bg-red-900/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/30 hover:text-red-300"
+                className="rounded-full px-2 py-1 text-xs"
                 title="Delete node (or press Delete key)"
               >
                 Delete
-              </button>
+              </ThemedButton>
             </div>
           </div>
 
-          <div className="mb-6 rounded-[24px] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.86))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.24)]">
+          <ThemedPanel
+            elevated
+            className="mb-6 rounded-[24px] p-4"
+            style={{
+              background: 'linear-gradient(180deg, color-mix(in srgb, var(--surface-raised) 92%, transparent), color-mix(in srgb, var(--surface-base) 96%, transparent))'
+            }}
+          >
             <div className="mb-3 flex items-center space-x-3">
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${nodeTypes.find(nt => nt.id === selectedNode.type)?.color || 'bg-slate-600'} text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}>
                 {(() => {
@@ -1751,17 +1801,22 @@ export function InspectorPanel({
                 })()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">Type: {selectedNode.type}</div>
+                <div className="mb-1 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Type: {selectedNode.type}</div>
                 <input
                   type="text"
                   value={selectedNode.label || ''}
                   onChange={(e) => onUpdateLabel(selectedNode.id, e.target.value)}
-                  className="w-full rounded-xl border border-transparent bg-transparent px-0 py-1 text-lg font-semibold text-white focus:border-slate-700 focus:bg-slate-800 focus:px-2 focus:outline-none"
+                  className="w-full rounded-xl border px-2 py-1 text-lg font-semibold focus:outline-none"
+                  style={{
+                    borderColor: 'transparent',
+                    background: 'transparent',
+                    color: 'var(--text-primary)'
+                  }}
                   placeholder="Untitled Entity"
                 />
               </div>
             </div>
-          </div>
+          </ThemedPanel>
 
           {tab === 'details' && (
           <div className="space-y-4">
@@ -1788,26 +1843,28 @@ export function InspectorPanel({
                 onExpand={() => setLocationMapOpen(true)}
               />
             ) : null}
-            <div className="rounded-[24px] border border-slate-800/80 bg-slate-950/30 px-4 py-4">
+            <ThemedSection>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Summary fields</h4>
-                <p className="mt-1 text-xs text-slate-500">Edit the node summary while grounding important facts in assertions.</p>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Summary fields</h4>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Edit the node summary while grounding important facts in sources.</p>
               </div>
               {selectedNode && fieldMappings.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
+                  <ThemedButton
+                    variant="success"
                     type="button"
-                    className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 transition-colors hover:bg-emerald-500/20"
+                    className={inspectorButtonClassName}
                     onClick={() => {
                       void syncAllStaleFields();
                     }}
                   >
                     Sync stale fields
-                  </button>
-                  <button
+                  </ThemedButton>
+                  <ThemedButton
+                    variant="accent"
                     type="button"
-                    className="rounded-xl border border-sky-500/35 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 transition-colors hover:bg-sky-500/20"
+                    className={inspectorButtonClassName}
                     onClick={() => {
                       void (async () => {
                         const eligibleMappings = fieldMappings.filter((mapping) => !isEmptyFieldValue(selectedNode.properties?.[mapping.propertyKey]));
@@ -1823,9 +1880,9 @@ export function InspectorPanel({
                         if (createdCount === 0) {
                           emitToast({
                             tone: 'warning',
-                            title: 'No new assertions created',
+                            title: 'No new facts created',
                             description: latestLinkedSource
-                              ? 'The mapped fields were already represented by matching assertions.'
+                              ? 'The mapped fields were already represented by matching facts.'
                               : 'Link a source first, then promote the filled fields.'
                           });
                         }
@@ -1833,7 +1890,7 @@ export function InspectorPanel({
                     }}
                   >
                     Promote all filled fields
-                  </button>
+                  </ThemedButton>
                 </div>
               ) : null}
             </div>
@@ -1844,12 +1901,12 @@ export function InspectorPanel({
                   <div className="space-y-2">
                     {Object.entries(selectedNode.properties || {}).map(([key, value]) => (
                       <div key={key} className="space-y-1">
-                        <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{key}</label>
-                        <input
+                        <label className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{key}</label>
+                        <ThemedInput
                           type="text"
                           value={String(value || '')}
                           onChange={(e) => onUpdateProperty(selectedNode.id, key, e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className={inspectorInputClassName}
                           placeholder={`Enter ${key}...`}
                         />
                       </div>
@@ -1890,24 +1947,24 @@ export function InspectorPanel({
                       switch (property.type) {
                         case 'select':
                           return (
-                            <select
+                            <ThemedSelect
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
                               onBlur={(event) => {
                                 if (!fieldMapping || !fieldMapping.autoAssert) return;
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             >
                               <option value="">Select {property.label}</option>
                               {property.options?.map((option) => (
                                 <option key={option} value={option}>{option}</option>
                               ))}
-                            </select>
+                            </ThemedSelect>
                           );
                         case 'textarea':
                           return (
-                            <textarea
+                            <ThemedTextarea
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
                               onBlur={(event) => {
@@ -1916,12 +1973,12 @@ export function InspectorPanel({
                               }}
                               placeholder={property.placeholder}
                               rows={3}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                              className="resize-none"
                             />
                           );
                         case 'number':
                           return (
-                            <input
+                            <ThemedInput
                               type="number"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -1931,12 +1988,12 @@ export function InspectorPanel({
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: nextValue, mode: 'auto' });
                               }}
                               placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                         case 'date':
                           return (
-                            <input
+                            <ThemedInput
                               type="date"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -1944,12 +2001,12 @@ export function InspectorPanel({
                                 if (!fieldMapping || !fieldMapping.autoAssert) return;
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                         case 'email':
                           return (
-                            <input
+                            <ThemedInput
                               type="email"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -1958,12 +2015,12 @@ export function InspectorPanel({
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
                               placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                         case 'url':
                           return (
-                            <input
+                            <ThemedInput
                               type="url"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -1972,12 +2029,12 @@ export function InspectorPanel({
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
                               placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                         case 'phone':
                           return (
-                            <input
+                            <ThemedInput
                               type="tel"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -1986,7 +2043,7 @@ export function InspectorPanel({
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
                               placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                         case 'image': {
@@ -1999,20 +2056,23 @@ export function InspectorPanel({
                                   <img
                                     src={preview.url}
                                     alt={preview.fileName}
-                                    className="w-full h-48 object-cover rounded-lg border border-slate-700"
+                                    className="h-48 w-full rounded-lg object-cover"
+                                    style={{ border: '1px solid var(--border-strong)' }}
                                   />
                                   <button
                                     onClick={() => {
                                       setImagePropertyKey(property.id);
                                       setImageModalOpen(true);
                                     }}
-                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm rounded-lg"
+                                    className="absolute inset-0 flex items-center justify-center rounded-lg text-sm text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                    style={{ background: 'var(--overlay-backdrop)' }}
                                   >
                                     Change Image
                                   </button>
                                   <button
                                     onClick={() => onUpdateProperty(selectedNode.id, property.id, '')}
-                                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute right-2 top-2 rounded px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                    style={{ background: 'color-mix(in srgb, var(--status-danger-bg) 92%, transparent)' }}
                                   >
                                     Remove
                                   </button>
@@ -2024,7 +2084,8 @@ export function InspectorPanel({
                                     setImagePropertyKey(property.id);
                                     setImageModalOpen(true);
                                   }}
-                                  className="w-full px-4 py-8 border-2 border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-slate-500 hover:text-slate-300 transition-colors text-sm"
+                                  className="w-full rounded-lg border-2 border-dashed px-4 py-8 text-sm transition-colors"
+                                  style={{ borderColor: 'var(--border-strong)', color: 'var(--text-muted)' }}
                                 >
                                   <div className="flex flex-col items-center gap-2">
                                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2039,7 +2100,7 @@ export function InspectorPanel({
                         }
                         default:
                           return (
-                            <input
+                            <ThemedInput
                               type="text"
                               value={String(currentValue)}
                               onChange={(e) => onUpdateProperty(selectedNode.id, property.id, e.target.value)}
@@ -2048,18 +2109,18 @@ export function InspectorPanel({
                                 void createAssertionFromField({ mapping: fieldMapping, rawValue: event.target.value, mode: 'auto' });
                               }}
                               placeholder={property.placeholder}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={inspectorInputClassName}
                             />
                           );
                       }
                     };
 
                     return (
-                      <div key={property.id} className="space-y-2 rounded-2xl border border-slate-800/80 bg-slate-950/35 p-3">
+                      <ThemedCard key={property.id} className="space-y-2 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-3">
-                              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
+                              <label className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                                 {property.label}
                                 {property.required && <span className="text-red-400 ml-1">*</span>}
                               </label>
@@ -2069,7 +2130,8 @@ export function InspectorPanel({
                                   ref={(node) => {
                                     fieldFactsButtonRefs.current.set(fieldMapping.assertionPath, node);
                                   }}
-                                  className="shrink-0 text-[11px] font-medium text-slate-400 transition-colors hover:text-slate-200"
+                                  className="shrink-0 text-[11px] font-medium transition-colors"
+                                  style={{ color: 'var(--text-muted)' }}
                                   onClick={() =>
                                     setExpandedFieldPath((current) => (current === fieldMapping.assertionPath ? null : fieldMapping.assertionPath))
                                   }
@@ -2094,41 +2156,41 @@ export function InspectorPanel({
                           </div>
                         </div>
                         {renderInput()}
-                      </div>
+                      </ThemedCard>
                     );
                   })}
                 </div>
               );
             })()}
-            </div>
+            </ThemedSection>
           </div>
           )}
 
           {tab === 'tools' && (
           <div className="space-y-4">
-            <div className="rounded-[24px] border border-slate-800/80 bg-slate-950/30 px-4 py-4">
+            <ThemedSection>
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Tools</h4>
-                  <p className="mt-1 text-xs text-slate-500">Run lookups and enrichment against the selected node.</p>
+                  <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Tools</h4>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>Run lookups and enrichment against the selected node.</p>
                 </div>
                 {transformRegistryError ? <span className="text-[11px] text-red-300">{transformRegistryError}</span> : null}
               </div>
               {availableRemoteTransforms.length === 0 ? (
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-3 text-sm text-slate-500">
+                <ThemedCard className="p-3 text-sm" style={{ color: 'var(--text-soft)' }}>
                   No remote tools are available for this node type yet.
-                </div>
+                </ThemedCard>
               ) : (
                 <div className="space-y-2">
                   {availableRemoteTransforms.map((transform) => {
                     const payload = buildTransformPayload(transform, selectedNode);
                     const disabled = !payload || !onRequestRemoteTransform;
                     return (
-                      <div key={transform.id} className="rounded-2xl border border-slate-800/80 bg-slate-900/55 p-3">
+                      <ThemedCard key={transform.id} className="p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-100">{transform.name}</p>
-                            <p className="mt-1 text-xs text-slate-400">
+                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{transform.name}</p>
+                            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                               {transform.description || `Send a consented lookup to ${transform.network?.host ?? 'remote service'}.`}
                             </p>
                             {!payload ? (
@@ -2137,10 +2199,11 @@ export function InspectorPanel({
                               </p>
                             ) : null}
                           </div>
-                          <button
+                          <ThemedButton
+                            variant="accent"
                             type="button"
                             disabled={disabled || runningTransformId === transform.id}
-                            className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+                            className={inspectorButtonClassName}
                             onClick={() => {
                               if (!payload || !onRequestRemoteTransform) return;
                               setRunningTransformId(transform.id);
@@ -2152,31 +2215,32 @@ export function InspectorPanel({
                             }}
                           >
                             {runningTransformId === transform.id ? 'Preparing…' : 'Request'}
-                          </button>
+                          </ThemedButton>
                         </div>
-                      </div>
+                      </ThemedCard>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </ThemedSection>
           </div>
           )}
 
           {tab === 'evidence' && (
-          <section className="mt-6 space-y-3 rounded-[24px] border border-slate-800/80 bg-slate-950/30 px-4 py-4">
+          <ThemedSection className="mt-6 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Assertions</h4>
-              <button
+              <h4 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Facts</h4>
+              <ThemedButton
+                variant="success"
                 onClick={onAddAssertion}
-                className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
-                title="Add assertion"
+                className="px-2 py-1 text-xs"
+                title="Add fact"
               >
                 +
-              </button>
+              </ThemedButton>
             </div>
             {assertions.length === 0 && (
-              <p className="text-sm text-slate-500">No assertions yet.</p>
+              <p className="text-sm" style={{ color: 'var(--text-soft)' }}>No facts yet.</p>
             )}
             {assertions.map((assertion) => {
               const derivedReview = reviewItems.find((item) => item.id === assertion.id) ?? null;
@@ -2193,21 +2257,22 @@ export function InspectorPanel({
             })}
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between">
-                <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Sources</h4>
-                <button
+                <h4 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Sources</h4>
+                <ThemedButton
+                  variant="success"
                   onClick={onAddSource}
-                  className="text-xs text-green-400 hover:text-green-300 bg-green-900/20 hover:bg-green-900/30 px-2 py-1 rounded transition-colors"
+                  className="px-2 py-1 text-xs"
                   title="Add source"
                 >
                   +
-                </button>
+                </ThemedButton>
               </div>
               <SourcesList
                 sources={sources}
                 highlightedSourceId={searchFocus?.sourceId ?? null}
               />
             </div>
-          </section>
+          </ThemedSection>
           )}
         </div>
       ) : selectedEdgeId ? (
@@ -2219,62 +2284,63 @@ export function InspectorPanel({
             return (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">Relationship</h3>
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Relationship</h3>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Selected</span>
-                    <button
+                    <ThemedBadge className="px-2 py-1 text-xs">Selected</ThemedBadge>
+                    <ThemedButton
+                      variant="danger"
                       onClick={onDeleteEdge}
-                      className="text-xs text-red-400 hover:text-red-300 bg-red-900/20 hover:bg-red-900/30 px-2 py-1 rounded transition-colors"
+                      className="px-2 py-1 text-xs"
                       title="Delete relationship (or press Delete key)"
                     >
                       Delete
-                    </button>
+                    </ThemedButton>
                   </div>
                 </div>
-                <div className="mb-4 p-3 bg-slate-800/50 border border-slate-700 rounded-md">
+                <ThemedCard className="mb-4 p-3">
                   <div className="flex items-center justify-between text-sm">
-                    <div className="text-slate-300 font-medium">{sourceNode?.label || 'Unknown'}</div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{sourceNode?.label || 'Unknown'}</div>
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs">🔗</div>
-                      <span className="text-slate-400 text-xs">{edge?.type}</span>
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full text-xs" style={{ background: 'var(--surface-raised)', color: 'var(--text-primary)' }}>🔗</div>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{edge?.type}</span>
                     </div>
-                    <div className="text-slate-300 font-medium">{targetNode?.label || 'Unknown'}</div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{targetNode?.label || 'Unknown'}</div>
                   </div>
-                  <div className="text-slate-400 text-xs mt-2">ID: {edge?.id}</div>
-                </div>
+                  <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>ID: {edge?.id}</div>
+                </ThemedCard>
                 {edge && (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Subtype</label>
-                      <select
+                      <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Subtype</label>
+                      <ThemedSelect
                         value={String(edge.properties?.subtype || '')}
                         onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'subtype', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={inspectorInputClassName}
                       >
                         <option value="">None</option>
                         {relationshipTypes.find(rt => rt.id === edge.type)?.subtypes?.map(st => (
                           <option key={st.id} value={st.id}>{st.label}</option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
-                      <input
+                      <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Date</label>
+                      <ThemedInput
                         type="date"
                         value={String(edge.properties?.date || '')}
                         onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'date', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={inspectorInputClassName}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Notes</label>
-                      <textarea
+                      <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Notes</label>
+                      <ThemedTextarea
                         value={String(edge.properties?.notes || '')}
                         onChange={(e) => onUpdateEdgeProperty && onUpdateEdgeProperty(edge.id, 'notes', e.target.value)}
                         rows={3}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        className="resize-none"
                       />
                     </div>
                   </div>
@@ -2284,7 +2350,7 @@ export function InspectorPanel({
           })()}
         </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center text-center text-slate-500">
+        <div className="flex h-full flex-col items-center justify-center text-center" style={{ color: 'var(--text-soft)' }}>
           <p>Select a node or relationship to inspect details.</p>
         </div>
       )}
@@ -2469,7 +2535,7 @@ export function InspectorPanel({
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-500">No assertions yet for this field.</div>
+              <div className="text-sm text-slate-500">No facts yet for this field.</div>
             )}
           </div>
         ) : null}

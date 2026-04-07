@@ -3,6 +3,7 @@ import type { NodeProperty, NodeType } from '../lib/nodeTypes/index';
 import { resolveNodeTypeIcon } from '@renderer/features/personalization/iconPacks';
 import type { IconPackId } from '@renderer/features/personalization/theme';
 import { fetchWebsiteMetadata } from '../lib/fetchWebsiteMetadata';
+import { ThemedButton, ThemedInput, ThemedPanel, ThemedSelect, ThemedTextarea } from '@renderer/features/personalization/primitives';
 
 interface NodeCreationModalProps {
   isOpen: boolean;
@@ -159,72 +160,68 @@ export function NodeCreationModal({
   const renderInput = (property: NodeProperty) => {
     const value = formData[property.id] || '';
     const error = errors[property.id];
+    const inputStyle = error ? { borderColor: 'var(--status-danger-border)' } : undefined;
     
     switch (property.type) {
       case 'select':
         return (
-          <select
+          <ThemedSelect
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           >
             <option value="">Select {property.label}</option>
             {property.options?.map((option: string) => (
               <option key={option} value={option}>{option}</option>
             ))}
-          </select>
+          </ThemedSelect>
         );
       
       case 'textarea':
         return (
-          <textarea
+          <ThemedTextarea
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
             placeholder={property.placeholder}
             rows={3}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white resize-none ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md resize-none"
+            style={inputStyle}
           />
         );
       
       case 'number':
         return (
-          <input
+          <ThemedInput
             type="number"
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
             placeholder={property.placeholder}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           />
         );
       
       case 'date':
         return (
-          <input
+          <ThemedInput
             type="date"
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           />
         );
       
       case 'email':
         return (
-          <input
+          <ThemedInput
             type="email"
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
             placeholder={property.placeholder}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           />
         );
       
@@ -302,29 +299,29 @@ export function NodeCreationModal({
         return (
           <div className="space-y-2">
             <div className="flex gap-1.5">
-              <input
+              <ThemedInput
                 type="url"
                 value={value as string}
                 onChange={(e) => handleInputChange(property.id, e.target.value)}
                 placeholder={property.placeholder}
-                className={`flex-1 min-w-0 px-3 py-2 bg-slate-800 border rounded-md text-white ${
-                  error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-                }`}
+                className="flex-1 min-w-0 rounded-md"
+                style={inputStyle}
               />
               {isWebsiteNode && isUrlProperty && (
-                <button
+                <ThemedButton
                   type="button"
                   onClick={handleFetchMetadata}
                   disabled={fetchingMetadata || !(value as string || '').trim()}
-                  className="px-2.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs rounded-md transition-colors whitespace-nowrap shrink-0"
+                  variant="accent"
+                  className="px-2.5 py-2 text-xs rounded-md whitespace-nowrap shrink-0"
                   title="Look up domain registration information (WHOIS)"
                 >
                   {fetchingMetadata ? '...' : 'Fetch'}
-                </button>
+                </ThemedButton>
               )}
             </div>
             {isWebsiteNode && isUrlProperty && fetchingMetadata && (
-              <p className="text-xs text-slate-400">Looking up domain registration information...</p>
+              <p className="text-xs" style={{ color: 'var(--text-dim)' }}>Looking up domain registration information...</p>
             )}
           </div>
         );
@@ -332,27 +329,25 @@ export function NodeCreationModal({
       
       case 'phone':
         return (
-          <input
+          <ThemedInput
             type="tel"
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
             placeholder={property.placeholder}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           />
         );
       
       default:
         return (
-          <input
+          <ThemedInput
             type="text"
             value={value as string}
             onChange={(e) => handleInputChange(property.id, e.target.value)}
             placeholder={property.placeholder}
-            className={`w-full px-3 py-2 bg-slate-800 border rounded-md text-white ${
-              error ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'
-            }`}
+            className="w-full rounded-md"
+            style={inputStyle}
           />
         );
     }
@@ -362,15 +357,15 @@ export function NodeCreationModal({
   const Icon = resolveNodeTypeIcon(nodeType, iconPack);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto rounded-[28px] p-6">
         <div className="flex items-center space-x-3 mb-6">
           <div className={`w-10 h-10 rounded-full ${nodeType.color} flex items-center justify-center text-white text-lg`}>
             <Icon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Create {nodeType.label}</h2>
-            <p className="text-sm text-slate-400">{nodeType.description}</p>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Create {nodeType.label}</h2>
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{nodeType.description}</p>
           </div>
         </div>
 
@@ -378,7 +373,7 @@ export function NodeCreationModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {nodeType.properties.map((property) => (
               <div key={property.id} className="space-y-1">
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                   {property.label}
                   {property.required && <span className="text-red-400 ml-1">*</span>}
                 </label>
@@ -391,28 +386,21 @@ export function NodeCreationModal({
           </div>
 
           {position && (
-            <div className="text-xs text-slate-500 pt-2 border-t border-slate-700">
+            <div className="text-xs pt-2 border-t" style={{ color: 'var(--text-dim)', borderColor: 'var(--border-subtle)' }}>
               Position: ({Math.round(position.x)}, {Math.round(position.y)})
             </div>
           )}
 
-          <div className="flex justify-end space-x-3 pt-6 border-t border-slate-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
+          <div className="flex justify-end space-x-3 pt-6 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <ThemedButton type="button" onClick={onClose} variant="quiet">
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
+            </ThemedButton>
+            <ThemedButton type="submit" variant="accent">
               Create {nodeType.label}
-            </button>
+            </ThemedButton>
           </div>
         </form>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

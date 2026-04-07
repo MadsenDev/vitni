@@ -2,6 +2,7 @@ import 'leaflet/dist/leaflet.css';
 
 import L from 'leaflet';
 import React from 'react';
+import { ThemedButton, ThemedCard, ThemedInput, ThemedPanel } from '@renderer/features/personalization/primitives';
 
 type CoordinateDraft = {
   latitude: number;
@@ -96,41 +97,33 @@ export function LocationMapPicker({
   }, [draft, hasExplicitPoint]);
 
   return (
-    <div className="panel-elevated flex h-[min(82vh,780px)] w-[min(94vw,1120px)] flex-col overflow-hidden rounded-[28px]">
-      <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-4">
+    <ThemedPanel elevated className="flex h-[min(82vh,780px)] w-[min(94vw,1120px)] flex-col overflow-hidden rounded-[28px]">
+      <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border-subtle)' }}>
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Location Map</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">{label}</h3>
-          <p className="mt-1 text-xs text-slate-500">Click anywhere on the map to set this location’s coordinates.</p>
+          <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-dim)' }}>Location Map</p>
+          <h3 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</h3>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-dim)' }}>Click anywhere on the map to set this location’s coordinates.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 transition-colors hover:bg-emerald-500/20"
-            onClick={() => onOpenExternal(draft)}
-          >
+          <ThemedButton type="button" variant="success" className="px-3 py-1.5 text-xs" onClick={() => onOpenExternal(draft)}>
             Open in browser
-          </button>
-          <button
-            type="button"
-            className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={onClose}
-          >
+          </ThemedButton>
+          <ThemedButton type="button" variant="quiet" className="px-3 py-1.5 text-xs" onClick={onClose}>
             Close
-          </button>
+          </ThemedButton>
         </div>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_280px]">
-        <div className="relative min-h-0 bg-slate-950">
+        <div className="relative min-h-0" style={{ background: 'var(--surface-base)' }}>
           <div ref={mapContainerRef} className="h-full w-full" />
         </div>
-        <div className="flex flex-col gap-4 border-l border-slate-800/80 bg-slate-950/65 p-5">
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Selected Coordinates</h4>
+        <div className="flex flex-col gap-4 border-l p-5" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-overlay)' }}>
+          <ThemedCard className="rounded-2xl p-4">
+            <h4 className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>Selected Coordinates</h4>
             <div className="mt-3 space-y-3">
               <label className="block">
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.18em] text-slate-500">Latitude</span>
-                <input
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-dim)' }}>Latitude</span>
+                <ThemedInput
                   type="number"
                   value={draft.latitude}
                   step="0.000001"
@@ -141,12 +134,12 @@ export function LocationMapPicker({
                       setHasExplicitPoint(true);
                     }
                   }}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full rounded-xl"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.18em] text-slate-500">Longitude</span>
-                <input
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-dim)' }}>Longitude</span>
+                <ThemedInput
                   type="number"
                   value={draft.longitude}
                   step="0.000001"
@@ -157,32 +150,24 @@ export function LocationMapPicker({
                       setHasExplicitPoint(true);
                     }
                   }}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full rounded-xl"
                 />
               </label>
             </div>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4 text-xs text-slate-400">
+          </ThemedCard>
+          <ThemedCard className="rounded-2xl p-4 text-xs" style={{ color: 'var(--text-dim)' }}>
             Use the map for a quick point pick, or fine-tune the coordinates manually here. OpenStreetMap tiles are provided by the public OSM tile service.
-          </div>
+          </ThemedCard>
           <div className="mt-auto flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800"
-              onClick={onClose}
-            >
+            <ThemedButton type="button" variant="quiet" className="px-3 py-2 text-sm" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-sky-500/30 bg-sky-500/15 px-3 py-2 text-sm font-medium text-sky-100 transition-colors hover:bg-sky-500/25"
-              onClick={() => onSave(draft)}
-            >
+            </ThemedButton>
+            <ThemedButton type="button" variant="accent" className="px-3 py-2 text-sm font-medium" onClick={() => onSave(draft)}>
               Use Coordinates
-            </button>
+            </ThemedButton>
           </div>
         </div>
       </div>
-    </div>
+    </ThemedPanel>
   );
 }

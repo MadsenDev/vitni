@@ -1,3 +1,5 @@
+import { ThemedButton, ThemedCard, ThemedPanel } from '@renderer/features/personalization/primitives';
+
 interface ConsentDetails {
   transformId: string;
   transformName: string;
@@ -15,40 +17,32 @@ interface Props {
 
 export function ConsentModal({ consent, onCancel, onConfirm }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur">
-      <div className="w-full max-w-lg rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-100">Confirm Remote Transform</h3>
-        <p className="mt-2 text-sm text-slate-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-lg rounded-[28px] p-6">
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Confirm Remote Transform</h3>
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
           <span className="font-semibold">{consent.transformName}</span> will send the following data to{' '}
           <span className="font-semibold">{consent.destination}</span>.
           Review and confirm before proceeding.
         </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Subject type: <span className="font-semibold text-slate-300">{consent.subjectEntityType}</span>
+        <p className="mt-2 text-xs" style={{ color: 'var(--text-dim)' }}>
+          Subject type: <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>{consent.subjectEntityType}</span>
         </p>
-        <div className="mt-4 rounded border border-slate-700 bg-slate-950 p-3 text-xs text-slate-300">
+        <ThemedCard className="mt-4 rounded-2xl p-3 text-xs" style={{ whiteSpace: 'pre-wrap' }}>
           <pre className="whitespace-pre-wrap">{JSON.stringify(consent.payload, null, 2)}</pre>
-        </div>
-        <p className="mt-3 text-xs text-slate-500">
+        </ThemedCard>
+        <p className="mt-3 text-xs" style={{ color: 'var(--text-dim)' }}>
           Remote requests are never performed automatically. You must consent every time.
         </p>
         <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
-            onClick={onCancel}
-          >
+          <ThemedButton type="button" variant="quiet" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="rounded bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-sky-400"
-            onClick={() => void onConfirm()}
-          >
+          </ThemedButton>
+          <ThemedButton type="button" variant="accent" onClick={() => void onConfirm()}>
             Send Request
-          </button>
+          </ThemedButton>
         </div>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

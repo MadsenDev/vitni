@@ -777,7 +777,7 @@ export function GraphCanvas({
 
   // Build stylesheet - no image styles here to avoid parser errors
   const stylesheet = useMemo(() => {
-    const { colors } = personalizationTheme;
+    const { colors, appearanceMode } = personalizationTheme;
     const edgeStyleMode: GraphEdgeStyleMode = lastLayoutPreset ? getGraphLayoutPreset(lastLayoutPreset).edgeStyleMode : 'smart';
     const hiddenEdgeLabelIds = getSuppressedGenericEdgeLabels(elements);
     const denseGraph = elements.filter((element) => element.group === 'edges').length > Math.max(10, elements.filter((element) => element.group === 'nodes').length * 1.2);
@@ -822,7 +822,7 @@ export function GraphCanvas({
         'outline-width': 12,
         'outline-color': colors.accentSky,
         'outline-opacity': 0.18,
-        'color': '#ffffff',
+        'color': colors.textPrimary,
         'text-outline-width': 2,
         'text-outline-color': colors.appBg
       } as unknown as cytoscape.Css.Node
@@ -834,6 +834,35 @@ export function GraphCanvas({
       style: {
         'border-color': colors.accentEmerald,
         'border-width': 2
+      } as unknown as cytoscape.Css.Node
+    });
+
+    baseStyles.push({
+      selector: 'node[reviewTone = "needs_review"]',
+      style: {
+        'border-color': colors.accentSky,
+        'border-width': 2.25,
+        'outline-width': 8,
+        'outline-color': colors.accentSky,
+        'outline-opacity': 0.08
+      } as unknown as cytoscape.Css.Node
+    });
+
+    baseStyles.push({
+      selector: 'node[reviewTone = "conflict"]',
+      style: {
+        'border-color': '#f59e0b',
+        'border-width': 2.75,
+        'outline-width': 10,
+        'outline-color': '#f59e0b',
+        'outline-opacity': 0.1
+      } as unknown as cytoscape.Css.Node
+    });
+
+    baseStyles.push({
+      selector: 'node[evidenceTone = "gap"]',
+      style: {
+        'background-color': appearanceMode === 'light' ? 'rgba(217, 83, 79, 0.18)' : 'rgba(69, 10, 10, 0.75)'
       } as unknown as cytoscape.Css.Node
     });
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ThemedButton, ThemedCard, ThemedInput, ThemedPanel } from '@renderer/features/personalization/primitives';
 
 interface ProjectCreationModalProps {
   isOpen: boolean;
@@ -60,22 +61,22 @@ export function ProjectCreationModal({ isOpen, onClose, onCreate }: ProjectCreat
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-[28px] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(7,11,23,0.98))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-lg rounded-[28px] p-6">
         <div className="mb-6">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">New project</div>
-          <h2 className="mt-3 font-mono text-2xl font-semibold text-white">Name the investigation first</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-dim)' }}>New project</div>
+          <h2 className="mt-3 font-mono text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Name the investigation first</h2>
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-dim)' }}>
             Pick a project name now so the file chooser opens with a sensible default instead of a generic folder name.
           </p>
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="project-name" className="mb-2 block text-sm font-medium text-slate-200">
+            <label htmlFor="project-name" className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
               Project name
             </label>
-            <input
+            <ThemedInput
               id="project-name"
               autoFocus
               value={projectName}
@@ -84,32 +85,25 @@ export function ProjectCreationModal({ isOpen, onClose, onCreate }: ProjectCreat
                 if (error) setError(null);
               }}
               placeholder="Case 2026-03-31 23-20"
-              className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 font-mono text-white outline-none transition focus:border-sky-400/70 focus:ring-2 focus:ring-sky-400/20"
+              className="w-full rounded-2xl px-4 py-3 font-mono"
             />
             {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
           </div>
 
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-xs leading-5 text-slate-400">
+          <ThemedCard className="rounded-2xl px-4 py-3 text-xs leading-5" style={{ color: 'var(--text-dim)' }}>
             You’ll choose where to save the project next. The selected name will be prefilled in the native save dialog.
-          </div>
+          </ThemedCard>
 
           <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800"
-            >
+            <ThemedButton type="button" onClick={onClose} variant="quiet" className="rounded-2xl px-4 py-2.5 text-sm font-medium">
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-            >
+            </ThemedButton>
+            <ThemedButton type="submit" variant="accent" className="rounded-2xl px-4 py-2.5 text-sm font-semibold">
               Continue
-            </button>
+            </ThemedButton>
           </div>
         </form>
-      </div>
+      </ThemedPanel>
     </div>,
     document.body
   );

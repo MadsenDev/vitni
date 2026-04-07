@@ -7,6 +7,7 @@ import {
   DEFAULT_PERSONALIZATION_THEME,
   normalizePersonalizationTheme,
   PERSONALIZATION_PRESETS,
+  type AppearanceMode,
   type CanvasBackgroundMode,
   type CanvasImageFit,
   type IconPackId,
@@ -14,6 +15,14 @@ import {
   type PersonalizationPresetId,
   type SurfaceDepthPreset
 } from '@renderer/features/personalization/theme';
+import {
+  ThemedBadge,
+  ThemedButton,
+  ThemedCard,
+  ThemedInput,
+  ThemedSection,
+  ThemedSelect
+} from '@renderer/features/personalization/primitives';
 import {
   INVESTIGATION_PROFILES,
   DEFAULT_INVESTIGATION_PROFILE,
@@ -478,8 +487,7 @@ export function SettingsModal({
     const presetTheme = createPresetTheme(presetId);
     await updatePersonalizationTheme({
       ...personalizationTheme,
-      presetId,
-      colors: presetTheme.colors
+      ...presetTheme
     });
     setPersonalizationNote(`Applied ${PERSONALIZATION_PRESETS.find((preset) => preset.id === presetId)?.label || 'preset'}.`);
   };
@@ -488,11 +496,24 @@ export function SettingsModal({
     await updatePersonalizationTheme({
       ...personalizationTheme,
       presetId: 'custom',
+      appearanceMode: personalizationTheme.appearanceMode,
       colors: {
         ...personalizationTheme.colors,
         [key]: value
       }
     });
+  };
+
+  const handleAppearanceModeChange = async (appearanceMode: AppearanceMode) => {
+    const fallbackPreset = appearanceMode === 'light' ? 'paper_trail' : 'vitni_midnight';
+    const presetTheme = createPresetTheme(fallbackPreset);
+    await updatePersonalizationTheme({
+      ...personalizationTheme,
+      ...presetTheme,
+      iconPack: personalizationTheme.iconPack,
+      surfaceDepth: personalizationTheme.surfaceDepth
+    });
+    setPersonalizationNote(`Switched to ${appearanceMode} mode with ${presetTheme.presetId.replace(/_/g, ' ')}.`);
   };
 
   const handleCanvasBackgroundChange = async (updates: Partial<PersonalizationTheme['canvasBackground']>) => {
@@ -603,62 +624,63 @@ export function SettingsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--overlay-backdrop)' }} onClick={onClose}>
       <div
         className="panel-elevated flex h-[min(92vh,820px)] w-full max-w-6xl overflow-hidden rounded-[28px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <aside className="w-72 border-r border-slate-800/80 bg-slate-950/55 px-4 py-5">
+        <aside
+          className="flex min-h-0 w-72 flex-col border-r px-4 py-5"
+          style={{ borderColor: 'var(--border-subtle)', background: 'color-mix(in srgb, var(--surface-base) 94%, transparent)' }}
+        >
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10 text-sky-200">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border" style={{ borderColor: 'var(--status-accent-border)', background: 'var(--status-accent-bg)', color: 'var(--status-accent-text)' }}>
               <FaCog className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-mono text-xl font-semibold text-white">Settings</h2>
-              <p className="text-xs text-slate-500">Project defaults and device integrations</p>
+              <h2 className="font-mono text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Settings</h2>
+              <p className="text-xs" style={{ color: 'var(--text-soft)' }}>Project defaults and device integrations</p>
             </div>
           </div>
-          <nav className="space-y-2">
+          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
             {sections.map((section) => (
-              <button
+              <ThemedButton
                 key={section.id}
                 type="button"
                 onClick={() => setActiveSection(section.id)}
-                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                  activeSection === section.id
-                    ? 'border-sky-500/50 bg-sky-500/10 text-white shadow-[0_12px_28px_rgba(14,165,233,0.08)]'
-                    : 'border-slate-800 bg-slate-900/55 text-slate-300 hover:border-slate-700 hover:bg-slate-900/80 hover:text-white'
-                }`}
+                variant={activeSection === section.id ? 'accent' : 'default'}
+                className="w-full rounded-2xl px-4 py-3 text-left"
+                style={activeSection === section.id ? { boxShadow: '0 12px 28px rgba(14,165,233,0.08)' } : undefined}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{section.label}</span>
-                  <span className="rounded-full border border-slate-700/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-soft)' }}>
                     {section.scope}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{section.description}</p>
-              </button>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{section.description}</p>
+              </ThemedButton>
             ))}
           </nav>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-800/80 px-8 py-5">
+          <div className="border-b px-8 py-5" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300/80">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--accent-sky)' }}>
                   {activeSectionDefinition.scope}
                 </div>
-                <h3 className="mt-1 font-mono text-2xl font-semibold text-white">{activeSectionDefinition.label}</h3>
-                <p className="mt-2 max-w-2xl text-sm text-slate-400">{activeSectionDefinition.description}</p>
+                <h3 className="mt-1 font-mono text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{activeSectionDefinition.label}</h3>
+                <p className="mt-2 max-w-2xl text-sm" style={{ color: 'var(--text-muted)' }}>{activeSectionDefinition.description}</p>
               </div>
-              <button
+              <ThemedButton
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-slate-700/80 bg-slate-900/70 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
+                className="rounded-2xl px-3 py-2 text-sm"
               >
                 Close
-              </button>
+              </ThemedButton>
             </div>
           </div>
 
@@ -711,31 +733,28 @@ export function SettingsModal({
                       {INVESTIGATION_PROFILES.map((profile) => {
                         const active = investigationProfile === profile.id;
                         return (
-                          <button
+                          <ThemedButton
                             key={profile.id}
                             type="button"
                             onClick={() => onInvestigationProfileChange(profile.id)}
-                            className={`rounded-2xl border p-4 text-left transition ${
-                              active
-                                ? 'border-sky-500/50 bg-sky-500/10 text-white'
-                                : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-600 hover:text-white'
-                            }`}
+                            variant={active ? 'accent' : 'default'}
+                            className="rounded-2xl p-4 text-left"
                           >
                             <div className="font-semibold">{profile.shortLabel}</div>
-                            <div className="mt-2 text-xs text-slate-400">{profile.description}</div>
-                          </button>
+                            <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>{profile.description}</div>
+                          </ThemedButton>
                         );
                       })}
                     </div>
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-300">
-                      <div className="font-semibold text-white">{profileDefinition.label}</div>
-                      <div className="mt-1 text-slate-400">{profileDefinition.description}</div>
-                    </div>
+                    <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{profileDefinition.label}</div>
+                      <div className="mt-1">{profileDefinition.description}</div>
+                    </ThemedCard>
                   </SettingsCard>
                   <SettingsCard title="Relationship defaults" description="Used when you create new relationships.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="Default confidence" description="Initial confidence for newly created relationships.">
-                        <select
+                        <ThemedSelect
                           value={defaultRelationshipConfidence}
                           onChange={(event) => onDefaultRelationshipConfidenceChange(event.target.value as 'unverified' | 'asserted' | 'verified')}
                           className={selectClass}
@@ -743,10 +762,10 @@ export function SettingsModal({
                           <option value="unverified">Unverified</option>
                           <option value="asserted">Asserted</option>
                           <option value="verified">Verified</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                       <FieldBlock label="Field-to-assertion behavior" description="How factual field edits should become source-backed assertions.">
-                        <select
+                        <ThemedSelect
                           value={assertionFieldAutomation}
                           onChange={(event) => onAssertionFieldAutomationChange(event.target.value as 'auto' | 'prompt' | 'manual')}
                           className={selectClass}
@@ -754,7 +773,7 @@ export function SettingsModal({
                           <option value="auto">Auto-create when a source is linked</option>
                           <option value="prompt">Prompt before creating assertions</option>
                           <option value="manual">Manual only</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                     </div>
                   </SettingsCard>
@@ -790,17 +809,17 @@ export function SettingsModal({
                   <SettingsCard title="Interface feel" description="These settings apply on this device and affect the renderer shell globally.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="UI density" description="Adjust general interface compactness.">
-                        <select value={uiDensity} onChange={(event) => onUiDensityChange(event.target.value as 'comfortable' | 'compact')} className={selectClass}>
+                        <ThemedSelect value={uiDensity} onChange={(event) => onUiDensityChange(event.target.value as 'comfortable' | 'compact')} className={selectClass}>
                           <option value="comfortable">Comfortable</option>
                           <option value="compact">Compact</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                       <FieldBlock label="Motion" description="Control transitions and animated UI effects on this device.">
-                        <select value={motionPreference} onChange={(event) => onMotionPreferenceChange(event.target.value as 'reduced' | 'standard' | 'enhanced')} className={selectClass}>
+                        <ThemedSelect value={motionPreference} onChange={(event) => onMotionPreferenceChange(event.target.value as 'reduced' | 'standard' | 'enhanced')} className={selectClass}>
                           <option value="reduced">Reduced</option>
                           <option value="standard">Standard</option>
                           <option value="enhanced">Enhanced</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                     </div>
                   </SettingsCard>
@@ -809,10 +828,88 @@ export function SettingsModal({
 
               {activeSection === 'personalization' && (
                 <>
-                  <SettingsCard title="Theme colors" description="Customize the shell, surface, and accent palette on this device.">
+                  <SettingsCard title="Theme preset" description="Pick a finished look first, then fine-tune anything you want below.">
                     <div className="grid gap-4 md:grid-cols-2">
-                      <FieldBlock label="Preset" description="Start from a curated theme, then tweak colors freely.">
-                        <select
+                      <FieldBlock label="Theme mode" description="Switch between true dark and true light presets.">
+                        <div className="grid grid-cols-2 gap-2">
+                          {([
+                            ['dark', 'Dark'],
+                            ['light', 'Light']
+                          ] as Array<[AppearanceMode, string]>).map(([mode, label]) => {
+                            const active = personalizationTheme.appearanceMode === mode;
+                            return (
+                              <ThemedButton
+                                key={mode}
+                                type="button"
+                                onClick={() => {
+                                  void handleAppearanceModeChange(mode);
+                                }}
+                                variant={active ? 'accent' : 'default'}
+                                className="rounded-2xl px-4 py-3 text-sm font-medium"
+                              >
+                                {label}
+                              </ThemedButton>
+                            );
+                          })}
+                        </div>
+                      </FieldBlock>
+                      <FieldBlock label="Surface depth" description="Increase or soften panel shadows for the current theme.">
+                        <ThemedSelect
+                          value={personalizationTheme.surfaceDepth}
+                          onChange={(event) =>
+                            void updatePersonalizationTheme({
+                              ...personalizationTheme,
+                              surfaceDepth: event.target.value as SurfaceDepthPreset
+                            })
+                          }
+                          className={selectClass}
+                        >
+                          <option value="soft">Soft</option>
+                          <option value="standard">Standard</option>
+                          <option value="dramatic">Dramatic</option>
+                        </ThemedSelect>
+                      </FieldBlock>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 md:grid-cols-2">
+                      {PERSONALIZATION_PRESETS.filter((preset) => preset.appearanceMode === personalizationTheme.appearanceMode).map((preset) => {
+                        const active = personalizationTheme.presetId === preset.id;
+                        return (
+                          <ThemedButton
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              void handlePersonalizationPresetChange(preset.id);
+                            }}
+                            variant={active ? 'accent' : 'default'}
+                            className="rounded-[24px] p-4 text-left"
+                            style={active ? { boxShadow: '0 18px 40px rgba(14,165,233,0.08)' } : undefined}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{preset.label}</div>
+                                <div className="mt-1 text-xs leading-5" style={{ color: 'var(--text-muted)' }}>{preset.description}</div>
+                              </div>
+                              <div className="flex gap-1.5">
+                                {[preset.colors.appBg, preset.colors.surfaceRaised, preset.colors.accentSky, preset.colors.accentEmerald].map((color) => (
+                                  <span
+                                    key={`${preset.id}-${color}`}
+                                    className="h-5 w-5 rounded-full border border-white/20"
+                                    style={{ backgroundColor: coerceColorValue(color) }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </ThemedButton>
+                        );
+                      })}
+                    </div>
+                  </SettingsCard>
+
+                  <SettingsCard title="Advanced customization" description="Manually tune the current theme if you want something more specific than the presets.">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FieldBlock label="Preset state" description="Custom means your colors no longer exactly match a built-in preset.">
+                        <ThemedSelect
                           value={personalizationTheme.presetId === 'custom' ? 'custom' : personalizationTheme.presetId}
                           onChange={(event) => {
                             const nextValue = event.target.value as PersonalizationPresetId;
@@ -830,63 +927,128 @@ export function SettingsModal({
                             </option>
                           ))}
                           <option value="custom">Custom</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
-                      <FieldBlock label="Surface depth" description="Increase or soften panel shadowing.">
-                        <select
-                          value={personalizationTheme.surfaceDepth}
+                      <FieldBlock label="Built-in icon pack" description="Switch icon styling without changing the case data.">
+                        <ThemedSelect
+                          value={personalizationTheme.iconPack}
                           onChange={(event) =>
                             void updatePersonalizationTheme({
                               ...personalizationTheme,
-                              surfaceDepth: event.target.value as SurfaceDepthPreset
+                              iconPack: event.target.value as IconPackId
                             })
                           }
                           className={selectClass}
                         >
-                          <option value="soft">Soft</option>
-                          <option value="standard">Standard</option>
-                          <option value="dramatic">Dramatic</option>
-                        </select>
+                          {ICON_PACK_DEFINITIONS.map((pack) => (
+                            <option key={pack.id} value={pack.id}>
+                              {pack.label}
+                            </option>
+                          ))}
+                        </ThemedSelect>
                       </FieldBlock>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {([
-                        ['accentSky', 'Primary accent'],
-                        ['accentEmerald', 'Secondary accent'],
-                        ['accentAmber', 'Warm accent'],
-                        ['appBg', 'App background'],
-                        ['surfaceRaised', 'Raised surface'],
-                        ['borderStrong', 'Strong border'],
-                        ['textPrimary', 'Primary text'],
-                        ['textMuted', 'Muted text']
-                      ] as Array<[keyof PersonalizationTheme['colors'], string]>).map(([key, label]) => (
-                        <FieldBlock key={key} label={label}>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="color"
-                              value={coerceColorValue(personalizationTheme.colors[key])}
-                              onChange={(event) => {
-                                void handleColorChange(key, event.target.value);
-                              }}
-                              className="h-11 w-14 rounded-2xl border border-slate-700 bg-slate-950/70 p-1"
-                            />
-                            <input
-                              value={personalizationTheme.colors[key]}
-                              onChange={(event) => {
-                                void handleColorChange(key, event.target.value);
-                              }}
-                              className={inputClass}
-                            />
-                          </div>
-                        </FieldBlock>
-                      ))}
+
+                    <div className="mt-5 grid gap-5 xl:grid-cols-3">
+                      <ThemedSection className="space-y-4 rounded-2xl">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Core surfaces</div>
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Backgrounds, panels, and frame contrast.</div>
+                        </div>
+                        {([
+                          ['appBg', 'App background'],
+                          ['appBgSoft', 'Soft background'],
+                          ['surfaceBase', 'Base surface'],
+                          ['surfaceRaised', 'Raised surface'],
+                          ['surfaceElevated', 'Elevated surface'],
+                          ['borderSubtle', 'Subtle border'],
+                          ['borderStrong', 'Strong border']
+                        ] as Array<[keyof PersonalizationTheme['colors'], string]>).map(([key, label]) => (
+                          <FieldBlock key={key} label={label}>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="color"
+                                value={coerceColorValue(personalizationTheme.colors[key])}
+                                onChange={(event) => {
+                                  void handleColorChange(key, event.target.value);
+                                }}
+                                className="h-11 w-14 rounded-2xl border p-1"
+                                style={{ borderColor: 'var(--input-border)', background: 'var(--input-bg)' }}
+                              />
+                              <ThemedInput
+                                value={personalizationTheme.colors[key]}
+                                onChange={(event) => {
+                                  void handleColorChange(key, event.target.value);
+                                }}
+                                className={inputClass}
+                              />
+                            </div>
+                          </FieldBlock>
+                        ))}
+                      </ThemedSection>
+
+                      <ThemedSection className="space-y-4 rounded-2xl">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Text and accents</div>
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Typography contrast and analytic highlight colors.</div>
+                        </div>
+                        {([
+                          ['textPrimary', 'Primary text'],
+                          ['textMuted', 'Muted text'],
+                          ['textSoft', 'Soft text'],
+                          ['accentSky', 'Primary accent'],
+                          ['accentEmerald', 'Secondary accent'],
+                          ['accentAmber', 'Warm accent'],
+                          ['dangerSoft', 'Danger tone']
+                        ] as Array<[keyof PersonalizationTheme['colors'], string]>).map(([key, label]) => (
+                          <FieldBlock key={key} label={label}>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="color"
+                                value={coerceColorValue(personalizationTheme.colors[key])}
+                                onChange={(event) => {
+                                  void handleColorChange(key, event.target.value);
+                                }}
+                                className="h-11 w-14 rounded-2xl border p-1"
+                                style={{ borderColor: 'var(--input-border)', background: 'var(--input-bg)' }}
+                              />
+                              <ThemedInput
+                                value={personalizationTheme.colors[key]}
+                                onChange={(event) => {
+                                  void handleColorChange(key, event.target.value);
+                                }}
+                                className={inputClass}
+                              />
+                            </div>
+                          </FieldBlock>
+                        ))}
+                      </ThemedSection>
+
+                      <ThemedSection className="space-y-4 rounded-2xl">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Icon pack</div>
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Preview the current built-in icon styles.</div>
+                        </div>
+                        <div className="grid gap-3">
+                          {ICON_PACK_DEFINITIONS.map((pack) => (
+                            <ThemedCard
+                              key={pack.id}
+                              tone={personalizationTheme.iconPack === pack.id ? 'accent' : 'default'}
+                              className="px-4 py-3 text-sm"
+                            >
+                              <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pack.label}</div>
+                              <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{pack.description}</div>
+                            </ThemedCard>
+                          ))}
+                        </div>
+                      </ThemedSection>
                     </div>
                   </SettingsCard>
 
                   <SettingsCard title="Canvas background" description="Change the graph atmosphere independently of the rest of the shell.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="Background mode">
-                        <select
+                        <ThemedSelect
                           value={personalizationTheme.canvasBackground.mode}
                           onChange={(event) =>
                             void handleCanvasBackgroundChange({
@@ -899,7 +1061,7 @@ export function SettingsModal({
                           <option value="gradient">Gradient</option>
                           <option value="none">None</option>
                           <option value="image">Image</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                       <FieldBlock label="Grid opacity" description="Used when the grid background is active.">
                         <input
@@ -915,27 +1077,27 @@ export function SettingsModal({
                           }
                           className="w-full accent-sky-400"
                         />
-                        <div className="mt-1 text-xs text-slate-500">{Math.round(personalizationTheme.canvasBackground.gridOpacity * 100)}%</div>
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{Math.round(personalizationTheme.canvasBackground.gridOpacity * 100)}%</div>
                       </FieldBlock>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="Background image" description="Stored locally on this device and never written into the project.">
                         <div className="space-y-3">
-                          <div className="rounded-2xl border border-slate-800 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
+                          <ThemedCard className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>
                             {personalizationTheme.canvasBackground.imageFileName || 'No image selected'}
-                          </div>
+                          </ThemedCard>
                           <div className="flex flex-wrap gap-2">
-                            <button
+                            <ThemedButton
                               type="button"
                               onClick={() => {
                                 void handlePickBackgroundImage();
                               }}
-                              className="rounded-2xl bg-slate-700 px-4 py-2 text-sm text-white transition hover:bg-slate-600"
+                              className="rounded-2xl px-4 py-2 text-sm"
                             >
                               Choose image
-                            </button>
-                            <button
+                            </ThemedButton>
+                            <ThemedButton
                               type="button"
                               onClick={() => {
                                 void handleCanvasBackgroundChange({
@@ -944,15 +1106,15 @@ export function SettingsModal({
                                   mode: personalizationTheme.canvasBackground.mode === 'image' ? 'grid' : personalizationTheme.canvasBackground.mode
                                 });
                               }}
-                              className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+                              className="rounded-2xl px-4 py-2 text-sm"
                             >
                               Clear image
-                            </button>
+                            </ThemedButton>
                           </div>
                         </div>
                       </FieldBlock>
                       <FieldBlock label="Image fit">
-                        <select
+                        <ThemedSelect
                           value={personalizationTheme.canvasBackground.imageFit}
                           onChange={(event) =>
                             void handleCanvasBackgroundChange({
@@ -965,9 +1127,9 @@ export function SettingsModal({
                           <option value="contain">Contain</option>
                           <option value="tile">Tile</option>
                           <option value="center">Centered</option>
-                        </select>
+                        </ThemedSelect>
                         <div className="mt-4">
-                          <label className="block text-sm font-medium text-slate-200">Image dim / overlay</label>
+                          <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Image dim / overlay</label>
                           <input
                             type="range"
                             min="0"
@@ -981,12 +1143,12 @@ export function SettingsModal({
                             }
                             className="mt-2 w-full accent-sky-400"
                           />
-                          <div className="mt-1 text-xs text-slate-500">
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>
                             {Math.round(personalizationTheme.canvasBackground.overlayOpacity * 100)}% dimming. Lower values show more of the image.
                           </div>
                         </div>
                         <div className="mt-4">
-                          <label className="block text-sm font-medium text-slate-200">Image blur</label>
+                          <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Image blur</label>
                           <input
                             type="range"
                             min="0"
@@ -1000,7 +1162,7 @@ export function SettingsModal({
                             }
                             className="mt-2 w-full accent-sky-400"
                           />
-                          <div className="mt-1 text-xs text-slate-500">
+                          <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>
                             {personalizationTheme.canvasBackground.imageBlurPx}px blur. Lower values keep the image sharper.
                           </div>
                         </div>
@@ -1008,77 +1170,41 @@ export function SettingsModal({
                     </div>
                   </SettingsCard>
 
-                  <SettingsCard title="Icon style" description="Choose how palette and inspector icons are rendered on this device.">
-                    <FieldBlock label="Built-in icon pack">
-                      <select
-                        value={personalizationTheme.iconPack}
-                        onChange={(event) =>
-                          void updatePersonalizationTheme({
-                            ...personalizationTheme,
-                            iconPack: event.target.value as IconPackId
-                          })
-                        }
-                        className={selectClass}
-                      >
-                        {ICON_PACK_DEFINITIONS.map((pack) => (
-                          <option key={pack.id} value={pack.id}>
-                            {pack.label}
-                          </option>
-                        ))}
-                      </select>
-                    </FieldBlock>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {ICON_PACK_DEFINITIONS.map((pack) => (
-                        <div
-                          key={pack.id}
-                          className={`rounded-2xl border px-4 py-3 text-sm ${
-                            personalizationTheme.iconPack === pack.id
-                              ? 'border-sky-500/50 bg-sky-500/10 text-white'
-                              : 'border-slate-800 bg-slate-950/45 text-slate-300'
-                          }`}
-                        >
-                          <div className="font-semibold">{pack.label}</div>
-                          <div className="mt-1 text-xs text-slate-400">{pack.description}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </SettingsCard>
-
                   <SettingsCard title="Reset, export, and import" description="Keep a backup of your device theme or restore the default quickly.">
                     <div className="flex flex-wrap gap-2">
-                      <button
+                      <ThemedButton
                         type="button"
                         onClick={() => {
                           void updatePersonalizationTheme(DEFAULT_PERSONALIZATION_THEME);
                           setPersonalizationNote('Reset all personalization to the default Vitni theme.');
                         }}
-                        className="rounded-2xl bg-slate-700 px-4 py-2 text-sm text-white transition hover:bg-slate-600"
+                        className="rounded-2xl px-4 py-2 text-sm"
                       >
                         Reset all
-                      </button>
-                      <button
+                      </ThemedButton>
+                      <ThemedButton
                         type="button"
                         onClick={() => {
                           void handleExportTheme();
                         }}
-                        className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+                        className="rounded-2xl px-4 py-2 text-sm"
                       >
                         Export theme JSON
-                      </button>
-                      <button
+                      </ThemedButton>
+                      <ThemedButton
                         type="button"
                         onClick={() => {
                           void handleImportTheme();
                         }}
-                        className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+                        className="rounded-2xl px-4 py-2 text-sm"
                       >
                         Import theme JSON
-                      </button>
+                      </ThemedButton>
                     </div>
                     {personalizationNote ? (
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-200">
+                      <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>
                         {personalizationNote}
-                      </div>
+                      </ThemedCard>
                     ) : null}
                   </SettingsCard>
                 </>
@@ -1147,12 +1273,12 @@ export function SettingsModal({
               {activeSection === 'ai' && (
                 <>
                   <SettingsCard title="Local AI Assistant" description="Runs on this device and can set itself up automatically when you enable it.">
-                    <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-950/55 p-4">
+                    <ThemedCard className="flex items-start justify-between gap-4 p-4">
                       <div>
-                        <div className="text-base font-semibold text-white">
+                        <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {localAIEnabled ? (aiStatus?.setupRequired ? 'Finish local AI setup' : 'Local AI is ready') : 'Enable local AI'}
                         </div>
-                        <p className="mt-1 text-sm text-slate-400">
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                           {localAIEnabled
                             ? aiStatus?.setupRequired
                               ? `Vitni will install the runtime if needed, start the Ollama service, and then download ${aiStatus?.model || ollamaModel}.`
@@ -1160,14 +1286,14 @@ export function SettingsModal({
                             : 'Turn this on to let the app provision and use a local model for reports on this device.'}
                         </p>
                       </div>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${localAIEnabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-300'}`}>
+                      <ThemedBadge tone={localAIEnabled ? 'success' : 'default'} className="px-2.5 py-1 text-[11px] font-semibold">
                         {localAIEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
+                      </ThemedBadge>
+                    </ThemedCard>
                     <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
                       <div className="space-y-3">
                         <FieldBlock label="Local model tier" description="Pick a model based on your hardware, not just output quality.">
-                          <select
+                          <ThemedSelect
                             value={ollamaModelPresetId}
                             onChange={(event) => void handleModelPresetChange(event.target.value as LocalAIModelPresetId)}
                             className={selectClass}
@@ -1178,52 +1304,52 @@ export function SettingsModal({
                               </option>
                             ))}
                             <option value="custom">Custom model…</option>
-                          </select>
+                          </ThemedSelect>
                         </FieldBlock>
-                        <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-300">
-                          <div className="font-semibold text-white">{selectedPreset?.label || 'Custom model'}</div>
-                          <div className="mt-1 text-slate-400">
+                        <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+                          <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedPreset?.label || 'Custom model'}</div>
+                          <div className="mt-1">
                             {ollamaModelPresetId === 'custom'
                               ? 'Use a custom Ollama model tag if you already know exactly what should run on this machine.'
                               : selectedPreset?.description || 'Choose a local model preset.'}
                           </div>
-                          <div className="mt-2 text-xs text-slate-500">
+                          <div className="mt-2 text-xs" style={{ color: 'var(--text-soft)' }}>
                             Download size: {selectedPreset?.approxSize || 'varies'}.
                           </div>
-                        </div>
+                        </ThemedCard>
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={handleEnableAndSetup} className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50" disabled={aiBusy !== null}>
+                          <ThemedButton variant="success" onClick={handleEnableAndSetup} className="rounded-2xl px-4 py-2 text-sm font-semibold" disabled={aiBusy !== null}>
                             {aiBusy ?? (localAIEnabled ? (aiStatus?.setupRequired ? (aiStatus?.ollamaInstalled ? 'Repair / re-check' : 'Set up local AI') : 'Repair / re-check') : 'Enable and set up')}
-                          </button>
-                          <button onClick={handleDisableLocalAI} className="rounded-2xl bg-slate-700 px-4 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>
+                          </ThemedButton>
+                          <ThemedButton onClick={handleDisableLocalAI} className="rounded-2xl px-4 py-2 text-sm" disabled={aiBusy !== null}>
                             Disable
-                          </button>
-                          <button onClick={handleSelfTest} className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-50" disabled={aiBusy !== null || selfTestBusy}>
+                          </ThemedButton>
+                          <ThemedButton onClick={handleSelfTest} className="rounded-2xl px-4 py-2 text-sm" disabled={aiBusy !== null || selfTestBusy}>
                             {selfTestBusy ? 'Running self-test…' : 'Run self-test'}
-                          </button>
+                          </ThemedButton>
                         </div>
                         {aiBusy && (
-                          <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                            <div className="text-sm font-semibold text-white">{aiBusy}</div>
-                            <div className="max-h-32 overflow-y-auto whitespace-pre-line rounded-xl border border-slate-800 bg-black/20 px-3 py-2 font-mono text-[11px] text-slate-300">
+                          <ThemedSection className="space-y-2 rounded-2xl p-4">
+                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{aiBusy}</div>
+                            <div className="max-h-32 overflow-y-auto whitespace-pre-line rounded-xl border px-3 py-2 font-mono text-[11px]" style={{ borderColor: 'var(--border-subtle)', background: 'color-mix(in srgb, var(--surface-base) 88%, transparent)', color: 'var(--text-muted)' }}>
                               {aiProgressDetails || aiBusy}
                             </div>
-                          </div>
+                          </ThemedSection>
                         )}
-                        {setupNote ? <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-200">{setupNote}</div> : null}
+                        {setupNote ? <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>{setupNote}</ThemedCard> : null}
                         {showSetupRecovery && (
-                          <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                          <ThemedSection className="space-y-3 rounded-2xl p-4 text-sm" style={{ borderColor: 'var(--status-warning-border)', background: 'var(--status-warning-bg)', color: 'var(--status-warning-text)' }}>
                             <div>Automatic setup needs help from the OS. Use the system prompt or a manual install path, then re-check.</div>
                             <div className="flex flex-wrap gap-2">
-                              <button onClick={handleEnableAndSetup} className="rounded-xl bg-emerald-700 px-3 py-2 text-white hover:bg-emerald-600 disabled:opacity-50" disabled={aiBusy !== null}>Install with system prompt</button>
-                              <button onClick={handleDownload} className="rounded-xl bg-slate-700 px-3 py-2 text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Download bundled runtime</button>
-                              <button onClick={() => window.piBridge.openExternal('https://ollama.com/download')} className="rounded-xl bg-slate-700 px-3 py-2 text-white hover:bg-slate-600">Open download page</button>
+                              <ThemedButton variant="success" onClick={handleEnableAndSetup} className="rounded-xl px-3 py-2" disabled={aiBusy !== null}>Install with system prompt</ThemedButton>
+                              <ThemedButton onClick={handleDownload} className="rounded-xl px-3 py-2" disabled={aiBusy !== null}>Download bundled runtime</ThemedButton>
+                              <ThemedButton onClick={() => window.piBridge.openExternal('https://ollama.com/download')} className="rounded-xl px-3 py-2">Open download page</ThemedButton>
                             </div>
-                          </div>
+                          </ThemedSection>
                         )}
                       </div>
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-300">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Runtime status</div>
+                      <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Runtime status</div>
                         <div className="mt-3 space-y-2">
                           <StatusRow label="Runtime" value={aiStatus?.ollamaInstalled ? 'Installed' : 'Missing'} />
                           <StatusRow label="Service" value={aiStatus?.serverUp ? 'Running' : 'Stopped'} />
@@ -1231,12 +1357,12 @@ export function SettingsModal({
                           <StatusRow label="Model tag" value={aiStatus?.model || ollamaModel} />
                         </div>
                         {aiStatus?.downloadEstimateMb ? (
-                          <p className="mt-4 text-xs text-slate-500">
+                          <p className="mt-4 text-xs" style={{ color: 'var(--text-soft)' }}>
                             First-time setup downloads roughly {Math.round(aiStatus.downloadEstimateMb / 100) / 10} GB after the service is available.
                           </p>
                         ) : null}
                         {selfTestResult ? (
-                          <div className={`mt-4 rounded-2xl border p-3 text-xs ${selfTestResult.ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+                          <ThemedCard tone={selfTestResult.ok ? 'success' : 'warning'} className="mt-4 p-3 text-xs">
                             <div className="font-semibold">{selfTestResult.ok ? 'Self-test passed' : 'Self-test failed'}</div>
                             <div className="mt-1">{selfTestResult.message}</div>
                             {(typeof selfTestResult.elapsedMs === 'number' || typeof selfTestResult.firstTokenMs === 'number') && (
@@ -1246,9 +1372,9 @@ export function SettingsModal({
                               </div>
                             )}
                             {selfTestResult.preview ? <div className="mt-2 rounded border border-current/20 bg-black/20 px-2 py-1 font-mono text-[11px] text-current/90">{selfTestResult.preview}</div> : null}
-                          </div>
+                          </ThemedCard>
                         ) : null}
-                      </div>
+                      </ThemedCard>
                     </div>
                     <ToggleRow
                       label="Keep the local AI service running between exports"
@@ -1263,10 +1389,10 @@ export function SettingsModal({
                   <SettingsCard title="Cloud AI Reports" description="Optional OpenAI-powered report writing. API keys are always stored on this device only.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="OpenAI model">
-                        <input value={openAIModel} onChange={(event) => void saveOpenAIModel(event.target.value)} className={inputClass} />
+                        <ThemedInput value={openAIModel} onChange={(event) => void saveOpenAIModel(event.target.value)} className={inputClass} />
                       </FieldBlock>
                       <FieldBlock label="API key">
-                        <input
+                        <ThemedInput
                           type="password"
                           value={openAIKeyInput}
                           onChange={(event) => setOpenAIKeyInput(event.target.value)}
@@ -1276,25 +1402,25 @@ export function SettingsModal({
                       </FieldBlock>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={handleSaveOpenAIKey} className="rounded-2xl bg-slate-700 px-4 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={openAIBusy !== null}>
+                      <ThemedButton onClick={handleSaveOpenAIKey} className="rounded-2xl px-4 py-2 text-sm" disabled={openAIBusy !== null}>
                         {openAIBusy ?? 'Save key'}
-                      </button>
-                      <button onClick={handleClearOpenAIKey} className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-50" disabled={openAIBusy !== null}>
+                      </ThemedButton>
+                      <ThemedButton onClick={handleClearOpenAIKey} className="rounded-2xl px-4 py-2 text-sm" disabled={openAIBusy !== null}>
                         Clear stored key
-                      </button>
+                      </ThemedButton>
                     </div>
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-300">
+                    <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-muted)' }}>
                       <StatusRow label="Storage" value={openAIStatus?.storageMode === 'encrypted' ? 'Encrypted' : openAIStatus?.storageMode === 'plaintext' ? 'Plaintext fallback' : 'Not storing a key'} />
                       <StatusRow label="Encrypted storage" value={openAIStatus?.storageAvailable ? 'Available' : 'Unavailable'} />
                       <StatusRow label="Stored key" value={openAIStatus?.hasStoredKey ? 'Configured' : 'Not stored'} />
                       <StatusRow label="Environment key" value={openAIStatus?.hasEnvKey ? 'OPENAI_API_KEY present' : 'Not set'} />
-                    </div>
+                    </ThemedCard>
                     {openAIStatus?.storageMode === 'plaintext' ? (
-                      <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                      <ThemedSection className="rounded-2xl p-4 text-sm" style={{ borderColor: 'var(--status-warning-border)', background: 'var(--status-warning-bg)', color: 'var(--status-warning-text)' }}>
                         This system does not support Electron encrypted storage, so the API key is stored in a local plaintext file under the app data directory.
-                      </div>
+                      </ThemedSection>
                     ) : null}
-                    {openAINote ? <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 text-sm text-slate-200">{openAINote}</div> : null}
+                    {openAINote ? <ThemedCard className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>{openAINote}</ThemedCard> : null}
                   </SettingsCard>
                 </>
               )}
@@ -1304,10 +1430,10 @@ export function SettingsModal({
                   <SettingsCard title="Local runtime overrides" description="Only change these if you know the exact Ollama endpoint or model tag you need.">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FieldBlock label="Ollama endpoint">
-                        <input value={ollamaEndpoint} onChange={(event) => void saveEndpoint(event.target.value)} className={inputClass} />
+                        <ThemedInput value={ollamaEndpoint} onChange={(event) => void saveEndpoint(event.target.value)} className={inputClass} />
                       </FieldBlock>
                       <FieldBlock label="Model preset">
-                        <select
+                        <ThemedSelect
                           value={ollamaModelPresetId}
                           onChange={(event) => void handleModelPresetChange(event.target.value as LocalAIModelPresetId)}
                           className={selectClass}
@@ -1318,23 +1444,23 @@ export function SettingsModal({
                             </option>
                           ))}
                           <option value="custom">Custom model…</option>
-                        </select>
+                        </ThemedSelect>
                       </FieldBlock>
                     </div>
                     {ollamaModelPresetId === 'custom' ? (
                       <FieldBlock label="Custom model tag">
-                        <input value={ollamaModel} onChange={(event) => void saveModel(event.target.value)} className={inputClass} placeholder="llama3.2:1b" />
+                        <ThemedInput value={ollamaModel} onChange={(event) => void saveModel(event.target.value)} className={inputClass} placeholder="llama3.2:1b" />
                       </FieldBlock>
                     ) : null}
                   </SettingsCard>
                   <SettingsCard title="Manual controls" description="Use these when setup automation is not enough or you are troubleshooting.">
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={handleTest} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>{aiBusy ?? 'Test connection'}</button>
-                      <button onClick={handleDownload} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Download bundled</button>
-                      <button onClick={handleInstall} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Install (system)</button>
-                      <button onClick={handleStart} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Start</button>
-                      <button onClick={handleStop} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Stop</button>
-                      <button onClick={handlePull} className="rounded-2xl bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 disabled:opacity-50" disabled={aiBusy !== null}>Pull model</button>
+                      <ThemedButton onClick={handleTest} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>{aiBusy ?? 'Test connection'}</ThemedButton>
+                      <ThemedButton onClick={handleDownload} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>Download bundled</ThemedButton>
+                      <ThemedButton onClick={handleInstall} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>Install (system)</ThemedButton>
+                      <ThemedButton onClick={handleStart} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>Start</ThemedButton>
+                      <ThemedButton onClick={handleStop} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>Stop</ThemedButton>
+                      <ThemedButton onClick={handlePull} className="rounded-2xl px-3 py-2 text-sm" disabled={aiBusy !== null}>Pull model</ThemedButton>
                     </div>
                     <InstallFailsafe />
                   </SettingsCard>
@@ -1343,24 +1469,25 @@ export function SettingsModal({
             </div>
           </div>
 
-          <div className="sticky bottom-0 border-t border-slate-800/80 bg-slate-950/70 px-8 py-4 backdrop-blur">
+          <div className="sticky bottom-0 border-t px-8 py-4 backdrop-blur" style={{ borderColor: 'var(--border-subtle)', background: 'color-mix(in srgb, var(--surface-elevated) 90%, transparent)' }}>
             <div className="flex items-center justify-between gap-3">
-              <button
+              <ThemedButton
                 type="button"
                 onClick={() => {
                   void handleResetSection();
                 }}
-                className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500 hover:text-white"
+                className="rounded-2xl px-4 py-2 text-sm"
               >
                 Reset section
-              </button>
-              <button
+              </ThemedButton>
+              <ThemedButton
+                variant="accent"
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                className="rounded-2xl px-4 py-2 text-sm font-semibold"
               >
                 Close
-              </button>
+              </ThemedButton>
             </div>
           </div>
         </div>
@@ -1370,7 +1497,7 @@ export function SettingsModal({
 }
 
 const inputClass =
-  'w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-3 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none';
+  'w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2.5 text-sm text-[var(--input-text)] focus:outline-none';
 const selectClass = inputClass;
 
 function SettingsCard({
@@ -1383,10 +1510,13 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-[24px] border border-slate-800/80 bg-slate-900/45 p-5">
+    <section
+      className="space-y-4 rounded-[24px] border p-5"
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-base)' }}
+    >
       <div>
-        <h4 className="font-mono text-lg font-semibold text-white">{title}</h4>
-        {description ? <p className="mt-1 text-sm text-slate-400">{description}</p> : null}
+        <h4 className="font-mono text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h4>
+        {description ? <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{description}</p> : null}
       </div>
       <div className="space-y-4">{children}</div>
     </section>
@@ -1404,8 +1534,8 @@ function FieldBlock({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-200">{label}</label>
-      {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
+      <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</label>
+      {description ? <p className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{description}</p> : null}
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -1423,18 +1553,23 @@ function ToggleRow({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+    <div
+      className="flex items-start justify-between gap-4 rounded-2xl border px-4 py-3"
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-base)' }}
+    >
       <div>
-        <div className="text-sm font-medium text-slate-100">{label}</div>
-        {description ? <div className="mt-1 text-xs text-slate-500">{description}</div> : null}
+        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</div>
+        {description ? <div className="mt-1 text-xs" style={{ color: 'var(--text-soft)' }}>{description}</div> : null}
       </div>
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-sky-600' : 'bg-slate-700'}`}
+        className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
+        style={{ background: checked ? 'var(--accent-sky)' : 'var(--border-strong)' }}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
+          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
+          style={{ background: 'var(--surface-elevated)' }}
         />
       </button>
     </div>
@@ -1444,8 +1579,8 @@ function ToggleRow({
 function StatusRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-right text-slate-200">{value}</span>
+      <span style={{ color: 'var(--text-soft)' }}>{label}</span>
+      <span className="text-right" style={{ color: 'var(--text-primary)' }}>{value}</span>
     </div>
   );
 }
@@ -1544,24 +1679,24 @@ function InstallFailsafe() {
   };
 
   return (
-    <div className="mt-3 rounded-md bg-slate-900/50 p-3 text-xs text-slate-300">
-      <div className="mb-2 font-semibold">Install failsafe</div>
+    <ThemedCard className="mt-3 rounded-md p-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+      <div className="mb-2 font-semibold" style={{ color: 'var(--text-primary)' }}>Install failsafe</div>
       <div className="mb-2">If automatic install fails or stalls, use the commands below.</div>
       <div className="flex items-center gap-2 mb-2">
-        <button onClick={installing ? stop : start} className="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600">{installing ? 'Cancel install' : 'Run auto-install'}</button>
-        {note && <span className="text-slate-400">{note}</span>}
+        <ThemedButton onClick={installing ? stop : start} className="rounded px-3 py-1 text-xs">{installing ? 'Cancel install' : 'Run auto-install'}</ThemedButton>
+        {note && <span style={{ color: 'var(--text-soft)' }}>{note}</span>}
       </div>
       <div className="mt-1 flex items-center gap-2">
-        <code className="rounded bg-slate-800 px-2 py-1">curl -fsSL https://ollama.com/install.sh | sh</code>
-        <button onClick={() => copy('curl -fsSL https://ollama.com/install.sh | sh')} className="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">Copy</button>
+        <code className="rounded px-2 py-1" style={{ background: 'var(--surface-raised)', color: 'var(--text-primary)' }}>curl -fsSL https://ollama.com/install.sh | sh</code>
+        <ThemedButton onClick={() => copy('curl -fsSL https://ollama.com/install.sh | sh')} className="rounded px-2 py-1 text-xs">Copy</ThemedButton>
       </div>
       <div className="mt-1 flex items-center gap-2">
-        <code className="rounded bg-slate-800 px-2 py-1">winget install Ollama.Ollama</code>
-        <button onClick={() => copy('winget install Ollama.Ollama')} className="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">Copy</button>
+        <code className="rounded px-2 py-1" style={{ background: 'var(--surface-raised)', color: 'var(--text-primary)' }}>winget install Ollama.Ollama</code>
+        <ThemedButton onClick={() => copy('winget install Ollama.Ollama')} className="rounded px-2 py-1 text-xs">Copy</ThemedButton>
       </div>
       <div className="mt-2">
-        <button onClick={() => window.piBridge.openExternal('https://ollama.com/download')} className="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">Open download page</button>
+        <ThemedButton onClick={() => window.piBridge.openExternal('https://ollama.com/download')} className="rounded px-2 py-1 text-xs">Open download page</ThemedButton>
       </div>
-    </div>
+    </ThemedCard>
   );
 }

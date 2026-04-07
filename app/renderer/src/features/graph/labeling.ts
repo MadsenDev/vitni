@@ -1,6 +1,7 @@
 import cytoscape, { type ElementDefinition } from 'cytoscape';
 import type { GraphSnapshot } from '@renderer/types/graph';
 import { relationshipTypes } from '@renderer/lib/relationshipTypes';
+import type { DerivedNodeReviewStatus } from '@renderer/features/review/reviewModel';
 
 const PLACEHOLDER_VALUES = new Set(['n/a', 'na', 'none', 'unknown', 'null', '-']);
 
@@ -149,7 +150,8 @@ export function mapGraphElements(
   data: GraphSnapshot,
   showLabels: boolean,
   showImages: boolean,
-  imagePreviewMap: Map<string, string>
+  imagePreviewMap: Map<string, string>,
+  nodeReviewStatusMap?: Map<string, DerivedNodeReviewStatus>
 ): ElementDefinition[] {
   const relById = new Map(relationshipTypes.map((rt) => [rt.id, rt]));
   const edgePairCounts = new Map<string, { hasSpecificRelationship: boolean }>();
@@ -182,6 +184,12 @@ export function mapGraphElements(
         icon: nodeTypeIcons[node.type] || '●',
         hasImage: imageUrl ? 'true' : 'false'
       };
+
+      const reviewStatus = nodeReviewStatusMap?.get(node.id);
+      if (reviewStatus) {
+        elementData.reviewTone = reviewStatus.reviewTone;
+        elementData.evidenceTone = reviewStatus.evidenceTone;
+      }
 
       if (imageUrl) {
         elementData.imageUrl = imageUrl;

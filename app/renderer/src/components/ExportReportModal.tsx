@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { ThemedButton, ThemedCard, ThemedPanel, ThemedSection, ThemedSelect } from '@renderer/features/personalization/primitives';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const fieldClass = 'w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
 
 type PersonItem = { id: string; label: string };
 type ReportTemplate = 'full' | 'selection' | 'timeline' | 'person';
@@ -151,14 +150,14 @@ export function ExportReportModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
-      <div className="w-full max-w-lg rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl">
-            <h2 className="mb-4 text-xl font-semibold text-white">Export Report</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-lg rounded-[28px] p-6">
+            <h2 className="mb-4 text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Export Report</h2>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm text-slate-300">Template</label>
-                <select
-                  className={fieldClass}
+                <label className="mb-1 block text-sm" style={{ color: 'var(--text-muted)' }}>Template</label>
+                <ThemedSelect
+                  className="w-full"
                   value={template}
                   onChange={(event) => setTemplate(event.target.value as ReportTemplate)}
                 >
@@ -166,12 +165,12 @@ export function ExportReportModal({ isOpen, onClose }: Props) {
                   <option value="selection">Selection</option>
                   <option value="timeline">Timeline</option>
                   <option value="person">Person Profile</option>
-                </select>
+                </ThemedSelect>
               </div>
               {template === 'person' && (
                 <div>
-                  <label className="mb-1 block text-sm text-slate-300">Person</label>
-                  <select className={fieldClass} value={personId} onChange={e => setPersonId(e.target.value)}>
+                  <label className="mb-1 block text-sm" style={{ color: 'var(--text-muted)' }}>Person</label>
+                  <ThemedSelect className="w-full" value={personId} onChange={e => setPersonId(e.target.value)}>
                     {people.length === 0 ? (
                       <option value="">No persons found</option>
                     ) : (
@@ -179,62 +178,62 @@ export function ExportReportModal({ isOpen, onClose }: Props) {
                         <option key={p.id} value={p.id}>{p.label}</option>
                       ))
                     )}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
-              <label className="flex items-center gap-2 text-slate-300">
+              <label className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                 <input type="checkbox" className="h-4 w-4" checked={useAI} onChange={e => setUseAI(e.target.checked)} />
                 Use AI-written report
               </label>
               {useAI && (
-                <div className="space-y-3 rounded-md border border-slate-700 bg-slate-800/60 p-3">
+                <ThemedSection className="space-y-3 rounded-2xl p-3">
                   <div>
-                    <label className="mb-1 block text-sm text-slate-300">AI Provider</label>
-                    <select className={fieldClass} value={aiProvider} onChange={e => setAiProvider(e.target.value as 'ollama' | 'openai')}>
+                    <label className="mb-1 block text-sm" style={{ color: 'var(--text-muted)' }}>AI Provider</label>
+                    <ThemedSelect className="w-full" value={aiProvider} onChange={e => setAiProvider(e.target.value as 'ollama' | 'openai')}>
                       <option value="ollama">Local (Ollama)</option>
                       <option value="openai">Cloud (OpenAI API)</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
                     {aiProvider === 'openai'
                       ? openAIStatus?.hasKey
                         ? 'Cloud AI is configured. Export will send report facts to OpenAI only for this run.'
                         : 'No OpenAI API key is configured yet. Add one in Settings -> Cloud AI Reports.'
                       : 'Local AI uses your configured Ollama endpoint and model.'}
                   </p>
-                </div>
+                </ThemedSection>
               )}
-              <label className="flex items-center gap-2 text-slate-300">
+              <label className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                 <input type="checkbox" className="h-4 w-4" checked={includeAttachments} onChange={e => setIncludeAttachments(e.target.checked)} />
                 Include attachments
               </label>
               {(exportStage || exportMsg) && (
-                <div className="space-y-2 rounded border border-slate-700 bg-slate-800 p-3 text-sm text-slate-200">
-                  {exportStage && <div className="font-medium text-white">{exportStage}</div>}
+                <ThemedCard className="space-y-2 rounded-2xl p-3 text-sm">
+                  {exportStage && <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{exportStage}</div>}
                   {exportMsg && <div>{exportMsg}</div>}
                   {narrativePreview && (
-                    <div className="rounded border border-emerald-500/20 bg-slate-950/80 p-2 text-xs text-emerald-100 whitespace-pre-line">
+                    <ThemedCard tone="success" className="rounded-xl p-2 text-xs whitespace-pre-line">
                       {narrativePreview}
-                    </div>
+                    </ThemedCard>
                   )}
                   {exportLog.length > 0 && (
-                    <div className="max-h-32 overflow-y-auto rounded border border-slate-700 bg-slate-950/70 p-2 text-xs text-slate-300">
+                    <div className="max-h-32 overflow-y-auto rounded-xl border p-2 text-xs" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-base)', color: 'var(--text-muted)' }}>
                       {exportLog.join('\n')}
                     </div>
                   )}
-                </div>
+                </ThemedCard>
               )}
               {resultPath && (
-                <div className="rounded border border-slate-700 bg-slate-800 p-3 text-sm text-slate-200">
-                  Exported to: <span className="text-sky-300">{resultPath}</span>
-                </div>
+                <ThemedCard className="rounded-2xl p-3 text-sm">
+                  Exported to: <span style={{ color: 'var(--status-accent-text)' }}>{resultPath}</span>
+                </ThemedCard>
               )}
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={onClose} className="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-600">Close</button>
-              <button onClick={runExport} disabled={running || (template === 'person' && !personId)} className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-500 disabled:opacity-50">{running ? 'Exporting…' : 'Export'}</button>
+              <ThemedButton onClick={onClose} variant="quiet">Close</ThemedButton>
+              <ThemedButton onClick={runExport} variant="success" disabled={running || (template === 'person' && !personId)}>{running ? 'Exporting…' : 'Export'}</ThemedButton>
             </div>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

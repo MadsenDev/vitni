@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { InfoTip } from '../InfoTip';
 import type { Confidence, EntityRecord, SourceRecord } from '@shared/types';
 import { formatConfidenceLabel } from '../../lib/confidence';
+import { ThemedButton, ThemedCard, ThemedInput, ThemedTextarea } from '@renderer/features/personalization/primitives';
 
 interface Props {
   entityId: EntityRecord['id'];
@@ -140,18 +141,19 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-6 space-y-4 rounded border border-slate-800 bg-slate-900/60 p-4"
+      className="mt-6 space-y-4 rounded-2xl border p-4"
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-base)' }}
       aria-label="Add assertion"
     >
-      <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Add Assertion</h4>
-      <p className="text-xs text-slate-500">
+      <h4 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Add Fact</h4>
+      <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
         Every assertion must reference a source. Use the Simple editor or switch to JSON for advanced input.
       </p>
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Path</label>
+        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Path</label>
         <InfoTip text={'Where this assertion lives on the entity.\nExamples:\n- profile.note\n- contact.email\n- risk.flags'} />
-        <input
-          className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+        <ThemedInput
+          className="mt-1 w-full rounded-md"
           value={path}
           onChange={(event) => setPath(event.target.value)}
           placeholder="relationship.note"
@@ -160,23 +162,18 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Value</label>
+          <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Value</label>
           <InfoTip text={'Provide the assertion data.\nUse Simple for key/value input or JSON for full objects.'} />
-          <button
-            type="button"
-            className="text-xs rounded border border-slate-700 px-2 py-1 text-slate-300 hover:border-slate-500"
-            onClick={() => setSimpleMode(m => !m)}
-            aria-pressed={simpleMode}
-          >
+          <ThemedButton type="button" variant="quiet" className="text-xs px-2 py-1" onClick={() => setSimpleMode(m => !m)} aria-pressed={simpleMode}>
             {simpleMode ? 'Switch to JSON' : 'Switch to Simple'}
-          </button>
+          </ThemedButton>
         </div>
         {simpleMode ? (
           <div className="space-y-2">
             {kvRows.map((row, idx) => (
               <div key={idx} className="flex items-center gap-2">
-                <input
-                  className="w-1/3 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                <ThemedInput
+                  className="w-1/3 rounded-md px-2 py-2"
                   placeholder="key"
                   value={row.key}
                   onChange={e => {
@@ -185,7 +182,8 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
                   }}
                 />
                 <select
-                  className="w-28 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                  className="w-28 rounded-md border px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500/25"
+                  style={{ borderColor: 'var(--input-border)', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                   value={row.type}
                   onChange={e => {
                     const v = e.target.value as typeof row.type;
@@ -197,8 +195,8 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
                   <option value="boolean">boolean</option>
                   <option value="date">date</option>
                 </select>
-                <input
-                  className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                <ThemedInput
+                  className="flex-1 rounded-md px-2 py-2"
                   placeholder={row.type === 'date' ? 'YYYY-MM-DD' : 'value'}
                   value={row.value}
                   onChange={e => {
@@ -206,29 +204,20 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
                     setKvRows(prev => prev.map((r, i) => i === idx ? { ...r, value: v } : r));
                   }}
                 />
-                <button
-                  type="button"
-                  className="rounded border border-slate-700 px-2 py-2 text-xs text-red-300 hover:border-red-400"
-                  onClick={() => setKvRows(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
-                  title="Remove"
-                >
+                <ThemedButton type="button" variant="danger" className="px-2 py-2 text-xs" onClick={() => setKvRows(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)} title="Remove">
                   Remove
-                </button>
+                </ThemedButton>
               </div>
             ))}
             <div>
-              <button
-                type="button"
-                className="rounded border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500"
-                onClick={() => setKvRows(prev => [...prev, { key: '', type: 'string', value: '' }])}
-              >
+              <ThemedButton type="button" variant="quiet" className="px-3 py-1 text-xs" onClick={() => setKvRows(prev => [...prev, { key: '', type: 'string', value: '' }])}>
                 Add field
-              </button>
+              </ThemedButton>
             </div>
           </div>
         ) : (
-          <textarea
-            className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+          <ThemedTextarea
+            className="mt-1 w-full rounded-md px-3 py-2"
             rows={6}
             value={valueInput}
             onChange={(event) => setValueInput(event.target.value)}
@@ -238,68 +227,57 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
         )}
       </div>
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Confidence</label>
+        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Confidence</label>
         <InfoTip text={'How certain is this assertion?\nVerified: strong evidence\nAsserted: stated but not verified\nUnverified: low certainty'} />
         <div className="mt-2 flex flex-wrap gap-2">
           {CONFIDENCE_LEVELS.map((level) => (
-            <button
+            <ThemedButton
               key={level}
               type="button"
-              className={`rounded px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-                confidence === level
-                  ? 'bg-slate-200 text-slate-900'
-                  : 'border border-slate-700 text-slate-300 hover:border-slate-500'
-              }`}
+              variant={confidence === level ? 'accent' : 'quiet'}
+              className="px-3 py-1 text-xs font-semibold uppercase tracking-wide"
               onClick={() => setConfidence(level)}
             >
               {formatConfidenceLabel(level)}
-            </button>
+            </ThemedButton>
           ))}
         </div>
       </div>
       <div>
-        <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Source</h5>
+        <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Source</h5>
         <InfoTip text={'Every assertion must cite a source.\nPick existing media or enter a kind+locator (URL/path).'} />
         <div className="mt-3 space-y-2">
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Media</label>
+            <label className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Media</label>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSelectFromLibrary}
-                className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-slate-500"
-              >
+              <ThemedButton type="button" variant="quiet" onClick={handleSelectFromLibrary} className="px-3 py-1 text-xs font-semibold uppercase tracking-wide">
                 Browse media gallery
-              </button>
+              </ThemedButton>
               {selectedSource && (
-                <button
-                  type="button"
-                  onClick={handleClearSelection}
-                  className="rounded border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
-                >
+                <ThemedButton type="button" variant="quiet" onClick={handleClearSelection} className="px-3 py-1 text-xs">
                   Clear selection
-                </button>
+                </ThemedButton>
               )}
             </div>
             {selectedSource ? (
-              <div className="mt-2 rounded border border-slate-800 bg-slate-900/60 p-2 text-xs text-slate-400">
-                <p className="font-medium text-slate-200">
+              <ThemedCard className="mt-2 rounded-xl p-2 text-xs" style={{ color: 'var(--text-dim)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
                   Using existing media: {selectedSource.title ?? selectedSource.locator}
                 </p>
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>
                   {selectedSource.kind} • {selectedSource.mime ?? 'Unknown mime'}
                 </p>
-              </div>
+              </ThemedCard>
             ) : (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs" style={{ color: 'var(--text-dim)' }}>
                 Select an attachment from the gallery or provide locator details manually below.
               </p>
             )}
           </div>
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Kind</label>
-            <input
-              className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+            <label className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Kind</label>
+            <ThemedInput
+              className="mt-1 w-full rounded-md"
               value={sourceKind}
               onChange={(event) => setSourceKind(event.target.value)}
               readOnly={Boolean(selectedSource)}
@@ -307,9 +285,9 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
             />
           </div>
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Locator</label>
-            <input
-              className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+            <label className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Locator</label>
+            <ThemedInput
+              className="mt-1 w-full rounded-md"
               value={sourceLocator}
               onChange={(event) => setSourceLocator(event.target.value)}
               placeholder="/path/to/evidence.pdf"
@@ -317,13 +295,13 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
               required
             />
             {selectedSource && (
-              <p className="mt-1 text-xs text-slate-500">Locator locked to existing media path.</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-dim)' }}>Locator locked to existing media path.</p>
             )}
           </div>
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Title</label>
-            <input
-              className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+            <label className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Title</label>
+            <ThemedInput
+              className="mt-1 w-full rounded-md"
               value={sourceTitle}
               onChange={(event) => setSourceTitle(event.target.value)}
               placeholder="Evidence summary"
@@ -333,13 +311,9 @@ export function AddAssertionForm({ entityId, onAssertionCreated, onOpenMediaLibr
         </div>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
-      <button
-        type="submit"
-        className="w-full rounded bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={!canSubmit}
-      >
+      <ThemedButton type="submit" variant="accent" className="w-full text-sm font-semibold" disabled={!canSubmit}>
         {isSubmitting ? 'Saving…' : 'Add assertion'}
-      </button>
+      </ThemedButton>
     </form>
   );
 }

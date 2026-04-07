@@ -18,6 +18,13 @@ import {
   inferImportedLabel,
   type CsvColumnMapping
 } from '@renderer/features/import/csvImport';
+import {
+  ThemedButton,
+  ThemedCard,
+  ThemedPanel,
+  ThemedSection,
+  ThemedSelect
+} from '@renderer/features/personalization/primitives';
 
 interface ImportCsvModalProps {
   isOpen: boolean;
@@ -31,9 +38,6 @@ type ParsedCsv = {
   headers: string[];
   rows: Record<string, string>[];
 };
-
-const inputClass =
-  'w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/70 focus:ring-2 focus:ring-sky-400/20';
 
 export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported }: ImportCsvModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -226,57 +230,46 @@ export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported 
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[125] flex items-center justify-center bg-slate-950/75 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-6xl rounded-[30px] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(7,11,23,0.99))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+    <div className="fixed inset-0 z-[125] flex items-center justify-center px-4 py-8 backdrop-blur-sm" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel className="w-full max-w-6xl rounded-[30px] p-6" elevated>
         <div className="mb-6 flex items-start justify-between gap-6">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Structured import</div>
-            <h2 className="mt-3 font-mono text-2xl font-semibold text-white">Bring CSV evidence into this case</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Structured import</div>
+            <h2 className="mt-3 font-mono text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Bring CSV evidence into this case</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
               Upload the original CSV into the case, map its columns onto a node type, and create source-backed facts from the mapped fields.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isImporting}
-            className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800 disabled:opacity-50"
-          >
-            Close
-          </button>
+          <ThemedButton type="button" onClick={onClose} disabled={isImporting}>Close</ThemedButton>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
           <div className="space-y-4">
-            <section className="rounded-3xl border border-slate-800/80 bg-slate-950/45 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">1. Source file</div>
+            <ThemedSection className="rounded-3xl">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>1. Source file</div>
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFilePick} />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-              >
+              <ThemedButton type="button" onClick={() => fileInputRef.current?.click()} className="w-full py-3">
                 {file ? `Change CSV (${file.name})` : 'Choose CSV file'}
-              </button>
-              <p className="mt-3 text-xs leading-5 text-slate-400">
-                The selected CSV will be copied into the case media library under <span className="font-mono text-slate-300">Imports</span> and used as the supporting source for created facts.
+              </ThemedButton>
+              <p className="mt-3 text-xs leading-5" style={{ color: 'var(--text-muted)' }}>
+                The selected CSV will be copied into the case media library under <span className="font-mono" style={{ color: 'var(--text-primary)' }}>Imports</span> and used as the supporting source for created facts.
               </p>
-            </section>
+            </ThemedSection>
 
-            <section className="rounded-3xl border border-slate-800/80 bg-slate-950/45 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">2. Import target</div>
-              <label className="mb-2 block text-sm font-medium text-slate-200">Node type</label>
-              <select className={inputClass} value={targetType} onChange={(event) => setTargetType(event.target.value as EntityType)}>
+            <ThemedSection className="rounded-3xl">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>2. Import target</div>
+              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Node type</label>
+              <ThemedSelect className="w-full rounded-2xl px-4 py-3" value={targetType} onChange={(event) => setTargetType(event.target.value as EntityType)}>
                 {nodeTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </ThemedSelect>
 
-              <label className="mb-2 mt-4 block text-sm font-medium text-slate-200">Match existing by field</label>
-              <select
-                className={inputClass}
+              <label className="mb-2 mt-4 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Match existing by field</label>
+              <ThemedSelect
+                className="w-full rounded-2xl px-4 py-3"
                 value={dedupeProperty ?? ''}
                 onChange={(event) => setDedupeProperty(event.target.value || null)}
               >
@@ -288,50 +281,50 @@ export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported 
                       {property.label}
                     </option>
                   ))}
-              </select>
+              </ThemedSelect>
 
-              <label className="mb-2 mt-4 block text-sm font-medium text-slate-200">Fact confidence</label>
-              <select className={inputClass} value={confidence} onChange={(event) => setConfidence(event.target.value as Confidence)}>
+              <label className="mb-2 mt-4 block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Fact confidence</label>
+              <ThemedSelect className="w-full rounded-2xl px-4 py-3" value={confidence} onChange={(event) => setConfidence(event.target.value as Confidence)}>
                 <option value="asserted">Asserted</option>
                 <option value="verified">Verified</option>
                 <option value="unverified">Unverified</option>
-              </select>
-            </section>
+              </ThemedSelect>
+            </ThemedSection>
 
             {note ? (
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-200">{note}</div>
+              <ThemedCard className="px-4 py-3 text-sm">{note}</ThemedCard>
             ) : null}
           </div>
 
           <div className="space-y-4">
-            <section className="rounded-3xl border border-slate-800/80 bg-slate-950/45 p-4">
+            <ThemedSection className="rounded-3xl">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">3. Column mapping</div>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Map CSV headers onto <span className="text-slate-200">{nodeType?.label ?? targetType}</span> fields. Mapped fields with assertion support will create source-backed facts automatically.
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>3. Column mapping</div>
+                  <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    Map CSV headers onto <span style={{ color: 'var(--text-primary)' }}>{nodeType?.label ?? targetType}</span> fields. Mapped fields with assertion support will create source-backed facts automatically.
                   </p>
                 </div>
-                {parsedCsv ? <div className="text-xs text-slate-500">{parsedCsv.rows.length} rows</div> : null}
+                {parsedCsv ? <div className="text-xs" style={{ color: 'var(--text-soft)' }}>{parsedCsv.rows.length} rows</div> : null}
               </div>
 
               {parsedCsv ? (
-                <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-slate-800">
-                  <table className="min-w-full divide-y divide-slate-800 text-sm">
-                    <thead className="bg-slate-950/80">
-                      <tr className="text-left text-xs uppercase tracking-[0.14em] text-slate-500">
+                <div className="max-h-[420px] overflow-y-auto rounded-2xl border" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <table className="min-w-full text-sm">
+                    <thead style={{ background: 'var(--surface-elevated)' }}>
+                      <tr className="text-left text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
                         <th className="px-4 py-3">CSV column</th>
                         <th className="px-4 py-3">Maps to</th>
                         <th className="px-4 py-3">Preview</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody>
                       {mappings.map((mapping) => (
-                        <tr key={mapping.column} className="align-top">
-                          <td className="px-4 py-3 font-mono text-slate-200">{mapping.column}</td>
+                        <tr key={mapping.column} className="align-top" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                          <td className="px-4 py-3 font-mono" style={{ color: 'var(--text-primary)' }}>{mapping.column}</td>
                           <td className="px-4 py-3">
-                            <select
-                              className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-sky-400/70 focus:ring-2 focus:ring-sky-400/20"
+                            <ThemedSelect
+                              className="w-full"
                               value={mapping.propertyKey ?? ''}
                               onChange={(event) =>
                                 setMappings((current) =>
@@ -349,12 +342,12 @@ export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported 
                                   {property.label}
                                 </option>
                               ))}
-                            </select>
+                            </ThemedSelect>
                           </td>
-                          <td className="px-4 py-3 text-slate-400">
+                          <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
                             {previewRows.slice(0, 2).map((row, index) => (
                               <div key={`${mapping.column}-${index}`} className="truncate">
-                                {row[mapping.column] || <span className="text-slate-600">Empty</span>}
+                                {row[mapping.column] || <span style={{ color: 'var(--text-soft)' }}>Empty</span>}
                               </div>
                             ))}
                           </td>
@@ -364,30 +357,30 @@ export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported 
                   </table>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-4 py-10 text-center text-sm text-slate-500">
+                <ThemedCard className="border-dashed px-4 py-10 text-center text-sm" style={{ color: 'var(--text-soft)' }}>
                   Choose a CSV file to generate a mapping preview.
-                </div>
+                </ThemedCard>
               )}
-            </section>
+            </ThemedSection>
 
             {parsedCsv ? (
-              <section className="rounded-3xl border border-slate-800/80 bg-slate-950/45 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</div>
-                <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-800">
-                  <table className="min-w-full divide-y divide-slate-800 text-sm">
-                    <thead className="bg-slate-950/80">
-                      <tr className="text-left text-xs uppercase tracking-[0.14em] text-slate-500">
+              <ThemedSection className="rounded-3xl">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>Preview</div>
+                <div className="mt-3 overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <table className="min-w-full text-sm">
+                    <thead style={{ background: 'var(--surface-elevated)' }}>
+                      <tr className="text-left text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
                         {parsedCsv.headers.map((header) => (
                           <th key={header} className="px-4 py-3">{header}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody>
                       {previewRows.map((row, rowIndex) => (
-                        <tr key={`row-${rowIndex}`}>
+                        <tr key={`row-${rowIndex}`} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                           {parsedCsv.headers.map((header) => (
-                            <td key={`${rowIndex}-${header}`} className="max-w-[220px] truncate px-4 py-3 text-slate-300">
-                              {row[header] || <span className="text-slate-600">—</span>}
+                            <td key={`${rowIndex}-${header}`} className="max-w-[220px] truncate px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                              {row[header] || <span style={{ color: 'var(--text-soft)' }}>—</span>}
                             </td>
                           ))}
                         </tr>
@@ -395,30 +388,18 @@ export function ImportCsvModal({ isOpen, graph, assertions, onClose, onImported 
                     </tbody>
                   </table>
                 </div>
-              </section>
+              </ThemedSection>
             ) : null}
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isImporting}
-            className="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleImport()}
-            disabled={!parsedCsv || isImporting}
-            className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <ThemedButton type="button" onClick={onClose} disabled={isImporting}>Cancel</ThemedButton>
+          <ThemedButton type="button" variant="accent" onClick={() => void handleImport()} disabled={!parsedCsv || isImporting}>
             {isImporting ? 'Importing…' : 'Import into case'}
-          </button>
+          </ThemedButton>
         </div>
-      </div>
+      </ThemedPanel>
     </div>,
     document.body
   );

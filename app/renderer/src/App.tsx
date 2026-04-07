@@ -11,6 +11,7 @@ import { ToastViewport } from './components/ToastViewport';
 import { getGraphLayoutPreset, type GraphLayoutPresetId } from './features/graph/layoutPresets';
 import { applyPersonalizationTheme } from './features/personalization/theme';
 import {
+  buildNodeReviewStatusMap,
   buildDerivedReviewAssertions,
   DEFAULT_REVIEW_FILTERS,
   filterReviewAssertions,
@@ -212,6 +213,7 @@ export default function App() {
     () => buildDerivedReviewAssertions(searchAssertions, searchSources, graph),
     [graph, searchAssertions, searchSources]
   );
+  const nodeReviewStatusMap = useMemo(() => buildNodeReviewStatusMap(reviewItems), [reviewItems]);
   const filteredReviewItems = useMemo(
     () => filterReviewAssertions(reviewItems, reviewFilters),
     [reviewFilters, reviewItems]
@@ -473,8 +475,8 @@ export default function App() {
   const isBooting = isLocalAILoading || !graphLoaded || !splashReadyToHide;
 
   const elements = useMemo(
-    () => mapGraphElements(graph, showNodeLabels, showNodeImages, imagePreviews),
-    [graph, imagePreviews, showNodeImages, showNodeLabels]
+    () => mapGraphElements(graph, showNodeLabels, showNodeImages, imagePreviews, nodeReviewStatusMap),
+    [graph, imagePreviews, nodeReviewStatusMap, showNodeImages, showNodeLabels]
   );
 
   const filteredElements = useMemo(() => {
@@ -922,7 +924,7 @@ export default function App() {
       <div className="relative flex h-full flex-col overflow-hidden">
         <TitleBar {...titleBarProps} />
         <div className="flex-1 overflow-auto pt-9">
-          <Suspense fallback={<div className="h-full bg-slate-950" />}>
+          <Suspense fallback={<div className="h-full" style={{ background: 'var(--app-bg)' }} />}>
             <SplashOverlay showing={true} loadingStage={loadingStage} />
           </Suspense>
         </div>
@@ -952,7 +954,7 @@ export default function App() {
           }}
         />
         <div className="flex-1 overflow-auto pt-9">
-          <Suspense fallback={<div className="h-full bg-slate-950" />}>
+          <Suspense fallback={<div className="h-full" style={{ background: 'var(--app-bg)' }} />}>
             <SplashOverlay showing={false} />
             <WelcomeScreen
               onProjectCreate={() => {

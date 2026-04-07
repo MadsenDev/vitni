@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { filterSearchResults, searchGroupLabel } from '@renderer/features/search/searchIndex';
 import type { SearchResult } from '@renderer/types/app';
+import { ThemedInput, ThemedPanel } from '@renderer/features/personalization/primitives';
 
 interface SearchPaletteProps {
   open: boolean;
@@ -62,24 +63,25 @@ export function SearchPalette({ open, items, onClose, onSelect }: SearchPaletteP
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] animate-enter-scale flex items-start justify-center bg-black/45 pt-24 backdrop-blur-[2px]">
-      <div className="panel-elevated w-full max-w-2xl overflow-hidden rounded-[24px]">
-        <div className="border-b border-slate-800/80 px-1 pt-1">
-          <input
+    <div className="fixed inset-0 z-[60] animate-enter-scale flex items-start justify-center pt-24 backdrop-blur-[2px]" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-2xl overflow-hidden rounded-[24px]">
+        <div className="border-b px-1 pt-1" style={{ borderColor: 'var(--border-subtle)' }}>
+          <ThemedInput
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search nodes, relationships, assertions, and sources…"
-            className="w-full rounded-[18px] bg-transparent px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none"
+            className="w-full rounded-[18px] border-transparent px-4 py-3"
+            style={{ background: 'transparent' }}
           />
         </div>
         <div className="max-h-96 overflow-auto p-2">
           {filtered.length === 0 && (
-            <div className="px-4 py-3 text-sm text-slate-500">No results</div>
+            <div className="px-4 py-3 text-sm" style={{ color: 'var(--text-dim)' }}>No results</div>
           )}
           {grouped.map((group) => (
             <div key={group.kind} className="mb-2 last:mb-0">
-              <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-dim)' }}>
                 {searchGroupLabel(group.kind)}
               </div>
               <ul className="space-y-1">
@@ -88,18 +90,21 @@ export function SearchPalette({ open, items, onClose, onSelect }: SearchPaletteP
                   return (
                     <li
                       key={item.id}
-                      className={`cursor-pointer rounded-2xl px-4 py-3 text-sm transition-colors ${
-                        idx === activeIndex
-                          ? 'bg-slate-800 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'
-                          : 'text-slate-300 hover:bg-slate-800/70'
-                      }`}
+                      className="cursor-pointer rounded-2xl px-4 py-3 text-sm transition-colors"
+                      style={idx === activeIndex
+                        ? {
+                            background: 'var(--surface-raised)',
+                            color: 'var(--text-primary)',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)'
+                          }
+                        : { color: 'var(--text-muted)' }}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => { onSelect(item); onClose(); }}
                       title={item.id}
                     >
                       <div className="truncate font-medium">{item.title}</div>
-                      <div className="mt-1 truncate text-xs text-slate-400">{item.subtitle}</div>
-                      {item.metadata ? <div className="mt-1 truncate text-[11px] text-slate-500">{item.metadata}</div> : null}
+                      <div className="mt-1 truncate text-xs" style={{ color: 'var(--text-dim)' }}>{item.subtitle}</div>
+                      {item.metadata ? <div className="mt-1 truncate text-[11px]" style={{ color: 'var(--text-dim)' }}>{item.metadata}</div> : null}
                     </li>
                   );
                 })}
@@ -107,7 +112,7 @@ export function SearchPalette({ open, items, onClose, onSelect }: SearchPaletteP
             </div>
           ))}
         </div>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

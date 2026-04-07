@@ -24,6 +24,11 @@ export type DerivedReviewAssertion = ParsedAssertionRecord & {
   valueSummary: string;
 };
 
+export type DerivedNodeReviewStatus = {
+  reviewTone: 'clear' | 'needs_review' | 'conflict';
+  evidenceTone: 'supported' | 'gap';
+};
+
 export const DEFAULT_REVIEW_FILTERS: ReviewFilters = {
   query: '',
   reviewState: 'all',
@@ -132,6 +137,32 @@ export function filterReviewAssertions(items: DerivedReviewAssertion[], filters:
   });
 
   return filtered;
+}
+
+export function buildNodeReviewStatusMap(items: DerivedReviewAssertion[]) {
+  const map = new Map<string, DerivedNodeReviewStatus>();
+
+  const grouped = new Map<string, DerivedReviewAssertion[]>();
+  items.forEach((item) => {
+    const current = grouped.get(item.subject_id) ?? [];
+    current.push(item);
+    grouped.set(item.subject_id, current);
+  });
+
+  grouped.forEach((nodeItems, subjectId) => {
+    const hasConflict = nodeItems.some(
+      (item) => item.review_state === 'disputed' || item.review_state === 'rejected' || item.conflictStatus === 'conflict'
+    );
+    const hasReviewAttention = nodeItems.some((item) => item.review_state === 'unreviewed');
+    const hasEvidenceGap = nodeItems.some((item) => item.evidenceStatus === 'none');
+
+    map.set(subjectId, {
+      reviewTone: hasConflict ? 'conflict' : hasReviewAttention ? 'needs_review' : 'clear',
+      evidenceTone: hasEvidenceGap ? 'gap' : 'supported'
+    });
+  });
+
+  return map;
 }
 
 export function getAdjacentReviewAssertionId(

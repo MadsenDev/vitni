@@ -1,3 +1,5 @@
+import { ThemedButton, ThemedCard, ThemedPanel } from '@renderer/features/personalization/primitives';
+
 interface NodeDeletionModalProps {
   isOpen: boolean;
   node: { id: string; label: string; type: string } | null;
@@ -15,31 +17,31 @@ export function NodeDeletionModal({
   if (!isOpen || !node) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-red-500/50 rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-md rounded-[28px] p-6 mx-4" style={{ borderColor: 'var(--status-danger-border)' }}>
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white text-lg">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger-text)' }}>
             ⚠️
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Delete Node</h2>
-            <p className="text-sm text-slate-400">This action cannot be undone</p>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Node</h2>
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>This action cannot be undone</p>
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-slate-800/50 border border-slate-700 rounded-md">
+        <ThemedCard className="mb-4 rounded-2xl p-3">
           <div className="text-sm">
-            <div className="text-slate-300 font-medium">{node.label || 'Untitled Entity'}</div>
-            <div className="text-slate-400 text-xs mt-1">Type: {node.type}</div>
-            <div className="text-slate-400 text-xs">ID: {node.id}</div>
+            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{node.label || 'Untitled Entity'}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>Type: {node.type}</div>
+            <div className="text-xs" style={{ color: 'var(--text-dim)' }}>ID: {node.id}</div>
           </div>
-        </div>
+        </ThemedCard>
 
         <div className="mb-4">
-          <p className="text-sm text-slate-300 mb-3">
+          <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
             This will permanently delete the node and all its associated data, including:
           </p>
-          <ul className="text-sm text-slate-400 space-y-1 ml-4">
+          <ul className="text-sm space-y-1 ml-4" style={{ color: 'var(--text-dim)' }}>
             <li>• All assertions about this entity</li>
             <li>• All relationships connected to this node</li>
             <li>• All source references</li>
@@ -47,20 +49,14 @@ export function NodeDeletionModal({
         </div>
 
         <div className="flex justify-end space-x-3 pt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-          >
+          <ThemedButton onClick={onClose} variant="quiet">
             Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
-          >
+          </ThemedButton>
+          <ThemedButton onClick={onConfirm} variant="danger">
             Delete Node
-          </button>
+          </ThemedButton>
         </div>
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

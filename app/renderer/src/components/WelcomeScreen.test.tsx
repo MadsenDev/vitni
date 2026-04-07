@@ -41,8 +41,8 @@ describe('WelcomeScreen', () => {
 
     render(<WelcomeScreen onProjectCreate={onProjectCreate} onProjectLoad={onProjectLoad} {...baseProps} />);
 
-    expect(screen.getByRole('button', { name: /new project/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open project/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start new investigation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open existing case/i })).toBeInTheDocument();
 
     await screen.findAllByText('Alpha Case');
     expect(screen.getByRole('button', { name: /open example case/i })).toBeInTheDocument();
@@ -57,8 +57,8 @@ describe('WelcomeScreen', () => {
       expect(window.piBridge.projectOpenExample).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /new project/i }));
-    fireEvent.click(screen.getByRole('button', { name: /open project/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start new investigation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open existing case/i }));
 
     expect(onProjectCreate).toHaveBeenCalled();
     expect(onProjectLoad).toHaveBeenCalled();
@@ -86,8 +86,8 @@ describe('WelcomeScreen', () => {
 
     render(<WelcomeScreen onProjectCreate={vi.fn()} onProjectLoad={vi.fn()} {...baseProps} />);
 
-    expect(await screen.findByRole('heading', { name: /^recent projects$/i })).toBeInTheDocument();
-    expect(screen.getByText(/no recent projects yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/it will appear here for quick access/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /^continue casework$/i })).toBeInTheDocument();
+    expect(screen.getByText(/no investigations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/appear here as your casework queue/i)).toBeInTheDocument();
   });
 });

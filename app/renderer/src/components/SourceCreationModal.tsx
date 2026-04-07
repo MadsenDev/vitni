@@ -1,6 +1,7 @@
 import { AddSourceForm } from './forms/AddSourceForm';
 import type { SourceRecord } from '@shared/types';
 import type { GraphNodeSnapshot } from '../types/graph';
+import { ThemedButton, ThemedPanel } from '@renderer/features/personalization/primitives';
 
 interface SourceCreationModalProps {
   isOpen: boolean;
@@ -22,20 +23,16 @@ export function SourceCreationModal({
   const label = entity.label || 'Untitled Entity';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
-      <div className="w-full max-w-lg rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--overlay-backdrop)' }}>
+      <ThemedPanel elevated className="w-full max-w-lg rounded-[28px] p-6">
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Attach Source</h2>
-            <p className="text-sm text-slate-400">Record where the information about {label} comes from.</p>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Attach Source</h2>
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>Record where the information about {label} comes from.</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded bg-slate-800 px-2 py-1 text-sm text-slate-300 transition hover:bg-slate-700 hover:text-white"
-          >
+          <ThemedButton type="button" onClick={onClose} variant="quiet" className="px-2 py-1 text-sm">
             ✕
-          </button>
+          </ThemedButton>
         </div>
 
         <AddSourceForm
@@ -46,7 +43,7 @@ export function SourceCreationModal({
           }}
           onOpenMediaLibrary={onOpenMediaLibrary}
         />
-      </div>
+      </ThemedPanel>
     </div>
   );
 }

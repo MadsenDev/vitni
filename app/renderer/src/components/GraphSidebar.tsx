@@ -30,23 +30,59 @@ export function GraphSidebar({
 }: GraphSidebarProps) {
   const profileDefinition = getInvestigationProfileDefinition(investigationProfile);
   return (
-    <aside className="h-full w-80 min-w-[240px] max-w-[320px] flex-shrink-0 bg-[rgba(7,11,23,0.94)] backdrop-blur-xl">
+    <aside
+      className="h-full w-80 min-w-[240px] max-w-[320px] flex-shrink-0 backdrop-blur-xl"
+      style={{
+        background: 'var(--surface-elevated)',
+        borderRight: '1px solid var(--border-subtle)',
+        boxShadow: 'var(--shadow-float)',
+        color: 'var(--text-primary)'
+      }}
+    >
       <div className="flex h-full flex-col overflow-hidden">
-        <div className="border-b border-slate-800/80 px-4 pt-4">
+        <div className="px-4 pt-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <div className="mb-3 px-1">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Workspace palette</p>
-            <h2 className="mt-1 text-sm font-semibold text-slate-100">{profileDefinition.sidebarTitle}</h2>
+            <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>
+              Workspace palette
+            </p>
+            <h2 className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {profileDefinition.sidebarTitle}
+            </h2>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/45 p-1">
+          <div
+            className="flex items-center gap-2 rounded-2xl p-1"
+            style={{
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--surface-base)'
+            }}
+          >
             <button
-              className={`flex-1 rounded-xl px-3 py-2 text-sm transition-colors ${sidebarTab === 'nodes' ? 'bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'text-slate-400 hover:text-slate-200'}`}
+              className="flex-1 rounded-xl px-3 py-2 text-sm transition-colors"
+              style={
+                sidebarTab === 'nodes'
+                  ? {
+                      background: 'var(--surface-raised)',
+                      color: 'var(--text-primary)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                    }
+                  : { color: 'var(--text-muted)' }
+              }
               onClick={() => onSidebarTabChange('nodes')}
             >
               Nodes
             </button>
             {localAIEnabled && (
               <button
-                className={`flex-1 rounded-xl px-3 py-2 text-sm transition-colors ${sidebarTab === 'ai' ? 'bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'text-slate-400 hover:text-slate-200'}`}
+                className="flex-1 rounded-xl px-3 py-2 text-sm transition-colors"
+                style={
+                  sidebarTab === 'ai'
+                    ? {
+                        background: 'var(--surface-raised)',
+                        color: 'var(--text-primary)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                      }
+                    : { color: 'var(--text-muted)' }
+                }
                 onClick={() => onSidebarTabChange('ai')}
               >
                 AI
@@ -64,7 +100,7 @@ export function GraphSidebar({
             />
           )}
           {sidebarTab === 'ai' && localAIEnabled && (
-            <Suspense fallback={<div className="text-sm text-slate-500">Loading AI insights…</div>}>
+            <Suspense fallback={<div className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading AI insights…</div>}>
               <LocalAIInsights enabled={localAIEnabled} graph={graph} nodeTypes={nodeTypes} />
             </Suspense>
           )}
