@@ -22,11 +22,11 @@
     "package:linux": "npm run build && electron-builder --linux AppImage tar.gz --publish never",
     "package:win": "npm run build && electron-builder --win portable zip --publish never",
     "test:renderer": "vitest run --config app/renderer/vite.config.ts",
-    "dev": "concurrently -k \"npm:dev:main\" \"npm:dev:preload\" \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev": "node scripts/resolve-dev-server.mjs && concurrently -k \"npm:dev:main\" \"npm:dev:preload\" \"npm:dev:renderer\" \"npm:dev:electron\"",
     "dev:main": "tsc -p app/main/tsconfig.json --watch",
     "dev:preload": "tsc -p app/preload/tsconfig.json --watch",
     "dev:renderer": "vite --config app/renderer/vite.config.ts",
-    "dev:electron": "wait-on dist/main/app/main/main.js dist/preload/app/preload/preload.js http://localhost:5173 && cross-env NODE_ENV=development PI_DB_KEY=dev-key-123 electron .",
+    "dev:electron": "node scripts/dev-electron.mjs",
     "lint": "eslint --ext .ts,.tsx app/main app/preload app/renderer/src shared",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "start": "npm run build && cross-env NODE_ENV=production electron ."

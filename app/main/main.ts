@@ -9,9 +9,30 @@ import { deviceSettingsService } from './services/deviceSettings';
 import { ollamaManager } from './services/ollama';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+const defaultRendererUrl = 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
 let projectManager: ProjectManager | null = null;
+
+function getDevelopmentRendererUrl() {
+  if (process.env.VITNI_DEV_SERVER_URL) {
+    return process.env.VITNI_DEV_SERVER_URL;
+  }
+
+  try {
+    const configPath = path.resolve(process.cwd(), '.vitni-dev-server.json');
+    const raw = fs.readFileSync(configPath, 'utf8');
+    const parsed = JSON.parse(raw) as { url?: string };
+
+    if (typeof parsed.url === 'string' && parsed.url.length > 0) {
+      return parsed.url;
+    }
+  } catch {
+    // Fall back to the default port when no resolved dev server config exists.
+  }
+
+  return defaultRendererUrl;
+}
 
 async function createWindow() {
   console.log('[Main] createWindow start');
@@ -49,7 +70,7 @@ async function createWindow() {
   registerIpcHandlers(ipcMain, projectManager, transformRegistry, ollamaManager, mainWindow);
 
   if (isDevelopment) {
-    const rendererUrl = new URL('http://localhost:5173');
+    const rendererUrl = new URL(getDevelopmentRendererUrl());
     await mainWindow.loadURL(rendererUrl.toString());
   } else {
     const indexHtml = path.join(__dirname, '../../../renderer/index.html');
