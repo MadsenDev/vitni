@@ -1,14 +1,15 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ElementDefinition } from 'cytoscape';
 import type { SourceWithUsage } from '@shared/types';
-import { FaCrosshairs, FaLink, FaSearchPlus, FaTrash, FaUserEdit } from 'react-icons/fa';
+import { FaBook, FaClock, FaCog, FaCrosshairs, FaDownload, FaExpandArrowsAlt, FaFilter, FaImages, FaInfoCircle, FaLink, FaMapMarked, FaPlus, FaProjectDiagram, FaRetweet, FaSearchPlus, FaTasks, FaTrash, FaUserEdit, FaVectorSquare } from 'react-icons/fa';
 import { TitleBar } from './components/TitleBar';
+import { CommandPalette, type CommandItem } from './components/CommandPalette';
 import { ContextMenu, type ContextMenuItem } from './components/ContextMenu';
 import { GraphWorkspace } from './components/GraphWorkspace';
 import { ImportCsvModal } from './components/ImportCsvModal';
 import { ProjectCreationModal } from './components/ProjectCreationModal';
 import { ToastViewport } from './components/ToastViewport';
-import { getGraphLayoutPreset, type GraphLayoutPresetId } from './features/graph/layoutPresets';
+import { getGraphLayoutPreset, GRAPH_LAYOUT_PRESETS, type GraphLayoutPresetId } from './features/graph/layoutPresets';
 import { applyPersonalizationTheme } from './features/personalization/theme';
 import {
   buildNodeReviewStatusMap,
@@ -117,6 +118,7 @@ export default function App() {
     showExampleCaseOnWelcome,
     personalizationTheme,
     searchOpen,
+    commandPaletteOpen,
     boxSelectEnabled,
     sidebarTab,
     activeTypeIds,
@@ -190,6 +192,7 @@ export default function App() {
     setSelectedEdgeId,
     setSettingsModalOpen,
     setSearchOpen,
+    setCommandPaletteOpen,
     setBoxSelectEnabled,
     setSidebarTab,
     setActiveTypeIds,
@@ -344,6 +347,11 @@ export default function App() {
     const offFit = piMenu.onViewFit(() => graphApiRef.current?.fitToScreen());
     const offCenter = piMenu.onViewCenterSelection(() => graphApiRef.current?.centerSelection());
     const keyHandler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && (event.key === 'f' || event.key === 'F')) {
         event.preventDefault();
         setSearchOpen(true);
@@ -382,7 +390,7 @@ export default function App() {
       offFit?.();
       offCenter?.();
     };
-  }, [filtersOpen, refreshEntityDetails, refreshSearchData, selectedNodeId, setFiltersOpen, setSearchOpen]);
+  }, [filtersOpen, refreshEntityDetails, refreshSearchData, selectedNodeId, setCommandPaletteOpen, setFiltersOpen, setSearchOpen]);
 
   useEffect(() => {
     const offNew = piMenu.onProjectNew(() => {
@@ -919,6 +927,63 @@ export default function App() {
     focusGraphSelection([relatedNodeId], []);
   }, [focusGraphSelection, setSelectedEdgeId, setSelectedNodeId, setSelectedNodeIds]);
 
+  const commandPaletteCommands = useMemo((): CommandItem[] => {
+    const cmds: CommandItem[] = [
+      // Navigate — all pinned
+      { id: 'nav-graph',    label: 'Investigation', group: 'Navigate', groupOrder: 0, icon: <FaMapMarked />,    pin: true, action: () => setView('graph') },
+      { id: 'nav-timeline', label: 'Timeline',       group: 'Navigate', groupOrder: 0, icon: <FaClock />,       pin: true, action: () => setView('timeline') },
+      { id: 'nav-review',   label: 'Review',         group: 'Navigate', groupOrder: 0, icon: <FaTasks />,       pin: true, action: () => setView('review') },
+
+      // Create — pinned: the 4 most common node types + assertion + source; rest discoverable via search
+      ...nodeTypes.map((nodeType) => ({
+        id: `create-${nodeType.id}`,
+        label: `Add ${nodeType.label}`,
+        group: 'Create',
+        groupOrder: 1,
+        icon: <FaPlus />,
+        keywords: [nodeType.id, nodeType.category ?? ''],
+        pin: ['person', 'organization', 'domain', 'evidence'].includes(nodeType.id),
+        action: () => handleQuickCreateNode(nodeType),
+      })),
+      { id: 'create-assertion', label: 'Add Assertion', group: 'Create', groupOrder: 1, icon: <FaPlus />, pin: true, action: () => setAssertionModalOpen(true) },
+      { id: 'create-source',    label: 'Add Source',    group: 'Create', groupOrder: 1, icon: <FaPlus />, pin: true, action: () => setSourceModalOpen(true) },
+
+      // Graph — pinned: the most-used actions; rest discoverable
+      ...(view === 'graph' ? [
+        { id: 'graph-fit',          label: 'Fit to screen',        group: 'Graph', groupOrder: 2, icon: <FaExpandArrowsAlt />, shortcut: '⌃⇧F', pin: true,  action: () => graphApiRef.current?.fitToScreen() },
+        { id: 'graph-zoom',         label: 'Zoom to selection',    group: 'Graph', groupOrder: 2, icon: <FaSearchPlus />,      shortcut: '⌃⇧Z', pin: false, action: () => graphApiRef.current?.zoomToSelection() },
+        { id: 'graph-center',       label: 'Center selection',     group: 'Graph', groupOrder: 2, icon: <FaCrosshairs />,      shortcut: '⌃⇧C', pin: false, action: () => graphApiRef.current?.centerSelection() },
+        { id: 'graph-invert',       label: 'Invert selection',     group: 'Graph', groupOrder: 2, icon: <FaRetweet />,                           pin: false, action: () => graphApiRef.current?.invertSelection() },
+        { id: 'graph-relationship', label: 'Relationship tool',    group: 'Graph', groupOrder: 2, icon: <FaLink />,                              pin: true,  action: () => setRelationshipTool((prev) => ({ ...prev, isActive: !prev.isActive, ...(prev.isActive ? { selectedType: null, sourceNode: null, targetNode: null } : {}) })) },
+        { id: 'graph-box-select',   label: 'Box selection',        group: 'Graph', groupOrder: 2, icon: <FaVectorSquare />,                      pin: false, action: () => { const next = !boxSelectEnabled; graphApiRef.current?.setBoxSelectEnabled(next); setBoxSelectEnabled(next); } },
+        { id: 'graph-filters',      label: 'Toggle filters',       group: 'Graph', groupOrder: 2, icon: <FaFilter />,                            pin: true,  action: () => { setFilterAnchor(null); setFiltersOpen(!filtersOpen); } },
+        ...GRAPH_LAYOUT_PRESETS.map((preset) => ({
+          id: `layout-${preset.id}`,
+          label: `Layout: ${preset.label}`,
+          group: 'Graph',
+          groupOrder: 2,
+          icon: <FaProjectDiagram />,
+          keywords: ['layout', preset.id],
+          pin: false,
+          action: () => handleRunLayoutPreset(preset.id),
+        })),
+      ] : []),
+
+      // File — export + settings pinned; rest discoverable
+      { id: 'file-export',       label: 'Export report',    group: 'File', groupOrder: 3, icon: <FaDownload />,    pin: true,  action: () => setExportReportOpen(true) },
+      { id: 'file-media',        label: 'Media library',    group: 'File', groupOrder: 3, icon: <FaImages />,      pin: false, action: () => setMediaLibraryState({ isOpen: true, mode: 'manage', onSelect: null }) },
+      { id: 'file-settings',     label: 'Settings',         group: 'File', groupOrder: 3, icon: <FaCog />,         pin: true,  action: () => setSettingsModalOpen(true) },
+      { id: 'file-project-info', label: 'Project settings', group: 'File', groupOrder: 3, icon: <FaInfoCircle />,  pin: false, action: () => setProjectInfoOpen(true) },
+      { id: 'file-terminology',  label: 'Terminology',      group: 'File', groupOrder: 3, icon: <FaBook />,        pin: false, action: () => setTerminologyOpen(true) },
+    ];
+    return cmds;
+  }, [
+    view, filtersOpen, boxSelectEnabled,
+    setView, setAssertionModalOpen, setSourceModalOpen, handleQuickCreateNode, handleRunLayoutPreset,
+    graphApiRef, setFiltersOpen, setFilterAnchor, setRelationshipTool, setBoxSelectEnabled,
+    setExportReportOpen, setMediaLibraryState, setSettingsModalOpen, setProjectInfoOpen, setTerminologyOpen,
+  ]);
+
   if (isBooting) {
     return (
       <div className="relative flex h-full flex-col overflow-hidden">
@@ -953,7 +1018,7 @@ export default function App() {
             await Promise.all([refreshGraph(), refreshSearchData()]);
           }}
         />
-        <div className="flex-1 overflow-auto pt-9">
+        <div className="flex-1 overflow-hidden pt-9">
           <Suspense fallback={<div className="h-full" style={{ background: 'var(--app-bg)' }} />}>
             <SplashOverlay showing={false} />
             <WelcomeScreen
@@ -1254,6 +1319,13 @@ export default function App() {
         items={nodeContextItems}
         onClose={() => setNodeContextMenu(null)}
         onAction={handleNodeContextAction}
+      />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        commands={commandPaletteCommands}
+        searchItems={searchResults}
+        onSearchSelect={(result) => { handleSearchSelect(result); }}
       />
     </div>
   );

@@ -160,6 +160,7 @@ export type AppStateSnapshot = {
   showExampleCaseOnWelcome: boolean;
   personalizationTheme: PersonalizationTheme;
   searchOpen: boolean;
+  commandPaletteOpen: boolean;
   boxSelectEnabled: boolean;
   sidebarTab: SidebarTab;
   activeTypeIds: Set<string>;

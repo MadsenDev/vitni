@@ -267,7 +267,7 @@ export function WelcomeScreen({
 
   return (
     <div
-      className="relative flex h-full items-start justify-center overflow-auto"
+      className="relative flex h-full items-start justify-center overflow-hidden"
       style={{
         background:
           'radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--accent-emerald) 14%, transparent), transparent 24%), radial-gradient(circle at 80% 16%, color-mix(in srgb, var(--accent-sky) 14%, transparent), transparent 20%), radial-gradient(circle at 52% 78%, color-mix(in srgb, var(--danger-soft) 10%, transparent), transparent 22%), var(--body-background)'
@@ -299,16 +299,16 @@ export function WelcomeScreen({
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-6xl px-6 py-6 lg:px-12 lg:py-8"
+        className="relative z-10 w-full max-w-6xl px-6 py-4 lg:px-12 lg:py-5"
       >
-        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_400px] lg:gap-10">
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_380px] lg:gap-7">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08, duration: 0.48 }}
-            className="flex flex-col space-y-5"
+            className="flex flex-col space-y-4"
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               <motion.img
                 src={vitniLogo}
                 alt="Vitni"
@@ -328,7 +328,7 @@ export function WelcomeScreen({
               </div>
 
               <div className="space-y-3">
-                <h1 aria-label="Investigation workspace" className="max-w-3xl font-mono text-3xl font-bold leading-tight lg:text-[3.5rem]" style={{ color: 'var(--text-primary)' }}>
+                <h1 aria-label="Investigation workspace" className="max-w-3xl font-mono text-3xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
                   Investigation
                   <br />
                   <CyclingDecryptText
@@ -377,13 +377,13 @@ export function WelcomeScreen({
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.16, duration: 0.42 }}
-              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
             >
               <motion.button
                 onClick={onProjectCreate}
                 whileHover={{ y: -3, scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all"
+                className="group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all"
                 style={{ ...actionCardBaseStyle, borderColor: 'rgba(69,214,168,0.24)' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/8 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -405,7 +405,7 @@ export function WelcomeScreen({
                 onClick={onProjectLoad}
                 whileHover={{ y: -3, scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all"
+                className="group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all"
                 style={{ ...actionCardBaseStyle, borderColor: 'rgba(95,212,255,0.24)' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-sky-400/8 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -435,7 +435,7 @@ export function WelcomeScreen({
                 transition={{ delay: 0.2, duration: 0.42 }}
                 whileHover={{ y: -2, scale: 1.005 }}
                 whileTap={{ scale: 0.995 }}
-                className="group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all"
+                className="group relative overflow-hidden rounded-[24px] border p-3 text-left transition-all"
                 style={{ ...actionCardBaseStyle, borderColor: 'rgba(217,70,239,0.22)' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-400/8 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -470,18 +470,18 @@ export function WelcomeScreen({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.22, duration: 0.46 }}
-            className="mt-4 rounded-[28px] border p-5 lg:mt-0"
+            className="mt-4 rounded-[28px] border p-4 lg:mt-0"
             style={{ borderColor: 'var(--border-subtle)', background: 'linear-gradient(180deg, var(--surface-raised), var(--surface-base))', boxShadow: 'var(--shadow-panel)' }}
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <h3 className="font-mono text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Continue Casework</h3>
-                <p className="mt-1 text-xs font-mono uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>Return to active investigations</p>
+                <h3 className="font-mono text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Continue Casework</h3>
+                <p className="mt-0.5 text-xs font-mono uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>Return to active investigations</p>
               </div>
 
               {recentProjects.length > 0 ? (
-                <div className="space-y-3">
-                  {recentProjects.slice(0, 6).map((project, index) => (
+                <div className="space-y-2">
+                  {recentProjects.slice(0, 5).map((project, index) => (
                     <motion.button
                       key={project.root}
                       initial={{ opacity: 0, y: 12 }}
@@ -499,7 +499,7 @@ export function WelcomeScreen({
                       }}
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.995 }}
-                      className="group w-full rounded-[22px] border p-4 text-left transition-all"
+                      className="group w-full rounded-[18px] border p-3 text-left transition-all"
                       style={
                         index === 0
                           ? {
@@ -515,9 +515,8 @@ export function WelcomeScreen({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-mono font-medium" style={{ color: 'var(--text-primary)' }}>{project.name}</div>
-                          <div className="mt-1 text-xs font-mono" style={{ color: 'var(--text-soft)' }}>Last active {formatLastOpened(project.lastOpenedAt)}</div>
-                          <div className="mt-2 truncate text-xs" style={{ color: 'var(--text-muted)' }}>{shortProjectLocation(project.root)}</div>
-                          <div className="mt-3 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-soft)' }}>Continue casework</div>
+                          <div className="mt-0.5 text-xs font-mono" style={{ color: 'var(--text-soft)' }}>Last active {formatLastOpened(project.lastOpenedAt)}</div>
+                          <div className="mt-1 truncate text-xs" style={{ color: 'var(--text-muted)' }}>{shortProjectLocation(project.root)}</div>
                         </div>
                         <svg
                           className="mt-0.5 h-4 w-4 flex-shrink-0 transition-all"

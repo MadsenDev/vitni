@@ -127,6 +127,7 @@ type AppStore = AppStateSnapshot & {
   setShowExampleCaseOnWelcome: (value: boolean) => void;
   setPersonalizationTheme: (value: PersonalizationTheme) => void;
   setSearchOpen: (value: boolean) => void;
+  setCommandPaletteOpen: (value: boolean) => void;
   setBoxSelectEnabled: (value: boolean) => void;
   setSidebarTab: (value: AppStateSnapshot['sidebarTab']) => void;
   setActiveTypeIds: (value: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
@@ -244,6 +245,7 @@ const initialState: AppStateSnapshot = {
   showExampleCaseOnWelcome: DEFAULT_SHOW_EXAMPLE_CASE_ON_WELCOME,
   personalizationTheme: DEFAULT_PERSONALIZATION_THEME,
   searchOpen: false,
+  commandPaletteOpen: false,
   boxSelectEnabled: false,
   sidebarTab: 'nodes',
   activeTypeIds: INITIAL_ACTIVE_TYPE_IDS,
@@ -314,6 +316,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setShowExampleCaseOnWelcome: (showExampleCaseOnWelcome) => set(() => ({ showExampleCaseOnWelcome })),
   setPersonalizationTheme: (personalizationTheme) => set(() => ({ personalizationTheme })),
   setSearchOpen: (searchOpen) => set(() => ({ searchOpen })),
+  setCommandPaletteOpen: (commandPaletteOpen) => set(() => ({ commandPaletteOpen })),
   setBoxSelectEnabled: (boxSelectEnabled) => set(() => ({ boxSelectEnabled })),
   setSidebarTab: (sidebarTab) => set(() => ({ sidebarTab })),
   setActiveTypeIds: (value) => set((state) => ({ activeTypeIds: typeof value === 'function' ? value(state.activeTypeIds) : value })),
