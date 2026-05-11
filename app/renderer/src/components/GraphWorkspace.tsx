@@ -22,6 +22,7 @@ import { GraphSidebar } from './GraphSidebar';
 import { InspectorPanel } from './InspectorPanel';
 import { SearchPalette } from './SearchPalette';
 import { ReviewWorkspace } from './ReviewWorkspace';
+import { TimelineSidebar, type TimelineMeta } from './TimelineSidebar';
 import { TimelineWorkspace } from './TimelineWorkspace';
 import { TopToolbar } from './TopToolbar';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -195,6 +196,14 @@ export function GraphWorkspace({
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = React.useState(false);
   const [leftSidebarWidth, setLeftSidebarWidth] = React.useState(320);
   const [rightSidebarWidth, setRightSidebarWidth] = React.useState(400);
+
+  const [tlEntityFilter, setTlEntityFilter] = React.useState('');
+  const [tlBucketFilter, setTlBucketFilter] = React.useState('All');
+  const [tlDateFrom, setTlDateFrom] = React.useState('');
+  const [tlDateTo, setTlDateTo] = React.useState('');
+  const [tlMeta, setTlMeta] = React.useState<TimelineMeta>({
+    entityOptions: [], buckets: ['All'], filteredCount: 0, totalEvents: 0, uniqueDates: 0, relCount: 0, span: '—',
+  });
   const leftSidebarWidthRef = React.useRef(leftSidebarWidth);
   const rightSidebarWidthRef = React.useRef(rightSidebarWidth);
 
@@ -353,7 +362,6 @@ export function GraphWorkspace({
         items={searchResults}
         onSelect={onSearchSelect}
       />
-      {view === 'timeline' ? <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} /> : null}
       <div className="relative flex flex-1 overflow-hidden min-w-0">
         <main className="flex flex-1 flex-col min-w-0">
           <div className="relative flex flex-1 overflow-hidden min-w-0">
@@ -481,8 +489,128 @@ export function GraphWorkspace({
                 ) : null}
               </>
             ) : view === 'timeline' ? (
-              <div className="flex-1">
-                <TimelineWorkspace nodes={graph.nodes} edges={graph.edges} />
+              <div className="relative flex flex-1 overflow-hidden min-w-0">
+                {/* Left collapse toggle */}
+                <div
+                  className="pointer-events-none absolute inset-y-0 z-[30] flex items-start pt-4"
+                  style={{ left: leftSidebarCollapsed ? 16 : leftSidebarWidth + 4 }}
+                >
+                  <button
+                    type="button"
+                    className="pointer-events-auto mt-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700/80 bg-slate-950/85 text-slate-300 shadow-[0_12px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl transition hover:border-slate-600 hover:text-white"
+                    onClick={toggleLeftSidebar}
+                    title={leftSidebarCollapsed ? 'Show filters' : 'Hide filters'}
+                  >
+                    {leftSidebarCollapsed ? <FaChevronRight className="h-3.5 w-3.5" /> : <FaChevronLeft className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+
+                {/* Left sidebar */}
+                {!leftSidebarCollapsed ? (
+                  <div className="relative z-[20] flex shrink-0 p-4 pr-0" style={{ width: leftSidebarWidth }}>
+                    <div className="flex min-w-0 flex-1 overflow-hidden rounded-[28px] border border-slate-800/80 shadow-[0_26px_60px_rgba(0,0,0,0.38)]">
+                      <TimelineSidebar
+                        entityFilter={tlEntityFilter}
+                        setEntityFilter={setTlEntityFilter}
+                        bucketFilter={tlBucketFilter}
+                        setBucketFilter={setTlBucketFilter}
+                        dateFrom={tlDateFrom}
+                        setDateFrom={setTlDateFrom}
+                        dateTo={tlDateTo}
+                        setDateTo={setTlDateTo}
+                        entityOptions={tlMeta.entityOptions}
+                        buckets={tlMeta.buckets}
+                        filteredCount={tlMeta.filteredCount}
+                        totalEvents={tlMeta.totalEvents}
+                        uniqueDates={tlMeta.uniqueDates}
+                        relCount={tlMeta.relCount}
+                        span={tlMeta.span}
+                      />
+                    </div>
+                    <div
+                      className="group relative ml-2 w-3 cursor-col-resize"
+                      onMouseDown={startLeftResize}
+                      title="Resize filters"
+                    >
+                      <div className="absolute inset-y-10 left-1/2 w-px -translate-x-1/2 rounded-full bg-slate-700/60 transition group-hover:bg-sky-400/80" />
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Main content */}
+                <div
+                  className="min-w-0 flex-1 overflow-hidden"
+                  style={{ marginLeft: leftSidebarCollapsed ? 52 : 0 }}
+                >
+                  <TimelineWorkspace
+                    nodes={graph.nodes}
+                    edges={graph.edges}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={onSelectNode}
+                    entityFilter={tlEntityFilter}
+                    bucketFilter={tlBucketFilter}
+                    dateFrom={tlDateFrom}
+                    dateTo={tlDateTo}
+                    onMetadata={setTlMeta}
+                  />
+                </div>
+
+                {/* Right collapse toggle */}
+                <div
+                  className="pointer-events-none absolute inset-y-0 z-[30] flex items-start pt-4"
+                  style={{ right: rightSidebarCollapsed ? 16 : rightSidebarWidth + 4 }}
+                >
+                  <button
+                    type="button"
+                    className="pointer-events-auto mt-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700/80 bg-slate-950/85 text-slate-300 shadow-[0_12px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl transition hover:border-slate-600 hover:text-white"
+                    onClick={toggleRightSidebar}
+                    title={rightSidebarCollapsed ? 'Show inspector' : 'Hide inspector'}
+                  >
+                    {rightSidebarCollapsed ? <FaChevronLeft className="h-3.5 w-3.5" /> : <FaChevronRight className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+
+                {/* Right sidebar */}
+                {!rightSidebarCollapsed ? (
+                  <div className="relative z-[20] flex shrink-0 p-4 pl-0" style={{ width: rightSidebarWidth }}>
+                    <div
+                      className="group relative mr-2 w-3 cursor-col-resize"
+                      onMouseDown={startRightResize}
+                      title="Resize inspector"
+                    >
+                      <div className="absolute inset-y-10 left-1/2 w-px -translate-x-1/2 rounded-full bg-slate-700/60 transition group-hover:bg-sky-400/80" />
+                    </div>
+                    <div className="flex min-w-0 flex-1 overflow-hidden rounded-[28px] border border-slate-800/80 shadow-[0_26px_60px_rgba(0,0,0,0.38)]">
+                      <InspectorPanel
+                        nodeTypes={nodeTypes}
+                        iconPack={personalizationTheme.iconPack}
+                        graphNodes={graph.nodes}
+                        graphEdges={graph.edges}
+                        selectedNodeId={selectedNodeId}
+                        selectedNodeIds={selectedNodeIds}
+                        selectedEdgeId={null}
+                        assertions={assertions}
+                        sources={sources}
+                        onAddAssertion={onAddAssertion}
+                        onAddSource={onAddSource}
+                        onDeleteNode={onDeleteNode}
+                        onDeleteNodes={onDeleteNodes}
+                        onDeleteEdge={onDeleteEdge}
+                        onUpdateLabel={(nodeId, label) => { void onUpdateLabel(nodeId, label); }}
+                        onUpdateProperty={(nodeId, key, value) => onUpdateProperty(nodeId, key, value)}
+                        onUpdateEdgeProperty={(edgeId, key, value) => { void onUpdateEdgeProperty(edgeId, key, value); }}
+                        onRequestRemoteTransform={onRequestRemoteTransform}
+                        onAlignLeft={() => {}}
+                        onAlignTop={() => {}}
+                        reviewItems={reviewItems}
+                        onOpenAssertionInReview={onOpenAssertionInReview}
+                        onNextUnreviewedReview={onNextUnreviewedReview}
+                        searchFocus={searchFocus}
+                        assertionFieldAutomation={assertionFieldAutomation}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="flex-1 min-h-0">

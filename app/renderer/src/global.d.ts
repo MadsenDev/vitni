@@ -84,6 +84,7 @@ interface PiBridge {
   updateEntity: (entityId: string, updates: { label?: string; properties?: Record<string, unknown> }) => Promise<boolean>;
   updateEntityPosition: (entityId: string, pos: { x: number; y: number }) => Promise<boolean>;
   projectNew: (projectName?: string) => Promise<boolean>;
+  projectNewTutorial: (projectName?: string) => Promise<boolean>;
   projectOpen: () => Promise<boolean>;
   projectOpenPath: (path: string) => Promise<{ ok: boolean; message?: string }>;
   projectRecent: () => Promise<Array<{ root: string; name: string; lastOpenedAt: number }>>;

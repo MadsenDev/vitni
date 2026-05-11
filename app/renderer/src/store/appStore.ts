@@ -150,6 +150,7 @@ type AppStore = AppStateSnapshot & {
   refreshEntityDetails: (entityId: string) => Promise<void>;
   refreshNodesWithSources: () => Promise<void>;
   createProject: (projectName?: string) => Promise<void>;
+  createTutorialProject: () => Promise<void>;
   openProject: () => Promise<void>;
   handleProjectLoaded: () => Promise<void>;
   closeProject: () => void;
@@ -270,6 +271,8 @@ async function loadGraphIntoStore(set: (fn: (state: AppStore) => Partial<AppStor
   set(() => ({ graph: { nodes: graph.nodes, edges: graph.edges } }));
   return graph;
 }
+
+let _tutorialProjectCreating = false;
 
 async function withSplashDelay(callback: () => Promise<void>): Promise<void> {
   const startTime = Date.now();
@@ -557,6 +560,28 @@ export const useAppStore = create<AppStore>((set, get) => ({
       console.error('project:new failed', error);
       set(() => ({ showWelcome: false }));
       await get().loadSettings();
+    }
+  },
+  createTutorialProject: async () => {
+    if (_tutorialProjectCreating) return;
+    if (!get().showWelcome) return;
+    _tutorialProjectCreating = true;
+    try {
+      const ok = await piBridge.projectNewTutorial('Operation Glass Harbor');
+      if (!ok) return;
+      const graph = await piBridge.loadGraph();
+      set(() => ({
+        graph: { nodes: graph.nodes, edges: graph.edges },
+        graphLoaded: true,
+        splashReadyToHide: true,
+        isLocalAILoading: false,
+        loadingStage: 'complete',
+        showWelcome: false,
+      }));
+    } catch (error) {
+      console.error('project:new:tutorial failed', error);
+    } finally {
+      _tutorialProjectCreating = false;
     }
   },
   openProject: async () => {

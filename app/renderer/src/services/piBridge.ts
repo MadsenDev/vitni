@@ -178,6 +178,9 @@ export const piBridge = {
   projectNew(projectName?: string): Promise<boolean> {
     return window.piBridge.projectNew(projectName);
   },
+  projectNewTutorial(projectName?: string): Promise<boolean> {
+    return window.piBridge.projectNewTutorial(projectName);
+  },
   projectOpen(): Promise<boolean> {
     return window.piBridge.projectOpen();
   },

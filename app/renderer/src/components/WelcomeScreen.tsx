@@ -15,6 +15,7 @@ interface WelcomeScreenProps {
   investigationProfile: InvestigationProfile;
   onInvestigationProfileChange: (value: InvestigationProfile) => void;
   showExampleCase: boolean;
+  onStartTutorial?: () => void;
 }
 
 interface RecentProject {
@@ -152,7 +153,8 @@ export function WelcomeScreen({
   onProjectLoad,
   investigationProfile,
   onInvestigationProfileChange,
-  showExampleCase
+  showExampleCase,
+  onStartTutorial
 }: WelcomeScreenProps) {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [exampleProject, setExampleProject] = useState<ExampleProjectInfo | null>(null);
@@ -380,6 +382,7 @@ export function WelcomeScreen({
               className="grid grid-cols-1 gap-2 sm:grid-cols-2"
             >
               <motion.button
+                data-tutorial-id="welcome-new-project"
                 onClick={onProjectCreate}
                 whileHover={{ y: -3, scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
@@ -462,7 +465,18 @@ export function WelcomeScreen({
             ) : null}
 
             <div className="pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-              <p className="text-xs font-mono" style={{ color: 'var(--text-soft)' }}>Your data is stored locally on this device unless you explicitly export it.</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-mono" style={{ color: 'var(--text-soft)' }}>Your data is stored locally on this device unless you explicitly export it.</p>
+                {onStartTutorial && (
+                  <button
+                    onClick={onStartTutorial}
+                    className="flex-shrink-0 text-xs font-mono transition-colors hover:opacity-80"
+                    style={{ color: 'var(--accent-sky)' }}
+                  >
+                    Interactive tutorial (WIP) →
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
 

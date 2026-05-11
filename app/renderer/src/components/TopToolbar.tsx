@@ -131,6 +131,7 @@ export function TopToolbar({
             Timeline
           </button>
           <button
+            data-tutorial-id="toolbar-review-tab"
             className="rounded-lg px-3 py-1.5 text-sm transition-colors"
             style={view === 'review' ? { background: 'var(--surface-raised)', color: 'var(--text-primary)' } : { color: 'var(--text-muted)' }}
             onClick={() => onSwitchWorkspace('review')}
@@ -144,6 +145,7 @@ export function TopToolbar({
         <div className="flex items-center space-x-2">
           <span className="mr-1 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-soft)' }}>Tools</span>
           <button
+            data-tutorial-id="toolbar-relationship-tool"
             onClick={toggleRelationshipMode}
             className={`control-chip rounded-xl p-2.5 ${relationshipTool.isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/15' : ''}`}
             style={!relationshipTool.isActive ? { color: 'var(--text-muted)' } : undefined}

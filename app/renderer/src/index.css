@@ -221,6 +221,21 @@ body[data-ui-density='compact'] .panel-elevated {
   }
 }
 
+@keyframes tutorial-ring-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(95, 212, 255, 0.2), inset 0 0 12px rgba(95, 212, 255, 0.05);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 32px rgba(95, 212, 255, 0.35), inset 0 0 20px rgba(95, 212, 255, 0.1);
+  }
+}
+
+.tutorial-ring {
+  animation: tutorial-ring-pulse 2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

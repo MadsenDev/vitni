@@ -107,6 +107,7 @@ function createBridge() {
         mime: payload.mime
       }),
     projectNew: (projectName?: string) => ipcRenderer.invoke('project:new', projectName),
+    projectNewTutorial: (projectName?: string) => ipcRenderer.invoke('project:new:tutorial', projectName),
     projectOpen: () => ipcRenderer.invoke('project:open'),
     projectOpenPath: (path: string): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('project:open:path', path),
     projectRecent: (): Promise<Array<{ root: string; name: string; lastOpenedAt: number }>> => ipcRenderer.invoke('project:recent'),

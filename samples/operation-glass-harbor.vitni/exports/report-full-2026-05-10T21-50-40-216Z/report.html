@@ -1,0 +1,494 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Investigation Report - [NRR-2026-014] Operation Circuit Ledger</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif; background:#0b1220; color:#e2e8f0; padding:32px; }
+    h1,h2,h3 { color:#fff; margin: 0.4em 0; }
+    .muted { color:#94a3b8; }
+    .section { margin-top:28px; padding-top:12px; border-top:1px solid #1f2a44; }
+    table { width:100%; border-collapse: collapse; margin-top:8px; }
+    td,th { border:1px solid #1f2a44; padding:6px 8px; font-size:13px; vertical-align: top; }
+    th { background:#111827; text-align:left; }
+    code { background:#111827; padding:2px 4px; border-radius:4px; }
+    .meta { display:grid; grid-template-columns: 1fr 1fr; gap:8px 16px; }
+    .box { background:#0b1327; border:1px solid #1f2a44; border-radius:8px; padding:12px; }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Investigation Report</h1>
+  <div class="muted small">Generated 2026-05-10T21:50:40.325Z</div>
+  <div class="section box">
+    <div class="meta">
+      <div><strong>Case</strong><br/>[NRR-2026-014] Operation Circuit Ledger</div>
+      <div><strong>Author</strong><br/>Dana Mercer</div>
+      <div><strong>Agency</strong><br/>Nordic Risk Response</div>
+      <div><strong>Project Created</strong><br/>2026-03-31T00:00:00.000Z</div>
+    </div>
+    <div style="margin-top:12px"><strong>Summary</strong><br/>Settlement diversion through a lookalike vendor portal, shell account, and crypto off-ramp.</div>
+  </div>
+  <div class="section">
+    <h2>Methodology</h2>
+    <p class="muted">This report was generated from the Vitni case database...</p>
+  </div>
+  <div class="section"><h2>Executive Summary</h2><p>[NRR-2026-014] Operation Circuit Ledger was exported as a full report. The graph is centered on 4 person, 4 organization, 2 domain, 2 financial_account, 1 case. 38 relationships, 35 assertions, and 11 evidence sources are represented. 33 dated events were identified, with 33 relationship records carrying explicit dates.</p></div>
+  <div class="section">
+    <h2>Findings: Entities (30)</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Label</th><th>Properties</th></tr></thead>
+      <tbody>
+        <tr><td class="small"><code>ent-case-circuit-ledger</code></td><td>case</td><td>Operation Circuit Ledger</td><td class="small"><pre>{
+  &quot;caseNumber&quot;: &quot;NRR-2026-014&quot;,
+  &quot;title&quot;: &quot;Operation Circuit Ledger&quot;,
+  &quot;caseType&quot;: &quot;Compliance&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;priority&quot;: &quot;Critical&quot;,
+  &quot;assignedTo&quot;: &quot;Dana Mercer&quot;,
+  &quot;openedDate&quot;: &quot;2026-03-21&quot;,
+  &quot;description&quot;: &quot;Suspected settlement diversion through a lookalike vendor portal and shell payout path.&quot;,
+  &quot;notes&quot;: &quot;Synthetic showcase case seeded for repo demos.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-incident-diversion</code></td><td>incident</td><td>Unauthorized settlement diversion</td><td class="small"><pre>{
+  &quot;title&quot;: &quot;Unauthorized settlement diversion&quot;,
+  &quot;incidentType&quot;: &quot;Fraud&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;location&quot;: &quot;Oslo&quot;,
+  &quot;description&quot;: &quot;A vendor settlement was rerouted from Argent Pulse Labs to a shell account tied to an external contractor.&quot;,
+  &quot;status&quot;: &quot;Under Investigation&quot;,
+  &quot;severity&quot;: &quot;Critical&quot;,
+  &quot;caseNumber&quot;: &quot;NRR-2026-014&quot;,
+  &quot;notes&quot;: &quot;The diversion chain spans vendor onboarding, portal access, shell accounts, and a crypto off-ramp.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-dana-mercer</code></td><td>person</td><td>Dana Mercer</td><td class="small"><pre>{
+  &quot;firstName&quot;: &quot;Dana&quot;,
+  &quot;lastName&quot;: &quot;Mercer&quot;,
+  &quot;alias&quot;: &quot;D. Mercer&quot;,
+  &quot;birthDate&quot;: &quot;1990-11-07&quot;,
+  &quot;birthPlace&quot;: &quot;Trondheim, Norway&quot;,
+  &quot;nationality&quot;: &quot;Norwegian&quot;,
+  &quot;gender&quot;: &quot;Female&quot;,
+  &quot;email&quot;: &quot;dana.mercer@nordicrisk.no&quot;,
+  &quot;phone&quot;: &quot;+47 913 22 441&quot;,
+  &quot;occupation&quot;: &quot;Lead Investigator&quot;,
+  &quot;investigativeRole&quot;: &quot;Investigator&quot;,
+  &quot;notes&quot;: &quot;External investigator retained after the internal treasury alert fired.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-elias-voss</code></td><td>person</td><td>Elias Voss</td><td class="small"><pre>{
+  &quot;firstName&quot;: &quot;Elias&quot;,
+  &quot;lastName&quot;: &quot;Voss&quot;,
+  &quot;alias&quot;: &quot;E. Voss, Elias N. Voss&quot;,
+  &quot;birthDate&quot;: &quot;1987-04-12&quot;,
+  &quot;birthPlace&quot;: &quot;Bergen, Norway&quot;,
+  &quot;nationality&quot;: &quot;Norwegian&quot;,
+  &quot;gender&quot;: &quot;Male&quot;,
+  &quot;email&quot;: &quot;elias.voss@northline-ops.com&quot;,
+  &quot;phone&quot;: &quot;+47 412 44 881&quot;,
+  &quot;occupation&quot;: &quot;Vendor Integration Contractor&quot;,
+  &quot;investigativeRole&quot;: &quot;Subject&quot;,
+  &quot;photo&quot;: &quot;src-badge-portrait&quot;,
+  &quot;notes&quot;: &quot;Contractor who handled vendor onboarding and used an unapproved settlement portal during the diversion window.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-noor-halabi</code></td><td>person</td><td>Noor Halabi</td><td class="small"><pre>{
+  &quot;firstName&quot;: &quot;Noor&quot;,
+  &quot;lastName&quot;: &quot;Halabi&quot;,
+  &quot;alias&quot;: &quot;N. Halabi&quot;,
+  &quot;birthDate&quot;: &quot;1994-02-09&quot;,
+  &quot;birthPlace&quot;: &quot;Oslo, Norway&quot;,
+  &quot;nationality&quot;: &quot;Norwegian&quot;,
+  &quot;gender&quot;: &quot;Female&quot;,
+  &quot;email&quot;: &quot;noor.halabi@argentpulse.com&quot;,
+  &quot;phone&quot;: &quot;+47 977 88 103&quot;,
+  &quot;occupation&quot;: &quot;Treasury Operations Manager&quot;,
+  &quot;investigativeRole&quot;: &quot;Witness&quot;,
+  &quot;notes&quot;: &quot;Raised the first internal concern after the payout confirmation did not match the expected account.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-priya-sethi</code></td><td>person</td><td>Priya Sethi</td><td class="small"><pre>{
+  &quot;firstName&quot;: &quot;Priya&quot;,
+  &quot;lastName&quot;: &quot;Sethi&quot;,
+  &quot;alias&quot;: &quot;P. Sethi&quot;,
+  &quot;birthDate&quot;: &quot;1985-09-17&quot;,
+  &quot;birthPlace&quot;: &quot;London, United Kingdom&quot;,
+  &quot;nationality&quot;: &quot;British&quot;,
+  &quot;gender&quot;: &quot;Female&quot;,
+  &quot;email&quot;: &quot;priya.sethi@meridiantrust.eu&quot;,
+  &quot;phone&quot;: &quot;+44 7710 200944&quot;,
+  &quot;occupation&quot;: &quot;Compliance Liaison&quot;,
+  &quot;investigativeRole&quot;: &quot;Associate&quot;,
+  &quot;notes&quot;: &quot;Meridian Trust contact who issued the manual review and freeze notice after the payout reached the shell account.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-argent-pulse</code></td><td>organization</td><td>Argent Pulse Labs</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Argent Pulse Labs&quot;,
+  &quot;legalName&quot;: &quot;Argent Pulse Labs AS&quot;,
+  &quot;organizationType&quot;: &quot;Corporation&quot;,
+  &quot;sector&quot;: &quot;Technology&quot;,
+  &quot;industry&quot;: &quot;Payments Analytics&quot;,
+  &quot;jurisdiction&quot;: &quot;Norway&quot;,
+  &quot;registrationNumber&quot;: &quot;NO-924-731-118&quot;,
+  &quot;website&quot;: &quot;https://argentpulse.no&quot;,
+  &quot;email&quot;: &quot;finance@argentpulse.no&quot;,
+  &quot;phone&quot;: &quot;+47 22 41 88 10&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;specialty&quot;: &quot;Real-time payout orchestration&quot;,
+  &quot;notes&quot;: &quot;Victim organization whose reserve account was used for the diverted settlement.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-northline-fulfillment</code></td><td>organization</td><td>Northline Fulfillment LLC</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Northline Fulfillment LLC&quot;,
+  &quot;legalName&quot;: &quot;Northline Fulfillment LLC&quot;,
+  &quot;organizationType&quot;: &quot;LLC&quot;,
+  &quot;sector&quot;: &quot;Logistics&quot;,
+  &quot;industry&quot;: &quot;Cross-border fulfillment&quot;,
+  &quot;jurisdiction&quot;: &quot;Estonia&quot;,
+  &quot;registrationNumber&quot;: &quot;EE-1471208&quot;,
+  &quot;website&quot;: &quot;https://northline-ops.eu&quot;,
+  &quot;email&quot;: &quot;ops@northline-ops.eu&quot;,
+  &quot;phone&quot;: &quot;+372 600 1144&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;specialty&quot;: &quot;Vendor onboarding and marketplace settlements&quot;,
+  &quot;notes&quot;: &quot;Shell vendor used as the receiving counterparty for the diverted settlement.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-meridian-trust</code></td><td>organization</td><td>Meridian Trust Bank</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Meridian Trust Bank&quot;,
+  &quot;legalName&quot;: &quot;Meridian Trust Bank plc&quot;,
+  &quot;organizationType&quot;: &quot;Corporation&quot;,
+  &quot;sector&quot;: &quot;Financial Services&quot;,
+  &quot;industry&quot;: &quot;Commercial Banking&quot;,
+  &quot;jurisdiction&quot;: &quot;Ireland&quot;,
+  &quot;registrationNumber&quot;: &quot;IE-553102&quot;,
+  &quot;website&quot;: &quot;https://meridiantrust.eu&quot;,
+  &quot;email&quot;: &quot;compliance@meridiantrust.eu&quot;,
+  &quot;phone&quot;: &quot;+353 1 555 2100&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;specialty&quot;: &quot;Cross-border settlement banking&quot;,
+  &quot;notes&quot;: &quot;Bank that froze the receiving account after a manual review alert.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-domain-argentpulse-payments</code></td><td>domain</td><td>argentpulse-payments.com</td><td class="small"><pre>{
+  &quot;domain&quot;: &quot;argentpulse-payments.com&quot;,
+  &quot;registrar&quot;: &quot;Namecheap&quot;,
+  &quot;registrationDate&quot;: &quot;2026-03-18&quot;,
+  &quot;expirationDate&quot;: &quot;2027-03-18&quot;,
+  &quot;dnsProvider&quot;: &quot;Cloudflare&quot;,
+  &quot;registrantName&quot;: &quot;Northline Fulfillment LLC&quot;,
+  &quot;registrantCountry&quot;: &quot;EE&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;notes&quot;: &quot;Lookalike domain registered six days before the payout diversion.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-website-settlement-portal</code></td><td>website</td><td>https://secure.argentpulse-payments.com/settlement</td><td class="small"><pre>{
+  &quot;url&quot;: &quot;https://secure.argentpulse-payments.com/settlement&quot;,
+  &quot;title&quot;: &quot;Argent Pulse Settlement Portal&quot;,
+  &quot;websiteType&quot;: &quot;Corporate&quot;,
+  &quot;language&quot;: &quot;English&quot;,
+  &quot;status&quot;: &quot;Online&quot;,
+  &quot;serverBanner&quot;: &quot;nginx/1.24&quot;,
+  &quot;sslStatus&quot;: &quot;Valid&quot;,
+  &quot;notes&quot;: &quot;Credential collection portal themed to resemble the internal settlement workflow.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-account-e-voss-ops</code></td><td>online_account</td><td>@e_voss_ops</td><td class="small"><pre>{
+  &quot;platform&quot;: &quot;Telegram&quot;,
+  &quot;handle&quot;: &quot;@e_voss_ops&quot;,
+  &quot;displayName&quot;: &quot;Elias Ops&quot;,
+  &quot;profileUrl&quot;: &quot;https://t.me/e_voss_ops&quot;,
+  &quot;accountType&quot;: &quot;Anonymous&quot;,
+  &quot;createdDate&quot;: &quot;2026-03-16&quot;,
+  &quot;lastSeen&quot;: &quot;2026-03-27&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;notes&quot;: &quot;Account used to coordinate vendor instructions and portal screenshots.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-email-settlements</code></td><td>email</td><td>settlements@argentpulse-payments.com</td><td class="small"><pre>{
+  &quot;address&quot;: &quot;settlements@argentpulse-payments.com&quot;,
+  &quot;provider&quot;: &quot;Private Mail Relay&quot;,
+  &quot;accountType&quot;: &quot;Business&quot;,
+  &quot;createdDate&quot;: &quot;2026-03-18&quot;,
+  &quot;lastActive&quot;: &quot;2026-03-25&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;notes&quot;: &quot;Mailbox tied to the lookalike domain and used in the onboarding chain.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-phone-burner</code></td><td>phone</td><td>+47 412 44 881</td><td class="small"><pre>{
+  &quot;number&quot;: &quot;+47 412 44 881&quot;,
+  &quot;phoneType&quot;: &quot;Mobile&quot;,
+  &quot;carrier&quot;: &quot;Ice Norge&quot;,
+  &quot;countryCode&quot;: &quot;+47&quot;,
+  &quot;registeredDate&quot;: &quot;2026-03-19&quot;,
+  &quot;lastActive&quot;: &quot;2026-03-27&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;notes&quot;: &quot;Burner line that appears in portal recovery prompts and vendor coordination messages.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-device-pixel</code></td><td>device</td><td>Pixel 8 Pro Burner</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Pixel 8 Pro Burner&quot;,
+  &quot;deviceType&quot;: &quot;Smartphone&quot;,
+  &quot;manufacturer&quot;: &quot;Google&quot;,
+  &quot;model&quot;: &quot;Pixel 8 Pro&quot;,
+  &quot;serialNumber&quot;: &quot;GP8P-44-881-A&quot;,
+  &quot;imei&quot;: &quot;352099118812340&quot;,
+  &quot;ipAddress&quot;: &quot;185.220.101.44&quot;,
+  &quot;os&quot;: &quot;Android 16&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;purchaseDate&quot;: &quot;2026-03-17&quot;,
+  &quot;notes&quot;: &quot;Device recovered from kiosk export metadata and linked to Telegram access.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-ip-18522010144</code></td><td>ip_address</td><td>185.220.101.44</td><td class="small"><pre>{
+  &quot;ipAddress&quot;: &quot;185.220.101.44&quot;,
+  &quot;ipVersion&quot;: &quot;IPv4&quot;,
+  &quot;asn&quot;: &quot;AS206264&quot;,
+  &quot;provider&quot;: &quot;M247 Europe&quot;,
+  &quot;reverseDns&quot;: &quot;host-44.ams.edge.m247.com&quot;,
+  &quot;country&quot;: &quot;Netherlands&quot;,
+  &quot;city&quot;: &quot;Amsterdam&quot;,
+  &quot;status&quot;: &quot;Observed&quot;,
+  &quot;notes&quot;: &quot;Observed on the portal admin session and in the burner device artifact export.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-infra-ams-vps-04</code></td><td>infrastructure</td><td>ams-vps-04</td><td class="small"><pre>{
+  &quot;hostname&quot;: &quot;ams-vps-04&quot;,
+  &quot;infrastructureType&quot;: &quot;Cloud Instance&quot;,
+  &quot;provider&quot;: &quot;M247&quot;,
+  &quot;os&quot;: &quot;Ubuntu 24.04&quot;,
+  &quot;services&quot;: &quot;nginx, docker, tailscale&quot;,
+  &quot;ipAddress&quot;: &quot;185.220.101.44&quot;,
+  &quot;region&quot;: &quot;AMS-1&quot;,
+  &quot;status&quot;: &quot;Online&quot;,
+  &quot;lastSeen&quot;: &quot;2026-03-27&quot;,
+  &quot;notes&quot;: &quot;Hosting asset serving the settlement portal and outbound admin traffic.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-wallet-bc84</code></td><td>crypto_wallet</td><td>0xBC84F1944B6B1D7264A4F2A52B909B99E77AA91F</td><td class="small"><pre>{
+  &quot;address&quot;: &quot;0xBC84F1944B6B1D7264A4F2A52B909B99E77AA91F&quot;,
+  &quot;assetType&quot;: &quot;Ethereum&quot;,
+  &quot;balance&quot;: &quot;14.82 ETH&quot;,
+  &quot;walletProvider&quot;: &quot;MetaMask&quot;,
+  &quot;status&quot;: &quot;Watchlisted&quot;,
+  &quot;notes&quot;: &quot;Wallet funded shortly after the diverted settlement cleared the shell account.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-account-northline-settlement</code></td><td>financial_account</td><td>IE38-MTBE-9099-2211-4400</td><td class="small"><pre>{
+  &quot;accountType&quot;: &quot;Bank Account&quot;,
+  &quot;accountNumber&quot;: &quot;IE38-MTBE-9099-2211-4400&quot;,
+  &quot;institutionName&quot;: &quot;Meridian Trust Bank&quot;,
+  &quot;routingNumber&quot;: &quot;MTB-443900&quot;,
+  &quot;currency&quot;: &quot;EUR&quot;,
+  &quot;balance&quot;: &quot;EUR 48,110&quot;,
+  &quot;status&quot;: &quot;Frozen&quot;,
+  &quot;openedDate&quot;: &quot;2026-03-20&quot;,
+  &quot;notes&quot;: &quot;Receiving account embedded in the forged onboarding invoice.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-account-argent-reserve</code></td><td>financial_account</td><td>NO56-7788-9900-1100</td><td class="small"><pre>{
+  &quot;accountType&quot;: &quot;Bank Account&quot;,
+  &quot;accountNumber&quot;: &quot;NO56-7788-9900-1100&quot;,
+  &quot;institutionName&quot;: &quot;Meridian Trust Bank&quot;,
+  &quot;routingNumber&quot;: &quot;MTB-110011&quot;,
+  &quot;currency&quot;: &quot;EUR&quot;,
+  &quot;balance&quot;: &quot;EUR 1,280,440&quot;,
+  &quot;status&quot;: &quot;Active&quot;,
+  &quot;openedDate&quot;: &quot;2024-06-01&quot;,
+  &quot;notes&quot;: &quot;Reserve payout account used for third-party settlement operations.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-tx-cl8831</code></td><td>financial_transaction</td><td>CL-8831</td><td class="small"><pre>{
+  &quot;transactionReference&quot;: &quot;CL-8831&quot;,
+  &quot;transactionType&quot;: &quot;Transfer&quot;,
+  &quot;transactionDate&quot;: &quot;2026-03-24&quot;,
+  &quot;amount&quot;: &quot;EUR 48,200&quot;,
+  &quot;currency&quot;: &quot;EUR&quot;,
+  &quot;merchant&quot;: &quot;Northline Fulfillment LLC&quot;,
+  &quot;description&quot;: &quot;Vendor onboarding settlement batch CL-8831&quot;,
+  &quot;status&quot;: &quot;Completed&quot;,
+  &quot;notes&quot;: &quot;Transaction cleared before the manual review hold was entered.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-doc-invoice-cl8831</code></td><td>document</td><td>Invoice CL-8831</td><td class="small"><pre>{
+  &quot;title&quot;: &quot;Invoice CL-8831&quot;,
+  &quot;documentType&quot;: &quot;Invoice&quot;,
+  &quot;author&quot;: &quot;Northline Fulfillment LLC&quot;,
+  &quot;recipient&quot;: &quot;Argent Pulse Labs&quot;,
+  &quot;createdDate&quot;: &quot;2026-03-23&quot;,
+  &quot;modifiedDate&quot;: &quot;2026-03-23&quot;,
+  &quot;filePath&quot;: &quot;media/documents/invoice-cl8831.txt&quot;,
+  &quot;confidentiality&quot;: &quot;Internal&quot;,
+  &quot;notes&quot;: &quot;Invoice includes the shell account and portal settlement instructions.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-comm-slack-transfer</code></td><td>communication</td><td>Noor -&gt; Elias</td><td class="small"><pre>{
+  &quot;communicationType&quot;: &quot;Telegram&quot;,
+  &quot;from&quot;: &quot;Noor Halabi&quot;,
+  &quot;to&quot;: &quot;@e_voss_ops&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;subject&quot;: &quot;Settlement confirmation&quot;,
+  &quot;content&quot;: &quot;Noor requests vendor confirmation, Elias replies with the portal screenshot and updated remittance path.&quot;,
+  &quot;direction&quot;: &quot;Bidirectional&quot;,
+  &quot;location&quot;: &quot;Oslo&quot;,
+  &quot;notes&quot;: &quot;Thread ties Noor to the forged workflow but not to the diversion intent.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-media-portal-capture</code></td><td>media</td><td>Settlement portal capture</td><td class="small"><pre>{
+  &quot;filename&quot;: &quot;settlement-portal-capture.svg&quot;,
+  &quot;mediaType&quot;: &quot;Screen Capture&quot;,
+  &quot;format&quot;: &quot;SVG&quot;,
+  &quot;createdDate&quot;: &quot;2026-03-24&quot;,
+  &quot;resolution&quot;: &quot;1600x900&quot;,
+  &quot;location&quot;: &quot;Oslo&quot;,
+  &quot;metadata&quot;: &quot;Synthetic portal screenshot seeded for repo sample.&quot;,
+  &quot;notes&quot;: &quot;Capture shows the Northline account details and the fake Argent Pulse branding.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-evidence-usb-export</code></td><td>evidence</td><td>USB kiosk export</td><td class="small"><pre>{
+  &quot;evidenceType&quot;: &quot;Digital&quot;,
+  &quot;title&quot;: &quot;USB kiosk export&quot;,
+  &quot;description&quot;: &quot;Export collected from the self-service kiosk used during the onboarding call.&quot;,
+  &quot;dateFound&quot;: &quot;2026-03-26&quot;,
+  &quot;locationFound&quot;: &quot;Oslo coworking suite&quot;,
+  &quot;foundBy&quot;: &quot;Dana Mercer&quot;,
+  &quot;chainOfCustody&quot;: &quot;Dana Mercer -&gt; NRR Lab -&gt; sealed evidence locker&quot;,
+  &quot;status&quot;: &quot;In Analysis&quot;,
+  &quot;hash&quot;: &quot;sha256:2f7c1aa6e7b84c0b5fb84c6f1920f7a6d0d6f3b6d31b7f8e0f94d4ab18f98320&quot;,
+  &quot;notes&quot;: &quot;Contains portal cookies, device identifiers, and partial chat remnants.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-location-oslo-suite</code></td><td>location</td><td>Oslo coworking suite</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Oslo coworking suite&quot;,
+  &quot;locationType&quot;: &quot;Business&quot;,
+  &quot;address&quot;: &quot;Tordenskiolds gate 7&quot;,
+  &quot;city&quot;: &quot;Oslo&quot;,
+  &quot;state&quot;: &quot;Oslo&quot;,
+  &quot;zipCode&quot;: &quot;0160&quot;,
+  &quot;country&quot;: &quot;Norway&quot;,
+  &quot;latitude&quot;: 59.9127,
+  &quot;longitude&quot;: 10.7393,
+  &quot;accessLevel&quot;: &quot;Restricted&quot;,
+  &quot;notes&quot;: &quot;Short-term suite rented by Northline during the onboarding week.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-event-vendor-call</code></td><td>event</td><td>Vendor onboarding call</td><td class="small"><pre>{
+  &quot;title&quot;: &quot;Vendor onboarding call&quot;,
+  &quot;eventType&quot;: &quot;Meeting&quot;,
+  &quot;startDate&quot;: &quot;2026-03-24&quot;,
+  &quot;endDate&quot;: &quot;2026-03-24&quot;,
+  &quot;location&quot;: &quot;Oslo coworking suite&quot;,
+  &quot;outcome&quot;: &quot;The payout path was confirmed against the forged portal workflow.&quot;,
+  &quot;status&quot;: &quot;Completed&quot;,
+  &quot;notes&quot;: &quot;The call is the key bridge between the forged invoice and the completed transfer.&quot;
+}</pre></td></tr><tr><td class="small"><code>ent-id-badge-voss</code></td><td>identity_document</td><td>NV-20491</td><td class="small"><pre>{
+  &quot;documentType&quot;: &quot;National ID&quot;,
+  &quot;documentNumber&quot;: &quot;NV-20491&quot;,
+  &quot;issuingCountry&quot;: &quot;NO&quot;,
+  &quot;issuingAuthority&quot;: &quot;Private Access Registry&quot;,
+  &quot;issueDate&quot;: &quot;2026-03-17&quot;,
+  &quot;expiryDate&quot;: &quot;2026-04-17&quot;,
+  &quot;holderName&quot;: &quot;Elias Voss&quot;,
+  &quot;notes&quot;: &quot;Temporary access badge issued for the coworking suite used in the onboarding operation.&quot;
+}</pre></td></tr><tr><td class="small"><code>17057f6d-7cc9-4244-af87-a080e1b09923</code></td><td>organization</td><td>Artikel10 E.V.</td><td class="small"><pre>{
+  &quot;name&quot;: &quot;Artikel10 E.V.&quot;,
+  &quot;organizationType&quot;: &quot;Provider&quot;
+}</pre></td></tr><tr><td class="small"><code>f471ee1f-b7e0-4bb6-91ec-011ed10aa23f</code></td><td>domain</td><td>secure.argentpulse-payments.com</td><td class="small"><pre>{
+  &quot;domain&quot;: &quot;secure.argentpulse-payments.com&quot;
+}</pre></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h2>Findings: Relationships (38)</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Type</th><th>Source → Target</th><th>Properties</th></tr></thead>
+      <tbody>
+        <tr><td class="small"><code>edge-dana-case</code></td><td>case_or_incident_role</td><td class="small"><code>ent-dana-mercer</code> → <code>ent-case-circuit-ledger</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;investigator_on&quot;,
+  &quot;date&quot;: &quot;2026-03-21&quot;,
+  &quot;notes&quot;: &quot;Lead external investigator assigned after the treasury alert.&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-dana-incident</code></td><td>case_or_incident_role</td><td class="small"><code>ent-dana-mercer</code> → <code>ent-incident-diversion</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;investigator_on&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-priya-reported</code></td><td>case_or_incident_role</td><td class="small"><code>ent-priya-sethi</code> → <code>ent-incident-diversion</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;reported_by&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;notes&quot;: &quot;Compliance escalation after receiving the bank hold notice.&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-suspect</code></td><td>case_or_incident_role</td><td class="small"><code>ent-elias-voss</code> → <code>ent-incident-diversion</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;suspect_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-noor-witness</code></td><td>case_or_incident_role</td><td class="small"><code>ent-noor-halabi</code> → <code>ent-incident-diversion</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;witness_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-argent-victim</code></td><td>case_or_incident_role</td><td class="small"><code>ent-argent-pulse</code> → <code>ent-incident-diversion</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;victim_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-evidence-case</code></td><td>case_or_incident_role</td><td class="small"><code>ent-evidence-usb-export</code> → <code>ent-case-circuit-ledger</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;evidence_for&quot;,
+  &quot;date&quot;: &quot;2026-03-26&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-northline</code></td><td>employment_or_affiliation</td><td class="small"><code>ent-elias-voss</code> → <code>ent-northline-fulfillment</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;contractor_for&quot;,
+  &quot;date&quot;: &quot;2026-03-17&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-noor-argent</code></td><td>employment_or_affiliation</td><td class="small"><code>ent-noor-halabi</code> → <code>ent-argent-pulse</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;employee_of&quot;,
+  &quot;date&quot;: &quot;2024-09-01&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-priya-meridian</code></td><td>employment_or_affiliation</td><td class="small"><code>ent-priya-sethi</code> → <code>ent-meridian-trust</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;affiliate_of&quot;,
+  &quot;date&quot;: &quot;2025-06-03&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-account</code></td><td>ownership_or_control</td><td class="small"><code>ent-elias-voss</code> → <code>ent-account-e-voss-ops</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;controls&quot;,
+  &quot;date&quot;: &quot;2026-03-16&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-phone</code></td><td>ownership_or_control</td><td class="small"><code>ent-elias-voss</code> → <code>ent-phone-burner</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;registered_to&quot;,
+  &quot;date&quot;: &quot;2026-03-19&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-device</code></td><td>ownership_or_control</td><td class="small"><code>ent-elias-voss</code> → <code>ent-device-pixel</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;assigned_to&quot;,
+  &quot;date&quot;: &quot;2026-03-20&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-northline-bank</code></td><td>ownership_or_control</td><td class="small"><code>ent-northline-fulfillment</code> → <code>ent-account-northline-settlement</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;owns&quot;,
+  &quot;date&quot;: &quot;2026-03-20&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-argent-bank</code></td><td>ownership_or_control</td><td class="small"><code>ent-argent-pulse</code> → <code>ent-account-argent-reserve</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;owns&quot;,
+  &quot;date&quot;: &quot;2024-06-01&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-northline-location</code></td><td>located_at</td><td class="small"><code>ent-northline-fulfillment</code> → <code>ent-location-oslo-suite</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;based_at&quot;,
+  &quot;date&quot;: &quot;2026-03-19&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-website-hosted</code></td><td>located_at</td><td class="small"><code>ent-website-settlement-portal</code> → <code>ent-infra-ams-vps-04</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;hosted_at&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-domain-site</code></td><td>associated_with</td><td class="small"><code>ent-domain-argentpulse-payments</code> → <code>ent-website-settlement-portal</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;linked_to&quot;,
+  &quot;strength&quot;: &quot;strong&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-account-website</code></td><td>used_or_accessed</td><td class="small"><code>ent-account-e-voss-ops</code> → <code>ent-website-settlement-portal</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;logged_into&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-device-website</code></td><td>used_or_accessed</td><td class="small"><code>ent-device-pixel</code> → <code>ent-website-settlement-portal</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;accessed&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-device-infra</code></td><td>used_or_accessed</td><td class="small"><code>ent-device-pixel</code> → <code>ent-infra-ams-vps-04</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;connected_to&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-online-noor</code></td><td>communicated_with</td><td class="small"><code>ent-account-e-voss-ops</code> → <code>ent-noor-halabi</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;messaged&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;strength&quot;: &quot;medium&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-event-elias</code></td><td>participated_in</td><td class="small"><code>ent-elias-voss</code> → <code>ent-event-vendor-call</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;present_at&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-event-noor</code></td><td>participated_in</td><td class="small"><code>ent-noor-halabi</code> → <code>ent-event-vendor-call</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;attended&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-event-priya</code></td><td>participated_in</td><td class="small"><code>ent-priya-sethi</code> → <code>ent-event-vendor-call</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;organized&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-argent-defrauded</code></td><td>threat_or_harm</td><td class="small"><code>ent-elias-voss</code> → <code>ent-argent-pulse</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;defrauded&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;strength&quot;: &quot;high&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-argent-tx</code></td><td>financially_linked</td><td class="small"><code>ent-account-argent-reserve</code> → <code>ent-tx-cl8831</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;paid&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;strength&quot;: &quot;high&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-tx-northline</code></td><td>financially_linked</td><td class="small"><code>ent-tx-cl8831</code> → <code>ent-account-northline-settlement</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;transferred_to&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;,
+  &quot;strength&quot;: &quot;high&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-tx-wallet</code></td><td>financially_linked</td><td class="small"><code>ent-tx-cl8831</code> → <code>ent-wallet-bc84</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;funded&quot;,
+  &quot;date&quot;: &quot;2026-03-25&quot;,
+  &quot;strength&quot;: &quot;medium&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-tx-document</code></td><td>documented_by</td><td class="small"><code>ent-tx-cl8831</code> → <code>ent-doc-invoice-cl8831</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;recorded_in&quot;,
+  &quot;date&quot;: &quot;2026-03-23&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-incident-document</code></td><td>documented_by</td><td class="small"><code>ent-incident-diversion</code> → <code>ent-doc-invoice-cl8831</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;mentioned_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-website-media</code></td><td>documented_by</td><td class="small"><code>ent-website-settlement-portal</code> → <code>ent-media-portal-capture</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;captured_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-incident-comm</code></td><td>documented_by</td><td class="small"><code>ent-incident-diversion</code> → <code>ent-comm-slack-transfer</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;recorded_in&quot;,
+  &quot;date&quot;: &quot;2026-03-24&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-elias-id</code></td><td>documented_by</td><td class="small"><code>ent-elias-voss</code> → <code>ent-id-badge-voss</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;recorded_in&quot;,
+  &quot;date&quot;: &quot;2026-03-17&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-email-domain</code></td><td>associated_with</td><td class="small"><code>ent-email-settlements</code> → <code>ent-domain-argentpulse-payments</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;linked_to&quot;
+}</pre></td></tr><tr><td class="small"><code>edge-ip-infra</code></td><td>associated_with</td><td class="small"><code>ent-ip-18522010144</code> → <code>ent-infra-ams-vps-04</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;linked_to&quot;
+}</pre></td></tr><tr><td class="small"><code>dffa94ae-75fb-4cfe-95d2-91a496df5a2a</code></td><td>associated_with</td><td class="small"><code>17057f6d-7cc9-4244-af87-a080e1b09923</code> → <code>ent-ip-18522010144</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;linked_to&quot;,
+  &quot;notes&quot;: &quot;Observed as provider in IP lookup&quot;
+}</pre></td></tr><tr><td class="small"><code>b21244e6-6e6b-4b9d-9bab-0c3749e552c3</code></td><td>associated_with</td><td class="small"><code>ent-website-settlement-portal</code> → <code>f471ee1f-b7e0-4bb6-91ec-011ed10aa23f</code></td><td class="small"><pre>{
+  &quot;subtype&quot;: &quot;linked_to&quot;,
+  &quot;notes&quot;: &quot;Derived domain from website URL&quot;
+}</pre></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h2>Timeline (33)</h2>
+    <table><thead><tr><th>Date</th><th>Event</th></tr></thead><tbody><tr><td>2024-06-01</td><td>ownership_or_control between ent-argent-pulse → ent-account-argent-reserve</td></tr><tr><td>2024-09-01</td><td>employment_or_affiliation between ent-noor-halabi → ent-argent-pulse</td></tr><tr><td>2025-06-03</td><td>employment_or_affiliation between ent-priya-sethi → ent-meridian-trust</td></tr><tr><td>2026-03-16</td><td>ownership_or_control between ent-elias-voss → ent-account-e-voss-ops</td></tr><tr><td>2026-03-17</td><td>employment_or_affiliation between ent-elias-voss → ent-northline-fulfillment</td></tr><tr><td>2026-03-17</td><td>documented_by between ent-elias-voss → ent-id-badge-voss</td></tr><tr><td>2026-03-19</td><td>ownership_or_control between ent-elias-voss → ent-phone-burner</td></tr><tr><td>2026-03-19</td><td>located_at between ent-northline-fulfillment → ent-location-oslo-suite</td></tr><tr><td>2026-03-20</td><td>ownership_or_control between ent-elias-voss → ent-device-pixel</td></tr><tr><td>2026-03-20</td><td>ownership_or_control between ent-northline-fulfillment → ent-account-northline-settlement</td></tr><tr><td>2026-03-21</td><td>case_or_incident_role between ent-dana-mercer → ent-case-circuit-ledger</td></tr><tr><td>2026-03-23</td><td>documented_by between ent-tx-cl8831 → ent-doc-invoice-cl8831</td></tr><tr><td>2026-03-24</td><td>case_or_incident_role between ent-dana-mercer → ent-incident-diversion</td></tr><tr><td>2026-03-24</td><td>case_or_incident_role between ent-priya-sethi → ent-incident-diversion</td></tr><tr><td>2026-03-24</td><td>case_or_incident_role between ent-elias-voss → ent-incident-diversion</td></tr><tr><td>2026-03-24</td><td>case_or_incident_role between ent-noor-halabi → ent-incident-diversion</td></tr><tr><td>2026-03-24</td><td>case_or_incident_role between ent-argent-pulse → ent-incident-diversion</td></tr><tr><td>2026-03-24</td><td>located_at between ent-website-settlement-portal → ent-infra-ams-vps-04</td></tr><tr><td>2026-03-24</td><td>used_or_accessed between ent-account-e-voss-ops → ent-website-settlement-portal</td></tr><tr><td>2026-03-24</td><td>used_or_accessed between ent-device-pixel → ent-website-settlement-portal</td></tr><tr><td>2026-03-24</td><td>used_or_accessed between ent-device-pixel → ent-infra-ams-vps-04</td></tr><tr><td>2026-03-24</td><td>communicated_with between ent-account-e-voss-ops → ent-noor-halabi</td></tr><tr><td>2026-03-24</td><td>participated_in between ent-elias-voss → ent-event-vendor-call</td></tr><tr><td>2026-03-24</td><td>participated_in between ent-noor-halabi → ent-event-vendor-call</td></tr><tr><td>2026-03-24</td><td>participated_in between ent-priya-sethi → ent-event-vendor-call</td></tr><tr><td>2026-03-24</td><td>threat_or_harm between ent-elias-voss → ent-argent-pulse</td></tr><tr><td>2026-03-24</td><td>financially_linked between ent-account-argent-reserve → ent-tx-cl8831</td></tr><tr><td>2026-03-24</td><td>financially_linked between ent-tx-cl8831 → ent-account-northline-settlement</td></tr><tr><td>2026-03-24</td><td>documented_by between ent-incident-diversion → ent-doc-invoice-cl8831</td></tr><tr><td>2026-03-24</td><td>documented_by between ent-website-settlement-portal → ent-media-portal-capture</td></tr><tr><td>2026-03-24</td><td>documented_by between ent-incident-diversion → ent-comm-slack-transfer</td></tr><tr><td>2026-03-25</td><td>financially_linked between ent-tx-cl8831 → ent-wallet-bc84</td></tr><tr><td>2026-03-26</td><td>case_or_incident_role between ent-evidence-usb-export → ent-case-circuit-ledger</td></tr></tbody></table>
+  </div>
+  <div class="section">
+    <h2>Evidence Appendix (11)</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Kind</th><th>Locator/Title</th><th>Hash</th><th>Used In</th></tr></thead>
+      <tbody>
+        <tr><td class="small"><code>src-badge-portrait</code></td><td>file</td><td class="small">Elias badge portrait</td><td class="small"><code></code></td><td class="small">ent-elias-voss:properties.alias<br/>ent-id-badge-voss:properties.holderName</td></tr><tr><td class="small"><code>src-portal-capture</code></td><td>file</td><td class="small">Settlement portal capture</td><td class="small"><code></code></td><td class="small">ent-website-settlement-portal:properties.status<br/>ent-media-portal-capture:properties.location</td></tr><tr><td class="small"><code>src-invoice-cl8831</code></td><td>file</td><td class="small">Invoice CL-8831</td><td class="small"><code></code></td><td class="small">ent-account-northline-settlement:properties.accountNumber<br/>ent-tx-cl8831:properties.amount<br/>ent-doc-invoice-cl8831:properties.filePath</td></tr><tr><td class="small"><code>src-bank-hold</code></td><td>file</td><td class="small">Meridian hold notice</td><td class="small"><code></code></td><td class="small">ent-incident-diversion:properties.severity<br/>ent-priya-sethi:properties.occupation<br/>ent-wallet-bc84:properties.status</td></tr><tr><td class="small"><code>src-slack-thread</code></td><td>file</td><td class="small">Transfer coordination thread</td><td class="small"><code></code></td><td class="small">ent-noor-halabi:properties.notes<br/>ent-account-e-voss-ops:properties.lastSeen<br/>ent-comm-slack-transfer:properties.content<br/>ent-event-vendor-call:properties.outcome</td></tr><tr><td class="small"><code>src-analyst-briefing</code></td><td>note</td><td class="small">Analyst briefing</td><td class="small"><code></code></td><td class="small">ent-case-circuit-ledger:properties.description<br/>ent-phone-burner:properties.carrier<br/>ent-device-pixel:properties.imei<br/>ent-evidence-usb-export:properties.hash<br/>ent-location-oslo-suite:properties.accessLevel</td></tr><tr><td class="small"><code>src-whois-summary</code></td><td>note</td><td class="small">WHOIS summary</td><td class="small"><code></code></td><td class="small">ent-domain-argentpulse-payments:properties.registrantName<br/>ent-email-settlements:properties.provider<br/>ent-ip-18522010144:properties.provider</td></tr><tr><td class="small"><code>src-transaction-timeline</code></td><td>file</td><td class="small">Transaction timeline</td><td class="small"><code></code></td><td class="small"></td></tr><tr><td class="small"><code>002bfd92-23e1-4732-8a3b-6fa8cd8649bc</code></td><td>remote_lookup</td><td class="small">IP Lookup: 185.220.101.44</td><td class="small"><code></code></td><td class="small">ent-ip-18522010144:ip.provider<br/>ent-ip-18522010144:ip.asn<br/>ent-ip-18522010144:ip.country<br/>ent-ip-18522010144:ip.city<br/>ent-ip-18522010144:ip.connectionType<br/>ent-ip-18522010144:ip.raw</td></tr><tr><td class="small"><code>6143ffe4-e17f-4ec8-bf7d-dc32dcc040e8</code></td><td>remote_lookup</td><td class="small">IP Lookup: 185.220.101.44</td><td class="small"><code></code></td><td class="small">ent-ip-18522010144:ip.provider<br/>ent-ip-18522010144:ip.asn<br/>ent-ip-18522010144:ip.country<br/>ent-ip-18522010144:ip.city<br/>ent-ip-18522010144:ip.connectionType<br/>ent-ip-18522010144:ip.raw</td></tr><tr><td class="small"><code>1d2caad6-aba5-406e-b795-c7012764908f</code></td><td>remote_lookup</td><td class="small">DNS Lookup: secure.argentpulse-payments.com</td><td class="small"><code></code></td><td class="small">ent-website-settlement-portal:dns.raw</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

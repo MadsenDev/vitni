@@ -5,6 +5,8 @@ import { FaBook, FaClock, FaCog, FaCrosshairs, FaDownload, FaExpandArrowsAlt, Fa
 import { TitleBar } from './components/TitleBar';
 import { CommandPalette, type CommandItem } from './components/CommandPalette';
 import { ContextMenu, type ContextMenuItem } from './components/ContextMenu';
+import { TutorialOverlay } from './components/TutorialOverlay';
+import { useTutorialStore } from './features/tutorial/tutorialStore';
 import { GraphWorkspace } from './components/GraphWorkspace';
 import { ImportCsvModal } from './components/ImportCsvModal';
 import { ProjectCreationModal } from './components/ProjectCreationModal';
@@ -209,6 +211,9 @@ export default function App() {
     setPendingSavedViewRestore
   } = useAppStore();
 
+  const startTutorial = useTutorialStore((s) => s.start);
+  const setSpotlightSuppressed = useTutorialStore((s) => s.setSpotlightSuppressed);
+
   const imagePreviews = usePersonNodeImagePreviews(graph, showNodeImages);
   // Review mode is derived here so the dedicated workspace and the graph view
   // can share one filtered assertion set and one "current item" cursor.
@@ -238,6 +243,10 @@ export default function App() {
   useEffect(() => {
     void boot();
   }, [boot]);
+
+  useEffect(() => {
+    setSpotlightSuppressed(projectCreationOpen);
+  }, [projectCreationOpen, setSpotlightSuppressed]);
 
   useEffect(() => {
     if (!hasSourcesOnly) return;
@@ -1033,9 +1042,11 @@ export default function App() {
                 void persistInvestigationProfile(value);
               }}
               showExampleCase={showExampleCaseOnWelcome}
+              onStartTutorial={startTutorial}
             />
           </Suspense>
         </div>
+        <TutorialOverlay />
       </div>
     );
   }
@@ -1327,6 +1338,7 @@ export default function App() {
         searchItems={searchResults}
         onSearchSelect={(result) => { handleSearchSelect(result); }}
       />
+      <TutorialOverlay />
     </div>
   );
 }

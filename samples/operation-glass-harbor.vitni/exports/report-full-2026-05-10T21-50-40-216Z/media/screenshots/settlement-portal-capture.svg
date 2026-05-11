@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#08111f"/>
+  <rect x="70" y="70" width="1140" height="580" rx="24" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.24"/>
+  <rect x="110" y="112" width="1060" height="68" rx="14" fill="#111827"/>
+  <text x="150" y="155" fill="#f8fafc" font-family="monospace" font-size="28">ARGENT PULSE SETTLEMENT PORTAL</text>
+  <text x="986" y="155" fill="#22d3ee" font-family="monospace" font-size="18">secure.argentpulse-payments.com</text>
+  <rect x="118" y="212" width="500" height="340" rx="18" fill="#0b1323" stroke="#1e293b"/>
+  <rect x="660" y="212" width="510" height="340" rx="18" fill="#0b1323" stroke="#1e293b"/>
+  <text x="150" y="258" fill="#cbd5e1" font-family="monospace" font-size="24">Vendor</text>
+  <text x="150" y="314" fill="#f8fafc" font-family="monospace" font-size="30">Northline Fulfillment LLC</text>
+  <text x="150" y="370" fill="#94a3b8" font-family="monospace" font-size="22">Batch Reference</text>
+  <text x="150" y="416" fill="#67e8f9" font-family="monospace" font-size="32">CL-8831</text>
+  <text x="692" y="258" fill="#cbd5e1" font-family="monospace" font-size="24">Settlement Account</text>
+  <rect x="692" y="290" width="450" height="78" rx="14" fill="#111827" stroke="#22d3ee" stroke-opacity="0.22"/>
+  <text x="718" y="338" fill="#f8fafc" font-family="monospace" font-size="28">IE38-MTBE-9099-2211-4400</text>
+  <text x="692" y="420" fill="#cbd5e1" font-family="monospace" font-size="24">Amount</text>
+  <text x="692" y="468" fill="#f8fafc" font-family="monospace" font-size="34">EUR 48,200</text>
+  <text x="692" y="520" fill="#f59e0b" font-family="monospace" font-size="22">MANUAL PORTAL OVERRIDE ENABLED</text>
+  <rect x="110" y="590" width="1060" height="26" rx="13" fill="#111827"/>
+  <circle cx="166" cy="603" r="6" fill="#22c55e"/>
+  <text x="186" y="609" fill="#94a3b8" font-family="monospace" font-size="16">Captured 2026-03-24 14:18 CET from kiosk export archive</text>
+</svg>

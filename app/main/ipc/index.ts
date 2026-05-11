@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
+import os from 'node:os';
 import { spawn, type ChildProcess } from 'node:child_process';
 import type {
   TransformRegistry,
@@ -2183,6 +2184,13 @@ export function registerIpcHandlers(
 
     const finalProjectName = path.basename(res.filePath, path.extname(res.filePath));
     await projectManager.createProject(res.filePath, finalProjectName);
+    return true;
+  });
+
+  ipcMain.handle('project:new:tutorial', async (_event, projectName?: string) => {
+    const name = sanitizeProjectName(projectName || 'Tutorial Case');
+    const root = path.join(os.tmpdir(), 'vitni-tutorial', `${name}.vitni`);
+    await projectManager.createProject(root, name);
     return true;
   });
 
