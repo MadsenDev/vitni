@@ -6,6 +6,13 @@ This project loosely follows the spirit of [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [0.6.0]
+
+### Added
+
+- Added a GitHub Release workflow that builds Linux and Windows packages and uploads the generated artifacts to the release.
+- Added a `1.0.0` release-readiness checklist covering product scope, release quality, smoke testing, privacy, documentation, and maintenance.
+
 ### Changed
 
 - Refreshed the README with current screenshots, clearer workflow coverage, sample-case instructions, and links into the user manual.

@@ -77,6 +77,10 @@ Useful sections:
 - [Command Palette and Shortcuts](./docs/manual/14-shortcuts.md)
 - [Typical Workflows](./docs/manual/15-workflows.md)
 
+Planning:
+
+- [Vitni 1.0.0 Checklist](./docs/1.0-checklist.md)
+
 ## Try the Sample Case
 
 The fastest way to understand Vitni is to open the included sample investigation:
@@ -178,7 +182,7 @@ samples/       Example Vitni investigation packages
 
 Vitni is under active development, but it is a usable desktop application rather than a concept mockup. Current strengths are local-first case handling, graph/timeline/review workflows, source-backed assertions, packaged Linux and Windows builds, and PI-oriented workflow design.
 
-Areas still evolving include deeper import and extraction flows, additional transforms, richer reporting, and continued UX refinement.
+Current release work is tracked in the [Vitni 1.0.0 Checklist](./docs/1.0-checklist.md). Areas still evolving include deeper import and extraction flows, additional transforms, richer reporting, and continued UX refinement.
 
 ## License
 

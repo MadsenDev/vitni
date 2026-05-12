@@ -1,6 +1,6 @@
 {
   "name": "vitni",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Vitni - local-first investigation workspace",
   "main": "dist/main/app/main/main.js",
   "author": {
