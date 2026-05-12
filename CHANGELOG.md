@@ -6,6 +6,10 @@ This project loosely follows the spirit of [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the README with current screenshots, clearer workflow coverage, sample-case instructions, and links into the user manual.
+
 ### Fixed
 
 - Made the desktop dev workflow recover when port `5173` is already occupied by selecting a shared free Vite port for both the renderer and Electron startup flow.

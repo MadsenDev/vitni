@@ -1,179 +1,135 @@
 # Vitni
 
-Vitni is a local-first investigation workspace for private investigators and serious casework.
+Vitni is a local-first desktop workspace for structured investigations.
 
-It helps you map people, organizations, accounts, devices, events, locations, evidence, and claims in one place, while keeping facts tied to sources, reviewable as assertions, and ready to export into a usable report.
+It helps investigators map entities, relationships, evidence, sources, assertions, chronology, and review decisions in one case file. The goal is not just to draw a graph; it is to keep case knowledge source-backed, reviewable, and exportable.
 
-`(screenshot coming soon)`
+![Vitni investigation workspace](./screenshots/investigation_view.png)
 
-## Why Vitni
+## What Vitni Is For
 
-Most investigation tools are good at pivots and graphs, but weak at disciplined casework.
+Vitni is built for private investigators, researchers, OSINT practitioners, and small teams who need a local case workspace instead of a cloud-first SaaS workflow.
 
-Vitni is built around a different idea:
+Use it to:
 
-- Keep the case local by default.
-- Treat assertions as evidence-backed facts, not just loose notes on nodes.
-- Give investigators dedicated workspaces for mapping, chronology, and review.
-- Make reporting and source tracking part of the product, not an afterthought.
-- Keep AI optional and subordinate to structured facts.
+- Build a graph of people, organizations, accounts, devices, locations, domains, transactions, events, and evidence.
+- Store factual claims as source-backed assertions instead of loose notes.
+- Review assertions deliberately, including conflicts, weak support, disputed claims, and accepted facts.
+- Turn dated entities into a chronology for narrative case analysis.
+- Attach media and source files while preserving structured case context.
+- Export case reports from the structured investigation data.
 
-Vitni is not trying to be a transform-count arms race. It is trying to be a practical, defensible, evidence-first investigation environment.
+Vitni keeps enrichment and AI explicit. Remote transforms run only when invoked, local AI is optional, and cloud AI is limited to report-generation workflows you choose to run.
 
-## Who It’s For
+## Core Workspaces
 
-Vitni is aimed first at:
-
-- private investigators
-- researchers doing case-driven investigative work
-- small teams who need a local-first case file rather than a cloud SaaS workflow
-- investigators who want graphing, review, timeline, and reporting in the same desktop app
-
-## What Vitni Does
-
-Vitni currently includes:
-
-- **Investigation workspace**
-  - A full graph workspace for building and navigating case structure.
-- **Timeline workspace**
-  - A dedicated chronology view for event-driven investigation work.
-- **Review workspace**
-  - A full-page review mode for working through assertions with evidence context.
-- **Source-backed assertions**
-  - Facts can be attached to sources, reviewed, disputed, rejected, or accepted.
-- **Assertion-led field workflow**
-  - Important node fields can be promoted into facts and synced back from stronger evidence.
-- **Artifacts and media**
-  - Documents, identity documents, and media get richer inspector treatment than generic fields.
-- **Remote tools**
-  - Node-specific tools such as WHOIS, DNS, and IP lookup.
-- **CSV import**
-  - Bring structured records into an existing case instead of building everything manually.
-- **Reports**
-  - Export the case into usable report output.
-- **Optional AI**
-  - Local and cloud AI options are available, but always as optional helpers.
-- **Packaging**
-  - Linux and Windows builds can be packaged from this repo.
-
-`(screenshot coming soon)`
-
-## Core Workflow
-
-Vitni is designed around three main workspaces:
+Vitni is organized around three top-level workspaces.
 
 ### Investigation
 
-Use the graph to map the structure of the case:
+The Investigation workspace is the main graph canvas. Create nodes, connect relationships, inspect sources and assertions, run compatible transforms, filter the graph, and arrange complex cases with layout presets.
 
-- people
-- organizations
-- accounts
-- devices
-- locations
-- transactions
-- evidence
-- events
+The shipped sample case demonstrates a realistic mix of people, organizations, accounts, domains, devices, transactions, evidence, assertions, and saved views.
 
-The graph is for understanding how the case fits together, not just for drawing links.
+Manual: [Investigation Workspace](./docs/manual/03-investigation-workspace.md)
 
 ### Timeline
 
-Use the timeline to organize chronology and sequence:
+![Vitni timeline workspace](./screenshots/timeline_view.png)
 
-- incidents
-- communications
-- movement
-- financial activity
-- evidence in time
+The Timeline workspace turns dated entities into a chronological view. It is designed for checking sequence, spotting unexplained gaps, and turning graph structure into an investigation narrative.
 
-This helps turn a graph into a narrative.
+Manual: [Timeline Workspace](./docs/manual/07-timeline.md)
 
 ### Review
 
-Use Review to process assertions directly:
+![Vitni review workspace](./screenshots/review_view.png)
 
-- what still needs review
-- what is weakly supported
-- what is disputed
-- what has no source support
+The Review workspace is where assertions become defensible case knowledge. Work through unreviewed, disputed, weakly supported, and unsupported claims; compare sources; accept, dispute, or reject assertions; and leave review notes.
 
-This is where Vitni starts to feel more like a casework tool than a link chart.
+Manual: [Review Workspace](./docs/manual/08-review.md)
 
-## Get Started
+## Key Capabilities
 
-The primary path is to run a packaged desktop build.
+- **Source-backed assertions**: Every field value can be represented as a claim tied to a source, confidence level, and review state.
+- **Conflicting evidence support**: Multiple assertions can exist for the same property, so Vitni can preserve disagreement instead of overwriting it.
+- **Rich node model**: People, organizations, technical entities, locations, events, transactions, evidence, documents, and media have purpose-built fields and inspector treatment.
+- **Transforms**: Run local PDF extraction or remote WHOIS, DNS, and IP lookups from compatible nodes with explicit consent.
+- **CSV import**: Bring structured records into an existing case.
+- **Saved views**: Preserve useful graph perspectives for later analysis.
+- **Report exports**: Generate full, selection, timeline, or person-profile reports, with optional attachment bundling and optional AI narrative.
+- **Personalization**: Choose investigation profiles, visual themes, canvas backgrounds, icon packs, and other workspace preferences.
 
-### Build packaged apps
+## User Manual
 
-From the repository root:
+The full manual lives in [`docs/manual`](./docs/manual/README.md). Start there for product workflows and feature-specific guidance.
 
-```bash
-npm install
-npm run package:linux
-npm run package:win
-```
+Useful sections:
 
-This produces packaged outputs under [`release/`](./release), including:
+- [Getting Started](./docs/manual/02-getting-started.md)
+- [Core Concepts](./docs/manual/01-core-concepts.md)
+- [Assertions and Sources](./docs/manual/06-assertions-and-sources.md)
+- [Transforms](./docs/manual/09-transforms.md)
+- [Saved Views](./docs/manual/10-saved-views.md)
+- [Local AI Insights](./docs/manual/11-local-ai.md)
+- [Export Reports](./docs/manual/12-export-reports.md)
+- [Settings and Personalization](./docs/manual/13-settings.md)
+- [Command Palette and Shortcuts](./docs/manual/14-shortcuts.md)
+- [Typical Workflows](./docs/manual/15-workflows.md)
 
-- Linux AppImage
-- Linux tarball
-- Windows portable `.exe`
-- Windows `.zip`
+## Try the Sample Case
 
-If you are just trying Vitni, start there before worrying about development mode.
-
-## Open the Sample Case
-
-The fastest way to see what Vitni is for is to open the shipped example case:
+The fastest way to understand Vitni is to open the included sample investigation:
 
 [`samples/operation-glass-harbor.vitni`](./samples/operation-glass-harbor.vitni)
 
-Open it through:
+Open it from the app with:
 
-- `File -> Open Project`
+```text
+File -> Open Project
+```
 
-The sample is meant to show a richer, more realistic investigation with:
-
-- people, organizations, devices, domains, accounts, and transactions
-- source-backed assertions
-- evidence and media
-- saved investigation views
-- cyber and financial relationships
-
-If the sample SQLite database has not been generated yet, initialize it locally first:
+If the sample SQLite database has not been generated yet, initialize it once:
 
 ```bash
 cd samples/operation-glass-harbor.vitni
 sqlite3 db/case.sqlite < db/case.sqlite.sql
 ```
 
-Then return to the repo root and open the sample project in the app.
+Then return to the repository root, start Vitni, and open the sample project folder.
 
-## Build From Source
+## Run From Source
 
-If you want to run Vitni in development mode:
+Requirements:
+
+- Node.js and npm
+- SQLite CLI if you want to initialize the sample database manually
+- Ollama only if you want local AI insights
+
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Start the development app:
+
+```bash
 npm run dev
 ```
 
-Vitni will:
+This compiles the Electron main process and preload bridge, starts the Vite renderer dev server, and launches Electron when the dev server is ready.
 
-- watch and compile the Electron main process
-- watch and compile the preload script
-- run the Vite renderer dev server
-- launch Electron once everything is ready
+## Package Desktop Builds
 
-### Development notes
+Build distributable desktop artifacts from the repository root:
 
-- Development mode still supports `PI_DB_KEY` if you want to set it explicitly.
-- Packaged builds now handle local database-key generation for normal app usage.
-- The main desktop app entrypoint is Electron, with:
-  - React in the renderer
-  - a context-isolated preload bridge
-  - a local SQLite-backed project store
+```bash
+npm run package:linux
+npm run package:win
+```
+
+Packaged output is written to `release/`, including Linux AppImage/tarball and Windows portable/zip artifacts.
 
 ## Useful Commands
 
@@ -191,11 +147,12 @@ npm run build:main
 npm run build:preload
 npm run build:renderer
 
-# packaged apps
+# packaging
+npm run package
 npm run package:linux
 npm run package:win
 
-# version bump helpers
+# version helpers
 npm run version:patch
 npm run version:minor
 npm run version:major
@@ -210,41 +167,18 @@ app/
   renderer/    React UI, workspaces, modals, graph, review, timeline
 db/
   migrations/  SQLite schema migrations
+docs/manual/   User manual
+screenshots/   README and product screenshots
 shared/        Shared TypeScript types
-transforms/    Remote/local tool manifests
+transforms/    Remote and local transform manifests
 samples/       Example Vitni investigation packages
 ```
 
-## Privacy and Data Model
-
-Vitni is designed to keep investigation work grounded and local-first:
-
-- case data lives locally
-- remote tools are explicit actions, not silent background enrichment
-- assertions can carry confidence and review state
-- AI is optional
-- reports can be generated from structured case data, not just ad hoc notes
-
 ## Project Status
 
-Vitni is under active development, but it is already a usable desktop application rather than a mockup or concept repo.
+Vitni is under active development, but it is a usable desktop application rather than a concept mockup. Current strengths are local-first case handling, graph/timeline/review workflows, source-backed assertions, packaged Linux and Windows builds, and PI-oriented workflow design.
 
-Current strengths:
-
-- local-first case handling
-- graph + timeline + review in one app
-- source-backed assertions
-- packaged Linux and Windows builds
-- PI-oriented workflow direction
-
-Still evolving:
-
-- deeper import and extraction flows
-- more investigation tools
-- richer reporting
-- continued UX and architecture refinement
-
-`(screenshot coming soon)`
+Areas still evolving include deeper import and extraction flows, additional transforms, richer reporting, and continued UX refinement.
 
 ## License
 
